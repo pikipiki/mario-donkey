@@ -1,0 +1,10 @@
+*.sfc
+*.smc
+*.srm
+*.mst
+__pycache__/
+*.pyc
+runtime/
+vendor/
+.DS_Store
+.venv/

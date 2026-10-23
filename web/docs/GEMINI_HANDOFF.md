@@ -1,3 +1,11 @@
+# Récupération bébé Mario — bascule Yoshi automatique
+
+Base 674a168. À la transition bébé monté -> bébé perdu, Adventure.hit sélectionne Yoshi, conserve le personnage et les animaux débloqués. La détection intervient avant calcul des inputs et physique dans LiveGame.tick, annule la roulade en cours et restaure immédiatement le dessin natif de Yoshi. Les caisses animales ne peuvent pas remplacer Yoshi durant la poursuite. Le drapeau bébé et le compteur natifs ne sont pas forcés : il faut toujours toucher la bulle pour récupérer Mario. Après récupération, le personnage reste monté sur Yoshi ; on peut ensuite changer de monture manuellement.
+
+Tests : les4 personnages après dégâts + pont tick (inputs de saut Yoshi au même frame, restauration visibilité, pas d’impulsion DK parasite, Mario reste perdu jusqu’à récupération native, choix personnage conservé). Recette téléphone physique toujours à confirmer pour audio et gestes tactiles du commit précédent.
+
+---
+
 # Correctif iPhone et PlushGoonk — 23 octobre 2026
 
 Base : 1a870a0. Travail isolé : work/web-iphone-audio (serveur 5178). Les autres onglets de jeu utilisateur ne sont pas touchés.

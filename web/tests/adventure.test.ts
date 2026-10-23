@@ -16,3 +16,9 @@ describe('PlushGoonk selection and migration',()=>{
  it('starts with violet and makes all four characters available',()=>{const a=new Adventure();expect(a.active).toBe('violet');for(const character of CHARACTERS)expect(a.select(character)).toBe(true);});
  it('preserves explicit choices after migrating an old campaign to violet',()=>{const a=new Adventure({version:2,active:'dk',animals:['rambi'],mount:'rambi'});expect(a.active).toBe('violet');expect(a.mount).toBe('rambi');a.select('pink');expect(new Adventure(a.serialize()).active).toBe('pink');});
 });
+
+describe('Baby Mario rescue mount',()=>{
+ it.each(CHARACTERS)('puts %s on Yoshi after a hit without losing characters or animals',character=>{
+ const a=new Adventure();a.select(character);a.animals=['rambi'];a.ride('rambi');a.hit();expect(a.mount).toBe('yoshi');expect(a.active).toBe(character);expect(a.animals).toEqual(['rambi']);expect(a.available).toEqual([...CHARACTERS]);
+ });
+});

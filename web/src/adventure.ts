@@ -20,8 +20,8 @@ export class Adventure {
  }
  select(character:Character):boolean{if(!this.available.includes(character))return false;this.active=character;return true;}
  ride(mount:Mount):boolean{if(mount!=='foot'&&mount!=='yoshi'&&!this.animals.includes(mount))return false;this.mount=mount;return true;}
- /** Native damage releases Baby Mario; it must not hide the selected mount. */
- hit():void{}
+ /** Switch to native Yoshi as soon as Baby Mario escapes, keeping the rider. */
+ hit():void{this.mount='yoshi';}
  resetRoom(room:string):void{this.rooms.delete(room);this.pickups=this.pickups.filter(p=>p.room!==room);}
  /** Use only recorded grounded positions. Never guess a floor height ahead,
   * place an object in a pit, or consume one of the game's native sprite slots. */

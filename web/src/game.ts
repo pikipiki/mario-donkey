@@ -90,6 +90,12 @@ export class LiveGame {
   if(!this.ready||this.paused)return;
   const g=this.gsu;
   if(this.wram[P.mode]===P.gameplay&&inGoal(g)){this.setInputs(new Set());this.draw(now,false);return;}
+  const gameplay=this.wram[P.mode]===P.gameplay,lost=gameplay&&babyIsLost(g);
+  // Resolve the rescue mount before inputs/physics so Yoshi can flutter this frame.
+  if(gameplay){
+   if(lost&&!this.previousBabyLost){this.adventure.hit();this.controls.rollUntil=0;this.updateVisibility();this.changed();}
+   this.previousBabyLost=lost;
+  }
   const next=new Set<number>(),direction=this.controls.movement(now),rolling=now<this.controls.rollUntil;
   const yoshi=this.adventure.mount==='yoshi',jumpFrom=this.controls.jumpUntil-750,hop=now<this.controls.jumpUntil&&now<jumpFrom+KONG_JUMP_HOLD_MS;
   if(direction)next.add(direction<0?INPUT.left:INPUT.right);
@@ -103,12 +109,10 @@ export class LiveGame {
   for(const [button,until]of this.controls.extra)if(now<until)next.add(button);
   this.setInputs(next);
   if((this.autoSkip||now<this.skipUntil)&&skipOpenDialogue(this.wram,g))this.skipUntil=now+1000;
-  const gameplay=this.wram[P.mode]===P.gameplay;
   this.updateVisibility();
   if(gameplay){
-   const lost=babyIsLost(g),stars=word(this.wram,0x3b6);
+   const stars=word(this.wram,0x3b6);
    if(!(lost&&stars<=0))absorbHit(g);
-   if(lost&&!this.previousBabyLost){this.adventure.hit();this.updateVisibility();this.changed();}this.previousBabyLost=lost;
    const lives=this.wram[0x379];if(lives<this.previousLives)this.adventure.resetRoom(this.room);this.previousLives=lives;
    const disabled=word(g,0x1ae)!==0,onFoot=this.adventure.mount==='foot';
    if(onFoot&&!disabled&&word(g,0xae)===0){
@@ -126,7 +130,7 @@ export class LiveGame {
    for(const hit of walls)this.particles.push({...hit,until:now+500});
    const x=word(g,P.x),y=word(g,P.y),grounded=signed16(word(g,P.vy))===0&&!disabled&&!lost&&word(g,0xae)===0;
    this.adventure.observe(this.room,x,y,grounded);
-   const collected=this.adventure.breakNearby(this.room,x,y,rolling&&!disabled);
+   const collected=this.adventure.breakNearby(this.room,x,y,rolling&&!disabled&&!lost);
    if(collected.length){writeWord(g,P.sound,0x11);this.updateVisibility();this.changed();for(const item of collected)this.particles.push({x:item.x,y:item.y,until:now+500});}
   }
   if(this.lastStage!==this.stageLabel){this.lastStage=this.stageLabel;this.onStatus(this.stageLabel);this.changed();}

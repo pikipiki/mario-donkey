@@ -1,3 +1,4 @@
+import { bounded, mobileDevice } from './startup';
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
 import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing } from './engine';
@@ -29,7 +30,7 @@ export class LiveGame {
   primeAudio();
   const contexts=this.emulator.Module.AL?.contexts?.map(c=>c.audioCtx)??[];
   if(this.audio)contexts.push(this.audio);
-  await Promise.all(contexts.filter(Boolean).map(ctx=>ctx.state==='running'?undefined:ctx.resume().catch(()=>{})));
+  await bounded(Promise.all([...new Set(contexts.filter(Boolean))].map(async ctx=>{try{if(ctx.state!=='running')await ctx.resume();}catch{}})),500,[]);
   this.emulator.setVolume(1);
  }
  async prepare():Promise<void>{
@@ -39,24 +40,33 @@ export class LiveGame {
   if(m.functions.getFrameNum()<1)throw new Error('The SNES core is not drawing. Try again.');
   m.toggleMainLoop(0);
   try{this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000);this.gsuBase=await resolveMemory(m,0x7007e0,0x7e0,0x8000);this.drawSite=await resolveDrawing(m);}finally{m.toggleMainLoop(1);}
-  const campaign=await readCampaign().catch(()=>undefined);
+  const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
+  const campaign=fresh?undefined:await bounded(readCampaign().catch(()=>undefined),2000,undefined);
   if(campaign){
    m.loadState(campaign.state);await sleep(100);
    if(this.wram[P.mode]<=0x50){this.adventure=new Adventure(campaign.adventure);this.finishBoot();return;}
   }
-  const initial=await loadFile(INITIAL).catch(()=>undefined);
+  const initial=fresh?undefined:await bounded(loadFile(INITIAL).catch(()=>undefined),2000,undefined);
   if(initial){m.loadState(initial);await sleep(100);if(this.wram[P.mode]===P.gameplay){this.finishBoot();return;}}
-  this.onStatus('Getting your first adventure ready…');m.functions.setFastForwardRatio(6);m.functions.toggleFastForward(1);
-  const began=performance.now();let skipped=false,lastPress=0;
+  const mobile=mobileDevice(navigator)||(import.meta.env.DEV&&new URLSearchParams(location.search).has('mobile'));
+  this.onStatus('Getting your first adventure ready…');
+  m.functions.setFastForwardRatio(mobile?1:6);m.functions.toggleFastForward(mobile?0:1);
+  const began=performance.now();let skipped=false,lastPress=-100,lastFrame=m.functions.getFrameNum(),lastAdvance=began,lastStatus=0;
   try{
-   while(performance.now()-began<35000){
-    const mode=this.wram[P.mode];
+   while(performance.now()-began<(mobile?90000:35000)){
+    const now=performance.now(),frame=m.functions.getFrameNum(),mode=this.wram[P.mode];
+    if(frame!==lastFrame){lastFrame=frame;lastAdvance=now;}
+    if(now-lastStatus>1000){this.onStatus(`Preparing adventure · ${Math.floor((now-began)/1000)}s`);lastStatus=now;}
+    if(now-lastAdvance>12000)throw new Error(`The SNES core stopped at frame ${frame} (mode ${mode.toString(16)}). Reload and tap Play again.`);
     if(mode===P.gameplay&&word(this.gsu,P.x)>0){
-     m.toggleMainLoop(0);try{await storeFile(INITIAL,new Uint8Array(m.getState()));}catch{}finally{m.toggleMainLoop(1);}
+     m.toggleMainLoop(0);try{await bounded(storeFile(INITIAL,new Uint8Array(m.getState())),1500,undefined);}catch{}finally{m.toggleMainLoop(1);}
      this.finishBoot();return;
     }
     if(!skipped&&(mode===0x3c||mode===0x3d)){this.wram[P.mode]=0x23;writeWord(this.wram,0x200,0x010f);writeWord(this.wram,0x218,0);writeWord(this.wram,0x21a,0);skipped=true;}
-    else if(performance.now()-lastPress>330){lastPress=performance.now();this.setInputs(new Set([mode<0xd?INPUT.start:INPUT.b]));await sleep(85);this.setInputs(new Set());}
+    else if(frame-lastPress>20){lastPress=frame;this.setInputs(new Set([mode<0xd?INPUT.start:INPUT.b]));
+     const pressed=performance.now();while(m.functions.getFrameNum()<frame+3&&performance.now()-pressed<1500)await sleep(16);
+     this.setInputs(new Set());
+    }
     await sleep(25);
    }
    throw new Error('The game did not start. Reload the page to try again.');

@@ -6,3 +6,5 @@
 @supports not (width:100cqw){.screen{width:100%;max-width:calc((100dvh - 64px)*4/3)}}
 #nl-badge-frame,#nl-hud-frame{display:none!important;visibility:hidden!important;pointer-events:none!important}
 @media(orientation:landscape) and (max-height:520px){.character-picker{display:none}.character-select{display:flex;flex:1;min-width:0;flex-direction:column;justify-content:center}.character-select span{display:none}.character-select select{width:100%;min-height:36px;background:#223136;color:#e1eadb;border:1px solid var(--edge);border-radius:7px;padding:3px;font-size:12px}.mount-picker{width:auto;flex:1;min-width:0}.party-row{min-width:0}}
+
+.loading p{padding:12px;border-radius:10px;background:#152a24ed;max-width:92%;line-height:1.5}.loading span{filter:drop-shadow(0 2px 3px #000)}

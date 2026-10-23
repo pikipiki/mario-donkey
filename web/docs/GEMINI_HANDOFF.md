@@ -1,12 +1,44 @@
-# Dernier état — Chrome iPhone / Netlify (23 octobre 2026)
+# Relais Gemini — état du 23 octobre 2026, 20 h
 
-L’utilisateur publie désormais https://incandescent-dodol-e52ce9.netlify.app/ et demande la ROM embarquée, sans import. La source utilisateur avait déjà changé depuis le travail murs : BASE_URL pour assets, public/rom/yoshi-eu.sfc présent, loadBundledRom et ROM incorporée au build. Préserver ces changements.
+## Source faisant autorité
 
-Le site publié a été ouvert et lancé avec succès dans le navigateur Mac : mode niveau 1-1, aucune erreur console. **Pas de test matériel iPhone.** L’utilisateur confirme le blocage après Jouer, chargement/écran noir. La cause iPhone exacte n’est pas encore prouvée.
+Projet : `/Users/sevenone./Documents/git/mario-donkey/web`. Base Git de cette correction : `e9294a8`. Copie de travail récente : `work/web-mobile-current`, serveur de test localhost 5177. Ne jamais synchroniser les anciennes copies `web-iphone`, `web-walls`, `web-next` ou `web-project` sur le projet : elles précèdent plusieurs commits récents. Les onglets 5173/5174/5175 peuvent contenir la partie de l’utilisateur ; ne pas les manipuler.
 
-Nouvelle copie work/web-iphone basée sur la source utilisateur actuelle. Correctifs : EJS_forceLegacyCores pour iPhone/iPad (WebGL1), threads restent false ; timeout moteur 90 s ; sondes mémoire attendent deux vrais frames natifs au lieu de 100 ms fixes (timeout 10 s) ; écriture cache ROM non bloquante ; ouverture IndexedDB échoue après 3 s ou onblocked au lieu de bloquer indéfiniment. Ne pas promettre une correction iPhone validée avant essai du build sur appareil.
+Site à corriger : https://incandescent-dodol-e52ce9.netlify.app/ . Déploiement automatique de la branche main. `git push --dry-run origin HEAD:main` fonctionne malgré `gh auth status` invalide. L’onglet Netlify IAB affiche encore Log in ; l’utilisateur a annoncé se connecter. Aucun besoin de lire ni de copier des identifiants.
 
-47 tests et build vérifiés. Archive déployable avec ROM dans outputs/kong-island-netlify-iphone.zip. Aucun token/config Netlify trouvé dans le projet ; le correctif local n’est pas encore publié sur le site distant. Reprendre la publication via le compte utilisateur, puis tester Chrome iPhone, audio après geste, logs WebKit distants si blocage persiste. La ROM DKC entière n’est pas nécessaire : ses sprites sont déjà dans l’atlas, seul Yoshi tourne dans l’émulateur.
+## Symptôme et correctif préparé
+
+Sur iPhone et Android : écran noir après Play, seule indication « Fast Forward » en haut à droite. Ce texte démontre que le moteur a atteint la préparation initiale accélérée. La cause exacte sur matériel n’a pas été prouvée.
+
+- Le premier boot mobile tourne désormais à vitesse normale, sans accélération ×6 ; iPhone, Android et iPad en mode bureau détectés. L’accélération desktop reste disponible.
+- Impulsions Start/B synchronisées sur les frames natives (3 frames maintenues, plus de 20 entre appuis), plutôt que 85 ms arbitraires.
+- Chargement visible pendant le démarrage, progression en secondes ; timeout explicite si les frames cessent d’avancer pendant 12 s, délai total mobile 90 s.
+- `AudioContext.resume()` ne peut plus bloquer le lancement indéfiniment (500 ms maximum). Chargement des sauvegardes plafonné à 2 s, écriture de l’état initial à 1,5 s.
+- Import de `engine.ts` compatible Node pour les tests mémoire (plus de lecture de window non protégée au chargement du module).
+- Les contrôles anglais, joystick, correction audio au relâchement du doigt, fuite originale de Mario, œufs et murs des commits récents sont conservés.
+
+**Validation : 60 tests passent, build TypeScript/Vite réussi.** Premier démarrage neuf avec branche mobile forcée testé dans un onglet Mac séparé : niveau 1-1 atteint, pas de Fast Forward. Ce n’est pas un test sur iPhone/Android physique. Ne pas prétendre que le problème matériel est confirmé résolu sans retour utilisateur.
+
+## Fichiers concernés
+
+`src/startup.ts` : détection mobile et attente plafonnée. `tests/startup.test.ts` : iPhone/Android/iPad/desktop, promesse navigateur qui ne se termine jamais, nettoyage des timers. `src/game.ts` : préparation et audio bornés, bootstrap sur frames, watchdog. `src/engine.ts` : garde window. `src/main.ts` et `src/style.css` : progression visible.
+
+`public/rom/yoshi-eu.sfc` est déjà suivi et embarqué, SHA256 `91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90`. Un seul émulateur Snes9x 2.0.2 / EmulatorJS 4.2.3 est utilisé. DKC fournit les sprites extraits ; aucun second émulateur requis. Les options iOS WebGL1/legacy déjà présentes sont conservées. Ne pas prendre le clone récent d’EmulatorJS comme source exacte du bundle minifié 4.2.3.
+
+## Suite à faire après publication
+
+1. Vérifier que Netlify publie le nouveau commit puis que le HTML public référence `index-DK6zxXmc.js`.
+2. Demander un essai réel iPhone ET Android avec rechargement de la page. Observer progression, entrée en 1-1, son après tap, reprise après arrière-plan, sauvegarde/reprise, portrait/paysage.
+3. Si écran noir persiste : lire le message de progression ou erreur, modèle/version OS. Inspecter le navigateur distant pour distinguer compteur natif bloqué et rendu WebGL noir. Ne pas continuer à deviner seulement l’audio.
+4. Si le compteur s’arrête : étudier main loop / visibilité / audio du bundle exact. Si le compteur avance sans image : inspecter canvas / WebGL. Si le niveau apparaît mais le mod échoue : sondes WRAM/GSU et restauration des états.
+5. Éventuellement embarquer un savestate initial validé pour ce ROM/core exact afin d’éviter les menus au premier lancement ; pas encore fait.
+6. Faire la validation complète de campagne et des pouvoirs sur les stages avancés. Le jeu complet est celui de la ROM, mais les ajouts animaux/attaques n’ont pas été vérifiés sur tous les stages, boss, transformations et salles spéciales.
+
+Les archives `outputs/kong-island-netlify-mobile.zip` et `outputs/kong-island-netlify-iphone.zip` doivent toujours être régénérées à partir du build récent. Les anciennes archives de 17 h étaient obsolètes. Le code Wasm du cœur est déjà natif compilé ; une réécriture du pont en Rust n’est pas justifiée pour ce bug.
+
+## Historique technique conservé ci-dessous
+
+Les sections suivantes sont historiques. Les déclarations de source active, langue UI, compteurs de tests et état de publication anciens sont remplacées par le présent en-tête. Les adresses mémoire, limites gameplay et tâches non terminées restent utiles.
 
 ---
 

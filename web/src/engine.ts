@@ -13,7 +13,7 @@ export interface Emulator { gameManager: GameManager; frontend?: {canvas: HTMLCa
 declare global { interface Window { EJS_emulator: Emulator; [key: `EJS_${string}`]: unknown } }
 export const INPUT={b:0,y:1,select:2,start:3,up:4,down:5,left:6,right:7,a:8} as const;
 export const iosDevice=()=>/iPad|iPhone|iPod|CriOS/.test(navigator.userAgent)||/iPad|iPhone|iPod/.test(navigator.platform)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-const NativeAudio=window.AudioContext||(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
+const NativeAudio=typeof window==='undefined'?undefined:window.AudioContext||(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
 let sharedAudio:AudioContext|undefined,audioShimmed=false;
 function shareAudioContext():void{
  if(audioShimmed||!NativeAudio||!sharedAudio||(!iosDevice()&&navigator.maxTouchPoints<1))return;

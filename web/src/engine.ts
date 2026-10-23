@@ -22,6 +22,16 @@ export function findUnique(bytes: Uint8Array, signature: Uint8Array): number {
  return found[0];
 }
 
+/** Wait for emulated frames rather than a desktop-sized wall-clock delay. */
+async function waitForNativeFrames(manager:GameManager):Promise<void>{
+ if(!manager.functions?.getFrameNum){await new Promise<void>(r=>setTimeout(r,300));return;}
+ const first=manager.functions.getFrameNum(),began=Date.now();
+ while(manager.functions.getFrameNum()<first+2){
+  if(Date.now()-began>10000)throw new Error('Le moteur SNES ne produit pas d’image. Recharge le jeu.');
+  await new Promise<void>(r=>setTimeout(r,16));
+ }
+}
+
 /** Some core builds apply cheats only on a native frame. Restore the complete
  * pre-probe save state before exposing the resolved memory to game logic. */
 export async function resolveMemory(manager:GameManager,address:number,offset:number,length:number):Promise<number>{
@@ -30,7 +40,7 @@ export async function resolveMemory(manager:GameManager,address:number,offset:nu
  try{
   marker.forEach((value,i)=>manager.setCheat(i,true,(address+i).toString(16).padStart(6,'0')+value.toString(16).padStart(2,'0')));
   manager.toggleMainLoop(1);
-  await new Promise<void>(r=>setTimeout(r,100));
+  await waitForNativeFrames(manager);
   manager.toggleMainLoop(0);
   const pointer=findUnique(manager.Module.HEAPU8,marker),base=pointer-offset;
   if(base<0||base+length>manager.Module.HEAPU8.length)throw new Error('Région mémoire hors limites.');
@@ -41,12 +51,13 @@ export async function resolveMemory(manager:GameManager,address:number,offset:nu
 export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): Promise<Emulator> {
  onStatus('Chargement du moteur SNES…');
  return await new Promise((resolve,reject)=>{
-  const timeout=window.setTimeout(()=>reject(new Error('Le moteur SNES met trop de temps à charger. Réessaie.')),45000);
+  const timeout=window.setTimeout(()=>reject(new Error('Le moteur SNES met trop de temps à charger. Réessaie.')),90000);
   Object.assign(window,{
    EJS_player:'#emulator',EJS_core:'snes9x',EJS_gameName:'Kong Island',
    EJS_gameUrl:new Blob([rom.slice().buffer],{type:'application/octet-stream'}),
    EJS_pathtodata:`${import.meta.env.BASE_URL}emulator/`,EJS_startOnLoaded:true,EJS_volume:0.65,
    EJS_language:'fr-FR',EJS_disableAutoLang:true,EJS_threads:false,EJS_noAutoFocus:true,
+   EJS_forceLegacyCores:/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),
    EJS_disableLocalStorage:true,EJS_controlScheme:'none',EJS_virtualGamepad:false,
    EJS_defaultOptions:{'vsync':'enabled','fps':'disabled'},
    EJS_Buttons:{playPause:false,restart:false,mute:false,settings:false,fullscreen:false,saveState:false,loadState:false,screenRecord:false,gamepad:false,cheat:false,volume:false,saveSavFiles:false,loadSavFiles:false,quickSave:false,quickLoad:false,screenshot:false,cacheManager:false},
@@ -69,7 +80,7 @@ export async function resolveDrawing(manager:GameManager):Promise<number>{
  const saved=new Uint8Array(manager.getState());let pointer:number|undefined;
  try{
   HIDDEN_DRAW.forEach((b,i)=>manager.setCheat(100+i,true,(0x04faeb+i).toString(16).padStart(6,'0')+b.toString(16).padStart(2,'0')));
-  manager.toggleMainLoop(1);await new Promise<void>(r=>setTimeout(r,100));manager.toggleMainLoop(0);
+  manager.toggleMainLoop(1);await waitForNativeFrames(manager);manager.toggleMainLoop(0);
   const live=candidates.filter(p=>HIDDEN_DRAW.every((b,j)=>manager.Module.HEAPU8[p+j]===b));
   if(live.length!==1)throw new Error(`Routine de dessin Yoshi ambiguë : ${candidates.length} copies, ${live.length} modifiées.`);pointer=live[0];return pointer;
  }finally{

@@ -1,3 +1,15 @@
+# Dernier état — Chrome iPhone / Netlify (23 octobre 2026)
+
+L’utilisateur publie désormais https://incandescent-dodol-e52ce9.netlify.app/ et demande la ROM embarquée, sans import. La source utilisateur avait déjà changé depuis le travail murs : BASE_URL pour assets, public/rom/yoshi-eu.sfc présent, loadBundledRom et ROM incorporée au build. Préserver ces changements.
+
+Le site publié a été ouvert et lancé avec succès dans le navigateur Mac : mode niveau 1-1, aucune erreur console. **Pas de test matériel iPhone.** L’utilisateur confirme le blocage après Jouer, chargement/écran noir. La cause iPhone exacte n’est pas encore prouvée.
+
+Nouvelle copie work/web-iphone basée sur la source utilisateur actuelle. Correctifs : EJS_forceLegacyCores pour iPhone/iPad (WebGL1), threads restent false ; timeout moteur 90 s ; sondes mémoire attendent deux vrais frames natifs au lieu de 100 ms fixes (timeout 10 s) ; écriture cache ROM non bloquante ; ouverture IndexedDB échoue après 3 s ou onblocked au lieu de bloquer indéfiniment. Ne pas promettre une correction iPhone validée avant essai du build sur appareil.
+
+47 tests et build vérifiés. Archive déployable avec ROM dans outputs/kong-island-netlify-iphone.zip. Aucun token/config Netlify trouvé dans le projet ; le correctif local n’est pas encore publié sur le site distant. Reprendre la publication via le compte utilisateur, puis tester Chrome iPhone, audio après geste, logs WebKit distants si blocage persiste. La ROM DKC entière n’est pas nécessaire : ses sprites sont déjà dans l’atlas, seul Yoshi tourne dans l’émulateur.
+
+---
+
 # Dernière mise à jour : murs sans œufs (23 octobre 2026)
 
 Seuil de 10 % de la fenêtre de 5 h atteint le 23 octobre à 16:45 ; ce rapport complet a été mis à jour à ce seuil, sans utiliser de remise à zéro.

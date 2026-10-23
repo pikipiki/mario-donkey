@@ -46,7 +46,8 @@ async function acceptRom(bytes:Uint8Array):Promise<void>{
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes.slice().buffer))).map(v=>v.toString(16).padStart(2,'0')).join('');
  if(hash!==ROM_SHA256)throw new Error('ROM du jeu invalide ou incomplète.');
  patchYoshiDrawing(bytes); // Validate the exact draw routine, without patching the source ROM.
- rom=bytes;await storeFile('rom',bytes).catch(()=>{});if(!starting){setStatus('Prêt · Jouer reprend ta partie enregistrée.');$<HTMLButtonElement>('play').disabled=false;}
+ rom=bytes; // Bundled ROM loads independently of iOS/private storage availability.
+ void storeFile('rom',bytes).catch(()=>{});if(!starting){setStatus('Prêt · Jouer reprend ta partie enregistrée.');$<HTMLButtonElement>('play').disabled=false;}
 }
 async function loadBundledRom():Promise<void>{
  const url=import.meta.env.DEV&&import.meta.env.VITE_DEV_ROM_URL?import.meta.env.VITE_DEV_ROM_URL:`${base}rom/yoshi-eu.sfc`;
@@ -62,17 +63,18 @@ $('play').addEventListener('click',async()=>{
   await game.unlockAudio().catch(()=>{});if(game.audio?.state!=='running')setStatus('Appuie sur ♪ Son dans les options pour activer l’audio.');syncParty();
  }catch(e){console.error('KONG_START_ERROR',e);setStatus((e as Error).message);$('loading').hidden=true;$('welcome').hidden=false;if(game){game.setPaused(true);$('play').textContent='Recharger la page';}starting=false;}
 });
-document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>b.addEventListener('click',()=>{if(game)game.character=b.dataset.character as Character;}));
-$('mount').addEventListener('change',e=>{const select=e.target as HTMLSelectElement;game?.stop();game?.mount(select.value as Mount);select.blur();});
+function releaseUiFocus(target:EventTarget|null):void{const el=target instanceof HTMLElement?target:document.activeElement;if(el instanceof HTMLElement&&el.matches('button,select')&&!el.closest('dialog'))el.blur();}
+document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>b.addEventListener('click',()=>{if(game)game.character=b.dataset.character as Character;releaseUiFocus(b);}));
+$('mount').addEventListener('change',e=>{const select=e.target as HTMLSelectElement;game?.stop();game?.mount(select.value as Mount);releaseUiFocus(select);});
 function refreshButtons():void{const d=controls.movement(performance.now());document.querySelectorAll<HTMLElement>('[data-control="left"],[data-control="right"]').forEach(b=>{const value=String(b.dataset.control===(d<0?'left':d>0?'right':''));if(b.getAttribute('aria-pressed')!==value)b.setAttribute('aria-pressed',value);});}
 document.querySelectorAll<HTMLButtonElement>('[data-control]').forEach(b=>{
  let pointerHandled=false;
  const activate=()=>{if(game?.ready&&!game.paused){void game.unlockAudio().catch(()=>{});controls.activate(b.dataset.control as Button,performance.now());refreshButtons();}};
- b.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();try{b.setPointerCapture(e.pointerId);}catch{}pointerHandled=true;activate();});b.addEventListener('pointerup',()=>{controls.release(b.dataset.control as Button);refreshButtons();});b.addEventListener('pointercancel',()=>{pointerHandled=false;game?.stop();refreshButtons();});b.addEventListener('click',e=>{if(e.detail===0||!pointerHandled)activate();pointerHandled=false;});
+ b.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();try{b.setPointerCapture(e.pointerId);}catch{}pointerHandled=true;activate();});b.addEventListener('pointerup',()=>{controls.release(b.dataset.control as Button);refreshButtons();releaseUiFocus(b);});b.addEventListener('pointercancel',()=>{pointerHandled=false;game?.stop();refreshButtons();});b.addEventListener('click',e=>{if(e.detail===0||!pointerHandled)activate();pointerHandled=false;releaseUiFocus(b);});
 });
 function pause(value:boolean):void{game?.setPaused(value);$('pause').innerHTML=value?'▶':'Ⅱ';$('pause').setAttribute('aria-label',value?'Reprendre le jeu':'Mettre en pause');refreshButtons();}
-$('pause').addEventListener('click',()=>{if(game)pause(!game.paused);});$('skip').addEventListener('click',()=>{if(game?.paused)pause(false);game?.skipDialogue();});
-$('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{setStatus('Le jeu occupe tout l’espace disponible dans ce navigateur.');}});
+$('pause').addEventListener('click',()=>{if(game)pause(!game.paused);releaseUiFocus($('pause'));});$('skip').addEventListener('click',()=>{if(game?.paused)pause(false);game?.skipDialogue();releaseUiFocus($('skip'));});
+$('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{setStatus('Le jeu occupe tout l’espace disponible dans ce navigateur.');}releaseUiFocus($('fullscreen'));});
 const settings=$<HTMLDialogElement>('settings');
 function closeSettings():void{settings.close();if(menuResume)pause(false);menuResume=false;}
 $('options').addEventListener('click',()=>{menuResume=Boolean(game?.ready&&!game.paused);if(menuResume)pause(true);settings.showModal();});$('close-settings').addEventListener('click',closeSettings);settings.addEventListener('cancel',e=>{e.preventDefault();closeSettings();});
@@ -83,10 +85,13 @@ $('save').addEventListener('click',()=>{void game?.save();});
 document.querySelectorAll<HTMLButtonElement>('[data-native]').forEach(b=>b.addEventListener('click',()=>{const button=Number(b.dataset.native);closeSettings();controls.pulse(button,performance.now());}));
 const keys=new Set<string>();const keyActions:Record<string,Button>={Space:'jump',KeyX:'roll',KeyC:'tongue',KeyV:'egg',ArrowUp:'up',ArrowDown:'down'};
 window.addEventListener('keydown',e=>{
- if((e.target as HTMLElement)?.matches('input,select,textarea')||settings.open)return;
- if((e.code==='Space'||e.code==='Enter')&&(e.target as HTMLElement)?.closest('button,summary,a'))return;
+ const target=e.target as HTMLElement|null;
+ if(target?.matches('input,select,textarea')||settings.open)return;
+ const gameKey=e.code==='ArrowLeft'||e.code==='ArrowRight'||Boolean(keyActions[e.code]);
  if(e.code==='Escape'&&game){e.preventDefault();pause(!game.paused);return;}
- if(e.code==='ArrowLeft'||e.code==='ArrowRight'||keyActions[e.code]){e.preventDefault();if(e.repeat)return;keys.add(e.code);controls.keyboardDirection=keys.has('ArrowLeft')?-1:keys.has('ArrowRight')?1:0;if(controls.keyboardDirection)controls.facing=controls.keyboardDirection;if(keyActions[e.code])controls.activate(keyActions[e.code],performance.now());}
+ if(!gameKey)return;
+ e.preventDefault();releaseUiFocus(target);
+ if(e.repeat)return;keys.add(e.code);controls.keyboardDirection=keys.has('ArrowLeft')?-1:keys.has('ArrowRight')?1:0;if(controls.keyboardDirection)controls.facing=controls.keyboardDirection;if(keyActions[e.code])controls.activate(keyActions[e.code],performance.now());
 });
 window.addEventListener('keyup',e=>{keys.delete(e.code);controls.keyboardDirection=keys.has('ArrowLeft')?-1:keys.has('ArrowRight')?1:0;});
 window.addEventListener('blur',()=>{keys.clear();game?.stop();controls.stop();refreshButtons();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&game?.ready)pause(true);});

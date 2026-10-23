@@ -1,4 +1,24 @@
-# Relais Gemini — état du 23 octobre 2026, 20 h
+# Correctif suivant — démarrage direct, 23 octobre 2026, 20 h 10
+
+Le retour réel utilisateur invalide l’hypothèse que désactiver Fast Forward suffisait : « Preparing adventure » restait affiché plus de 60 secondes sur Chrome mobile. Les tests Mac précédents ne validaient pas le téléphone. La cause matérielle exacte de l’automatisation des menus reste inconnue.
+
+La séquence de menus est maintenant entièrement retirée du démarrage. Un état initial natif du niveau 1-1 est embarqué : `public/bootstrap/yoshi-eu-snes9x-2.0.2.state`, 824440 octets, SHA256 `d4464f265aed6b67db1af34127299fb7d189aac250c64a119f3ad1eecd531dfa`. Il a été généré depuis un démarrage neuf (campagne ignorée), Europe exact + Snes9x 2.0.2, dès mode13 et X>0, avant de masquer le dessin natif. Il contient le point de départ du jeu, aucune partie utilisateur. Les sauvegardes utilisateur existantes sont toujours chargées d’abord.
+
+`src/bootstrap.ts` charge et vérifie SHA256, délai réseau 15 s. Aucun repli vers l’ancienne boucle menus : erreur lisible en cas de fichier absent/invalide. `LiveGame.prepare` résout le pont, charge la campagne ou cet état, attend les frames et vérifie le mode gameplay. Le cache INITIAL reste écrit pour le bouton DEV de remise au début, mais n’est plus la source du premier lancement.
+
+`waitForNativeFrames` attend deux changements réels du compteur (10 s maximum), y compris si une restauration remet le compteur en arrière. Cela remplace aussi l’attente fixe de 100 ms lors de la reprise d’une campagne.
+
+**Validation : 61 tests réussis, build valide, bundle `index-kPY6Q6r0.js`.** Deux premiers lancements neufs testés dans des onglets Mac isolés : moteur normal et moteur legacy/WebGL1 utilisé par iPhone, tous deux au niveau 1-1 avec image et sans erreur console. Le paramètre DEV `?fresh=1&legacy=1` force ce dernier cas ; il ne change pas le véritable appareil/UA. Les tests obsolètes sur la politique Fast Forward ont été remplacés par validation de l’état et compteur restauré. La validation sur téléphone réel reste à faire après publication.
+
+La route temporaire locale de capture a été retirée. Aucun changement de `vite.config.ts` à publier. Pour régénérer : repartir du bootstrap de eabcb0e dans une copie isolée, ignorer la campagne, capturer `new Uint8Array(manager.getState())` quand mode13 et X>0, avant `finishBoot`, vérifier sur les deux cores et changer le SHA256. Ne pas prendre une sauvegarde de partie utilisateur.
+
+Suite : confirmer HTML public sur ce nouveau bundle, tester vrai Chrome iPhone/Android, noter si le blocage se situe désormais à « Loading the SNES core » ou « Opening level 1-1 ». Ne pas rallonger encore le timer des anciens menus. Les autres limites et tâches gameplay du rapport historique restent ouvertes.
+
+---
+
+# Relais Gemini — état du 23 octobre 2026, 20 h 08
+
+**Publié et vérifié : commit `eabcb0e` (précédé de `948ae69`), HTML public chargeant `index-BED4v4xo.js`. Le jeu atteint le niveau 1-1 sur le site public, sans erreur console. Premier démarrage neuf testé sur Mac dans les branches mobile et desktop. La validation sur téléphones physiques reste à faire.**
 
 ## Source faisant autorité
 

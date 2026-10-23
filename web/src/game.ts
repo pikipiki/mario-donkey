@@ -1,9 +1,10 @@
-import { bounded, mobileDevice, readBeforeDeadline } from './startup';
+import { loadStartState } from './bootstrap';
+import { bounded, readBeforeDeadline } from './startup';
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
-import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing } from './engine';
+import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing, waitForNativeFrames } from './engine';
 import { PROFILE as P, absorbHit, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
-import { loadFile,storeFile } from './storage';
+import { storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
 import { readCampaign,writeCampaign } from './campaign';
@@ -43,35 +44,18 @@ export class LiveGame {
   const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
   const campaign=fresh?undefined:await readBeforeDeadline(readCampaign().catch(()=>undefined),4000);
   if(campaign){
-   m.loadState(campaign.state);await sleep(100);
+   m.loadState(campaign.state);await waitForNativeFrames(m);
    if(this.wram[P.mode]<=0x50){this.adventure=new Adventure(campaign.adventure);this.finishBoot();return;}
   }
-  const initial=fresh?undefined:await readBeforeDeadline(loadFile(INITIAL).catch(()=>undefined),4000);
-  if(initial){m.loadState(initial);await sleep(100);if(this.wram[P.mode]===P.gameplay){this.finishBoot();return;}}
-  const mobile=mobileDevice(navigator)||(import.meta.env.DEV&&new URLSearchParams(location.search).has('mobile'));
-  this.onStatus('Getting your first adventure ready…');
-  m.functions.setFastForwardRatio(mobile?1:6);m.functions.toggleFastForward(mobile?0:1);
-  const began=performance.now();let skipped=false,lastPress=-100,lastFrame=m.functions.getFrameNum(),lastAdvance=began,lastStatus=0;
-  try{
-   while(performance.now()-began<(mobile?90000:35000)){
-    const now=performance.now(),frame=m.functions.getFrameNum(),mode=this.wram[P.mode];
-    if(frame!==lastFrame){lastFrame=frame;lastAdvance=now;}
-    if(now-lastStatus>1000){this.onStatus(`Preparing adventure · ${Math.floor((now-began)/1000)}s`);lastStatus=now;}
-    if(now-lastAdvance>12000)throw new Error(`The SNES core stopped at frame ${frame} (mode ${mode.toString(16)}). Reload and tap Play again.`);
-    if(mode===P.gameplay&&word(this.gsu,P.x)>0){
-     m.toggleMainLoop(0);try{await bounded(storeFile(INITIAL,new Uint8Array(m.getState())),1500,undefined);}catch{}finally{m.toggleMainLoop(1);}
-     this.finishBoot();return;
-    }
-    if(!skipped&&(mode===0x3c||mode===0x3d)){this.wram[P.mode]=0x23;writeWord(this.wram,0x200,0x010f);writeWord(this.wram,0x218,0);writeWord(this.wram,0x21a,0);skipped=true;}
-    else if(frame-lastPress>20){lastPress=frame;this.setInputs(new Set([mode<0xd?INPUT.start:INPUT.b]));
-     const pressed=performance.now();while(m.functions.getFrameNum()<frame+3&&performance.now()-pressed<1500)await sleep(16);
-     this.setInputs(new Set());
-    }
-    await sleep(25);
-   }
-   throw new Error('The game did not start. Reload the page to try again.');
-  }finally{m.functions.toggleFastForward(0);this.setInputs(new Set());}
+  this.onStatus('Opening level 1-1…');
+  m.functions.toggleFastForward(0);
+  // Use a verified bundled snapshot instead of driving title-screen menus.
+  const initial=await loadStartState();m.loadState(initial);await waitForNativeFrames(m);
+  if(this.wram[P.mode]!==P.gameplay||word(this.gsu,P.x)===0)throw new Error('The starting level could not be restored. Reload the page to retry.');
+  void storeFile(INITIAL,initial).catch(()=>{});
+  this.finishBoot();
  }
+
  private finishBoot():void{
   const h=this.emulator.gameManager.functions.getVideoDimensions('height');if(h>=224&&h<=256){this.overlay.height=h;this.topPadding=(h-224)>>1;}
   this.ready=true;this.previousX=word(this.gsu,P.x);this.previousBabyLost=babyIsLost(this.gsu);this.previousLives=this.wram[0x379];this.lastSave=performance.now();

@@ -43,10 +43,11 @@ export function findUnique(bytes: Uint8Array, signature: Uint8Array): number {
 }
 
 /** Wait for emulated frames rather than a desktop-sized wall-clock delay. */
-async function waitForNativeFrames(manager:GameManager):Promise<void>{
+export async function waitForNativeFrames(manager:GameManager):Promise<void>{
  if(!manager.functions?.getFrameNum){await new Promise<void>(r=>setTimeout(r,300));return;}
- const first=manager.functions.getFrameNum(),began=Date.now();
- while(manager.functions.getFrameNum()<first+2){
+ let previous=manager.functions.getFrameNum(),changes=0;const began=Date.now();
+ while(changes<2){
+  const current=manager.functions.getFrameNum();if(current!==previous){changes++;previous=current;}
   if(Date.now()-began>10000)throw new Error('The SNES core is not drawing. Reload the game.');
   await new Promise<void>(r=>setTimeout(r,16));
  }
@@ -70,7 +71,7 @@ export async function resolveMemory(manager:GameManager,address:number,offset:nu
 
 export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): Promise<Emulator> {
  onStatus('Loading the SNES core…');
- const ios=iosDevice();
+ const ios=iosDevice()||(import.meta.env.DEV&&new URLSearchParams(location.search).has('legacy'));
  return await new Promise((resolve,reject)=>{
   let settled=false;
   const finish=(ok:boolean,value?:Emulator|Error)=>{if(settled)return;settled=true;window.clearTimeout(timeout);window.clearInterval(watch);ok?resolve(value as Emulator):reject(value);};

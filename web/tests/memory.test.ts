@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { findUnique, resolveMemory, resolveDrawing, setNativeDrawing, type GameManager } from '../src/engine';
+import { waitForNativeFrames, findUnique, resolveMemory, resolveDrawing, setNativeDrawing, type GameManager } from '../src/engine';
 describe('accès mémoire protégé',()=>{
  it('refuse les signatures absentes ou ambiguës',()=>{expect(()=>findUnique(new Uint8Array([1,2,1,2]),new Uint8Array([1,2]))).toThrow();expect(()=>findUnique(new Uint8Array([0]),new Uint8Array([2]))).toThrow();});
  function core(apply=true){
@@ -20,4 +20,20 @@ describe('restauration réversible du dessin natif',()=>{
  it('cache puis réaffiche Yoshi sans accumuler de cheats',async()=>{const heap=new Uint8Array(128);heap.set(sig,20);const m={Module:{HEAPU8:heap}} as GameManager;const p=await resolveDrawing(m);for(let i=0;i<10;i++){setNativeDrawing(heap,p,true);expect(heap[p]).toBe(0xa9);setNativeDrawing(heap,p,false);expect(heap.slice(p,p+11)).toEqual(sig);}});
  it('refuse une adresse dont les instructions ont changé',()=>{const heap=new Uint8Array(32);heap.set(sig,0);heap[4]=0;expect(()=>setNativeDrawing(heap,0,true)).toThrow();});
  it('sépare une copie de ROM du site réellement utilisé et restaure le jeu',async()=>{vi.useFakeTimers();try{const heap=new Uint8Array(64);heap.set(sig,4);heap.set(sig,32);const original=heap.slice();const m={Module:{HEAPU8:heap},getState:()=>new Uint8Array([12]),loadState:vi.fn(),resetCheat:vi.fn(),setCheat:vi.fn(),toggleMainLoop:(v:number)=>{if(v)heap.set([0xa9,0,0],32);}} as unknown as GameManager;const pending=resolveDrawing(m);await vi.runAllTimersAsync();expect(await pending).toBe(32);expect(m.setCheat).toHaveBeenCalledWith(100,true,'04faeba9');expect(heap).toEqual(original);expect(m.loadState).toHaveBeenCalledOnce();}finally{vi.useRealTimers();}});
+});
+
+describe('native frames after loading a snapshot',()=>{
+ it('handles a frame counter that resets backwards during restore',async()=>{
+  vi.useFakeTimers();try{
+   const getFrameNum=vi.fn().mockReturnValueOnce(9000).mockReturnValueOnce(9000).mockReturnValueOnce(15).mockReturnValue(16);
+   const pending=waitForNativeFrames({functions:{getFrameNum}} as unknown as GameManager);
+   await vi.advanceTimersByTimeAsync(100);await pending;
+  }finally{vi.useRealTimers();}
+ });
+ it('reports a stopped core instead of waiting indefinitely',async()=>{
+  vi.useFakeTimers();try{
+   const pending=waitForNativeFrames({functions:{getFrameNum:()=>10}} as unknown as GameManager).catch(error=>error);
+   await vi.advanceTimersByTimeAsync(10100);expect(await pending).toBeInstanceOf(Error);
+  }finally{vi.useRealTimers();}
+ });
 });

@@ -12,7 +12,7 @@ export interface GameManager {
 export interface Emulator { gameManager: GameManager; frontend?: {canvas: HTMLCanvasElement}; paused: boolean; togglePlaying(): void; setVolume(value: number): void; Module: CoreModule }
 declare global { interface Window { EJS_emulator: Emulator; [key: `EJS_${string}`]: unknown } }
 export const INPUT={b:0,y:1,select:2,start:3,up:4,down:5,left:6,right:7,a:8} as const;
-export const iosDevice=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+export const iosDevice=()=>/iPad|iPhone|iPod|CriOS/.test(navigator.userAgent)||/iPad|iPhone|iPod/.test(navigator.platform)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 let sharedAudio:AudioContext|undefined;
 /** Create and resume audio inside the tap, then reuse that context. iOS drops audio created later. */
 export function primeAudio():void{
@@ -83,7 +83,7 @@ export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): P
    EJS_language:'en-US',EJS_disableAutoLang:false,EJS_threads:false,EJS_noAutoFocus:true,
    EJS_forceLegacyCores:ios,EJS_disableDatabases:ios,
    EJS_disableLocalStorage:true,EJS_controlScheme:'none',EJS_virtualGamepad:false,
-   EJS_defaultOptions:{'vsync':ios?'disabled':'enabled','fps':'disabled'},
+   EJS_defaultOptions:{'vsync':ios?'disabled':'enabled','fps':'disabled','webgl2Enabled':ios?'disabled':'enabled'},
    EJS_Buttons:{playPause:false,restart:false,mute:false,settings:false,fullscreen:false,saveState:false,loadState:false,screenRecord:false,gamepad:false,cheat:false,volume:false,saveSavFiles:false,loadSavFiles:false,quickSave:false,quickLoad:false,screenshot:false,cacheManager:false},
    EJS_onGameStart:()=>{void sharedAudio?.resume().catch(()=>{});finish(true,window.EJS_emulator);},
   });

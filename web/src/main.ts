@@ -25,7 +25,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   </div></div></div>
   <aside class="controller" aria-label="Touch controls">
    <div class="stick-wrap"><div id="stick" class="stick" role="group" aria-label="Move in every direction"><div id="stick-nub" class="stick-nub"></div></div></div>
-   <div class="hud-side"><div class="party-row"><div class="character-picker" role="group" aria-label="Choose a character"><button data-character="dk" class="character selected" aria-pressed="true"><img src="${base}art/portraits/dk.png" alt=""><span>Donkey</span></button><button data-character="diddy" class="character" aria-pressed="false"><img src="${base}art/portraits/diddy.png" alt=""><span>Diddy<small id="partner-status"></small></span></button></div><label class="mount-picker"><span>Partner</span><select id="mount" aria-label="Choose a mount"><option value="foot">On foot</option><option value="yoshi">Yoshi</option></select></label></div>
+   <div class="hud-side"><div class="party-row"><div class="character-picker" role="group" aria-label="Choose a character"><button data-character="dk" class="character selected" aria-pressed="true"><img src="${base}art/portraits/dk.png" alt=""><span>Donkey</span></button><button data-character="diddy" class="character" aria-pressed="false"><img src="${base}art/portraits/diddy.png" alt=""><span>Diddy<small id="partner-status"></small></span></button></div><label class="character-select"><span>Kong</span><select id="character" aria-label="Choose a character"><option value="dk">Donkey</option><option value="diddy">Diddy</option></select></label><label class="mount-picker"><span>Partner</span><select id="mount" aria-label="Choose a mount"><option value="foot">On foot</option><option value="yoshi">Yoshi</option></select></label></div>
    <div class="action-pad"><button data-control="jump" class="jump-button"><span aria-hidden="true">↗</span><strong>Jump</strong><small>and flutter</small></button><button data-control="roll" class="roll-button"><span aria-hidden="true">↻</span><strong>Roll</strong><small>attack</small></button><button data-control="tongue" class="tongue-button"><span aria-hidden="true">⌁</span><strong>Tongue</strong><small>grab</small></button><button data-control="egg" class="egg-button"><span aria-hidden="true">◉</span><strong id="egg-label">Egg</strong><small id="egg-hint">throw · confirm · V</small></button></div></div>
   </aside>
  </section>
@@ -39,6 +39,7 @@ const setStatus=(message:string)=>{$('status').textContent=message;$('loading').
 function syncParty():void{
  const a=game?.adventure;
  document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>{const char=b.dataset.character as Character,active=(a?.active??'dk')===char;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active));b.disabled=a?!a.available.includes(char):false;});
+ const character=$<HTMLSelectElement>('character');character.value=a?.active??'dk';character.querySelectorAll('option').forEach(o=>{o.disabled=a?!a.available.includes(o.value as Character):false;});
  $('partner-status').textContent=a?.available.includes('diddy')?'':'';
  const mounts:Mount[]=['foot','yoshi',...(a?.animals??[])];const select=$<HTMLSelectElement>('mount');select.innerHTML=mounts.map(m=>`<option value="${m}">${animalNames[m]}</option>`).join('');select.value=a?.mount??'foot';
  if(game?.ready)$('stage-name').textContent=game.stageLabel;
@@ -67,6 +68,7 @@ $('play').addEventListener('click',async()=>{
 });
 function releaseUiFocus(target:EventTarget|null):void{const el=target instanceof HTMLElement?target:document.activeElement;if(el instanceof HTMLElement&&el.matches('button,select')&&!el.closest('dialog'))el.blur();}
 document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>b.addEventListener('click',()=>{if(game)game.character=b.dataset.character as Character;releaseUiFocus(b);}));
+$('character').addEventListener('change',e=>{const select=e.target as HTMLSelectElement;if(game)game.character=select.value as Character;releaseUiFocus(select);});
 $('mount').addEventListener('change',e=>{const select=e.target as HTMLSelectElement;game?.stop();game?.mount(select.value as Mount);releaseUiFocus(select);});
 function refreshButtons():void{}
 const stick=$('stick'),nub=$('stick-nub');let stickPointer:number|undefined;

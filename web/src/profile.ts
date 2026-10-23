@@ -59,11 +59,25 @@ export function dkcRun(vx:number,axis:number):number{
 // invulnerable hazards, Baby Mario, shells, items and scenery stay protected.
 export const ROLL_TARGETS = new Set([
  0x1e,0x20,0x54,0x5b,0x62,0x66,0x6d,0x6e,0x74,0x9f,0xa3,0xa4,0xd2,0xee,0xf0,0xf1,0xf4,
- 0x108,0x110,0x12a,0x133,
+ 0x108,0x12a,0x133,
  0x13f,0x140,0x141,0x142,0x143,0x164,0x165,
  0x169,0x16a,0x16b,0x16c,0x16d,0x16e,0x16f,0x181,0x184,0x192,0x199,0x19b,0x19c,
 ]); // $1f is a rotating door; $21 is a bucket. Flowers: piranhas, nippers, petal and fake flowers.
-const PLANT_POTS=new Set([0x54,0x66,0x6d,0x6e,0x9f,0xee,0xf0,0xf1,0xf4,0x110,0x181,0x192,0x199]);
+const CUSTOM_DEATH_PLANTS=new Set([0x54,0x66,0x9f,0xee,0xf0,0xf1,0xf4,0x181,0x192,0x199]);
+/** EU $03:A32E free_slot / clear_graphics. Do not just zero the sprite ID:
+ * that leaks dynamic tiles needed by later sprites, including the goal ring. */
+export function freeSpriteGraphics(gsu:Uint8Array,slot:number):void{
+ const offset=slot*4,index=gsu[0x1722+offset];
+ writeWord(gsu,PROFILE.spriteState+offset,0);
+ writeWord(gsu,0x14a2+offset,0xff);
+ if(index<0x80)writeWord(gsu,0x1ecc,word(gsu,0x1ecc)&~word(gsu,0x1ece+index));
+ if(word(gsu,0x1b6)===offset)writeWord(gsu,0x1b6,0);
+}
+/** The native draw routine also advances cinematic animation. Hide it only
+ * during interactive gameplay, when the canvas replacement is being drawn. */
+export function hideNativePlayer(mode:number,mount:string,form:number):boolean{return mode===PROFILE.gameplay&&mount!=='yoshi'&&form===0;}
+export const KONG_JUMP_VELOCITY=-0x640;
+export const KONG_JUMP_HOLD_MS=260;
 export interface RollHit { slot: number; x: number; y: number }
 export function applyRoll(gsu: Uint8Array, direction: number): RollHit[] {
   const x=word(gsu,PROFILE.x), y=word(gsu,PROFILE.y); const hits: RollHit[]=[];
@@ -73,7 +87,7 @@ export function applyRoll(gsu: Uint8Array, direction: number): RollHit[] {
     const ex=word(gsu,PROFILE.spriteX+offset), ey=word(gsu,PROFILE.spriteY+offset);
     const dx=signed16(ex-x), dy=signed16(ey-y);
     if (Math.abs(dx)<=36 && Math.abs(dy)<=40 && dx*direction>=-16) {
-      if(PLANT_POTS.has(id)){writeWord(gsu,PROFILE.spriteState+offset,0);writeWord(gsu,PROFILE.spriteId+offset,0);}
+      if(CUSTOM_DEATH_PLANTS.has(id))freeSpriteGraphics(gsu,slot);
       else writeWord(gsu,PROFILE.spriteState+offset,0x0c);
       hits.push({slot,x:ex,y:ey});
     }

@@ -1,4 +1,24 @@
-# Correctif suivant — démarrage direct, 23 octobre 2026, 20 h 10
+# En cours — audio, carte, graphismes, sauts et paysage (23 octobre 2026)
+
+Dernières demandes : pas de son ; départ normal permettant de choisir les stages ; murs/textures parasites après certaines destructions, pas seulement un flash sur les plantes ; cercle de sortie disparu ; en paysage placer les quatre boutons et le nom de niveau à gauche au-dessus du joystick ; DK/Diddy à pied doivent sauter plus haut sans modifier leur accélération/freinage.
+
+Changements préparés dans `work/web-mobile-current`, basés sur `5450e68` :
+
+- Bug audio prouvé dans le JS du cœur livré : `AL.contexts` est un objet à clés numériques, pas un tableau. Les `.map/.find` lançaient une exception avant `resume`. `src/audio.ts` utilise Object.values, déduplique currentCtx, appelle resume synchroniquement dans le geste, borne l’attente 500 ms. Bouton ♪ accessible hors options ; le bouton des options ferme/reprend la partie avant le déblocage.
+- Nouveau snapshot de carte native Europe / Snes9x 2.0.2 : `public/bootstrap/yoshi-eu-map-snes9x-2.0.2.state`, 824440 octets, SHA256 `45b5cc023e3d8f29ee804342f67e1b4eb954d7b2bb57ba0f85fe990430f4f75e`. Généré en rechargeant l’état neuf de 1-1 puis en passant par l’initialisation native de la carte (mode23 -> 26), sans marquer le stage terminé. Pas de route de capture à publier. L’ancien état de départ en plein 1-1 est retiré.
+- La campagne est rechargée pour conserver la progression et les partenaires puis renvoyée à la carte native. Un bouton Options -> Choose a level / World map permet aussi d’y revenir. Sur la carte, Enter/V envoie B natif ; les valeurs RAM du dialogue en gameplay ne doivent pas bloquer cette confirmation. `inGoal` ne neutralise les commandes que pendant le gameplay, plus sur la carte.
+- Une suppression de plantes effaçait seulement état+ID. Le correctif reproduit `despawn_sprite_free_slot / clear_graphics` (signature exacte EU vérifiée à ROM1A32E) : état0, draw priority $74A2=00FF, libération du masque dynamique via index $7722 et table $7ECE / bitmap $7ECC, libération de la plateforme $61B6. Adresses dans GSU = CPU -6000. Ne pas remettre l’ID à zéro. Cela répare un vrai défaut de ressources et peut expliquer textures parasites/cercle manquant ; ne pas prétendre avoir reproduit tous les murs parasites de l’utilisateur tant que le parcours réel n’est pas confirmé.
+- Le collectible Fleur $110 et les vrais pots à contenu $DA sont protégés comme le goal $0D. La dénomination précédente PLANT_POTS était fausse : $66 est une Piranha, $6D/$6E sont des poissons. La liste est désormais CUSTOM_DEATH_PLANTS.
+- Impulsion du saut DK/Diddy à pied -0640, maintien B260 ms ; accélération/freinage horizontal inchangés. Les pouvoirs/montures restent gérés par le jeu natif et le pont existant.
+- En paysage mobile (hauteur <=600px), plus de rangée header. Toolbar en grille2x2 de boutons44px à gauche, nom de stage et Son dessous, joystick en bas. Portrait et desktop conservent leur disposition. Recette 320x568 et 812x375 : pas de débordement, commandes visibles44px minimum.
+
+Validation à ce point : 68 tests réussis et build valide. Test moteur legacy sur Mac : départ carte, sélection1-1, retour carte ; OpenAL running et signal RMS non nul 0.02581 mesuré avec un AnalyserNode sur le gain natif (pas le micro). Ce n’est pas une preuve sonore sur un vrai téléphone. Fixture DEV Check native audio signal et Approch the 1-1 goal sont réservées au debug. La zone de fin1-1 a été rechargée par son vrai chargeur natif en modifiant temporairement l’entrée DEV : le cercle natif est présent (sprite0D à X3632 Y1712), son dessin est visible et sa réservation graphique vaut00FF. Les tentatives de parcours en téléportation ont été abandonnées car elles déclenchaient des dégâts/dialogues ; la fixture native finale donne une invincibilité de test seulement. Le passage en saut+roulade déclenche bien la victoire native (mode14, bébé monté, X3659 Y1659). Ce test a ensuite identifié un autre défaut : le corps natif restait masqué pendant la cinématique, alors que sa routine fait aussi avancer l’animation. `hideNativePlayer` limite maintenant le masquage au gameplay13 ; un test protège victoire14/15 et cartes23/26. Le parcours complet après destruction de toutes les plantes reste à confirmer. Pas encore publié à cet en-tête.
+
+---
+
+# Correctif suivant — démarrage direct, 23 octobre 2026, 20 h 12
+
+**Publication confirmée : commit `5450e68`, déploiement Netlify `6adba33a8d5d6f455a8be685` publié. HTML public vérifié sur `index-kPY6Q6r0.js`, jeu lancé sans erreur console. Lien utilisateur à recharger : https://incandescent-dodol-e52ce9.netlify.app/?v=5450e68 . Ce paramètre contourne l’ancienne page en cache sans changer l’origine des sauvegardes.**
 
 Le retour réel utilisateur invalide l’hypothèse que désactiver Fast Forward suffisait : « Preparing adventure » restait affiché plus de 60 secondes sur Chrome mobile. Les tests Mac précédents ne validaient pas le téléphone. La cause matérielle exacte de l’automatisation des menus reste inconnue.
 

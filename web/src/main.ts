@@ -1,6 +1,6 @@
 import './style.css';
 import { Controls,type Button } from './controls';
-import { launch,primeAudio } from './engine';
+import { launch,primeAudio,waitForNativeFrames } from './engine';
 import { LiveGame } from './game';
 import { SpriteAtlas } from './atlas';
 import { ANIMALS,type Character,type Mount } from './adventure';
@@ -11,11 +11,13 @@ const base=import.meta.env.BASE_URL;
 const debug=import.meta.env.DEV&&new URLSearchParams(location.search).has('debug');
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 <main class="shell">
- <header class="topbar"><div class="brand">Kong <span>× Yoshi</span><small id="stage-name">The original adventure</small></div>
+ <header class="topbar"><div class="brand"><span class="brand-name">Kong <span>× Yoshi</span></span><small id="stage-name">The original adventure</small></div>
+  <div class="toolbar">
   <button id="skip" class="tool skip" disabled aria-label="Skip dialogue or instructions">Skip <span aria-hidden="true">≫</span></button>
   <button id="pause" class="tool" disabled aria-label="Pause"><span aria-hidden="true">Ⅱ</span></button>
   <button id="fullscreen" class="tool" aria-label="Full screen"><span aria-hidden="true">⛶</span></button>
-  <button id="options" class="tool" aria-label="Options and SNES buttons"><span aria-hidden="true">☰</span></button>
+  <button id="options" class="tool" aria-label="Options and SNES buttons"><span aria-hidden="true">☰</span></button></div>
+  <button id="sound-quick" class="tool sound-tool" disabled aria-label="Enable game sound">♪</button>
  </header>
  <section class="game-layout" aria-label="The game and its controls">
   <div class="play-column"><div class="screen-frame"><div class="screen">
@@ -30,7 +32,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   </aside>
  </section>
  <p id="status" class="status" role="status" aria-live="polite">Loading the game…</p>
- <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">Push the stick in any direction, then it returns to the center. The roll keeps moving on its own. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>One-finger controls</span><input id="sticky" type="checkbox" checked></label><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button></details></dialog>
+ <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">Push the stick in any direction, then it returns to the center. The roll keeps moving on its own. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>One-finger controls</span><input id="sticky" type="checkbox" checked></label><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><button id="level-map" class="sheet-button" disabled>Choose a level · World map</button><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button><button id="test-audio">Check native audio signal (test)</button><button id="test-goal">Approach the 1-1 goal (test)</button></details></dialog>
 </main>`;
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 function unlockFromGesture(event:Event):void{if(!event.isTrusted)return;primeAudio();void game?.unlockAudio().catch(()=>{});}
@@ -64,8 +66,8 @@ $('play').addEventListener('click',async()=>{
  primeAudio();
  starting=true;$('welcome').hidden=true;$('loading').hidden=false;setStatus('Loading the SNES core…');
  try{const atlas=await SpriteAtlas.load();const emulator=await launch(rom,setStatus);game=new LiveGame(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty);game.autoSkip=$<HTMLInputElement>('auto-skip').checked;await game.prepare();$('loading').hidden=true;
-  for(const id of ['pause','skip','save'])$<HTMLButtonElement>(id).disabled=false;
-  await game.unlockAudio().catch(()=>{});if(game.audio?.state!=='running')setStatus('Tap ♪ Sound in the options to enable audio.');syncParty();
+  for(const id of ['pause','skip','save','sound-quick','level-map'])$<HTMLButtonElement>(id).disabled=false;
+  await game.unlockAudio().catch(()=>{});if(game.audio?.state!=='running')setStatus('Tap ♪ at the top to enable sound.');syncParty();
  }catch(e){console.error('KONG_START_ERROR',e);setStatus((e as Error).message);$('loading').hidden=true;$('welcome').hidden=false;if(game){game.setPaused(true);$('play').textContent='Reload the page';}starting=false;}
 });
 function releaseUiFocus(target:EventTarget|null):void{const el=target instanceof HTMLElement?target:document.activeElement;if(el instanceof HTMLElement&&el.matches('button,select')&&!el.closest('dialog'))el.blur();}
@@ -98,7 +100,18 @@ function closeSettings():void{settings.close();if(menuResume)pause(false);menuRe
 $('options').addEventListener('click',()=>{menuResume=Boolean(game?.ready&&!game.paused);if(menuResume)pause(true);settings.showModal();});$('close-settings').addEventListener('click',closeSettings);settings.addEventListener('cancel',e=>{e.preventDefault();closeSettings();});
 $<HTMLInputElement>('sticky').addEventListener('change',e=>{controls.stop();controls.sticky=(e.target as HTMLInputElement).checked;refreshButtons();});
 $<HTMLInputElement>('auto-skip').addEventListener('change',e=>{if(game)game.autoSkip=(e.target as HTMLInputElement).checked;});
-$('sound').addEventListener('click',()=>{void game?.unlockAudio().then(()=>setStatus(game?.audio?.state==='running'?'Game sound is on.':'The browser is waiting for a tap to enable audio.'));});
+function enableSound():void{
+ if(!game?.ready)return;
+ if(settings.open)closeSettings();
+ primeAudio();void game.unlockAudio().then(()=>{
+  const on=game?.audio?.state==='running';
+  $('sound-quick').setAttribute('aria-label',on?'Restore game sound':'Enable game sound');
+  setStatus(on?'Game sound is on.':'Tap ♪ again to enable sound.');
+ }).catch(()=>setStatus('Tap ♪ again to enable sound.'));
+ releaseUiFocus($('sound-quick'));
+}
+$('sound').addEventListener('click',enableSound);$('sound-quick').addEventListener('click',enableSound);
+$('level-map').addEventListener('click',()=>{closeSettings();game?.goToMap();});
 $('save').addEventListener('click',()=>{void game?.save();});
 document.querySelectorAll<HTMLButtonElement>('[data-native]').forEach(b=>b.addEventListener('click',()=>{const button=Number(b.dataset.native);closeSettings();controls.pulse(button,performance.now());}));
 const keys=new Set<string>();const keyActions:Record<string,Button>={Space:'jump',KeyX:'roll',KeyC:'tongue',KeyV:'egg',ArrowUp:'up',ArrowDown:'down'};
@@ -114,10 +127,35 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>{keys.delete(e.code);controls.keyboardDirection=keys.has('ArrowLeft')?-1:keys.has('ArrowRight')?1:0;});
 window.addEventListener('blur',()=>{keys.clear();game?.stop();controls.stop();refreshButtons();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&game?.ready)pause(true);});
 $('test-wall').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();if(game.paused)pause(false);game.stop();setStatus(`${game.testWall()} test blocks placed. Roll to break them.`);});
-$('test-reset').addEventListener('click',async()=>{if(!debug||!game)return;const state=await loadFile('campaign-original-eu-start-v2-snes9x-2.0.2');if(!state)return;closeSettings();game.stop();game.emulator.gameManager.loadState(state);});
+$('test-reset').addEventListener('click',async()=>{if(!debug||!game)return;const state=await loadFile('campaign-eu-map-v3-snes9x-2.0.2');if(!state)return;closeSettings();game.stop();game.emulator.gameManager.loadState(state);});
 $('test-egg').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-40);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);write(0xc4,0);write(0x1d6,240);controls.facing=1;controls.activate('tongue',performance.now());setTimeout(()=>controls.activate('down',performance.now()),700);break;}}});
 $('test-hit').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();game.gsu[0x8c]=0xd0;game.gsu[0x8d]=1;game.gsu[0x90]=0x70;game.gsu[0x91]=7;});
 $('test-roll').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-24);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);controls.facing=1;controls.activate('roll',performance.now());break;}}});
 $('test-dialogue').addEventListener('click',()=>{if(!debug||!game?.ready||game.wram[0x118]!==0x13)return;closeSettings();if(game.paused)pause(false);game.stop();game.wram[0xd11]=1;game.gsu[0x4070]=0x2c;game.gsu[0x4071]=0;});
 $('test-unlock').addEventListener('click',()=>{if(!debug||!game)return;game.adventure.available=['dk','diddy'];game.adventure.animals=[...ANIMALS];syncParty();});
-let lastDiagnostic=0;function frame():void{const now=performance.now();game?.tick(now);refreshButtons();if(game?.ready){const n=game.eggCount,aiming=game.aiming;$('egg-label').textContent=game.messageOpen?'OK':aiming?'Throw':`Eggs · ${n}`;$('egg-hint').textContent=game.messageOpen?'confirm':aiming?'press / V':n?'aim / V':'Tongue then Down';}if(debug&&game?.ready&&now-lastDiagnostic>500){$('diagnostic').textContent=JSON.stringify(game.diagnostics(),null,2);lastDiagnostic=now;}requestAnimationFrame(frame);}requestAnimationFrame(frame);
+let lastDiagnostic=0;function frame():void{const now=performance.now();game?.tick(now);refreshButtons();if(game?.ready){const n=game.eggCount,aiming=game.aiming;$('egg-label').textContent=game.wram[0x118]===0x26?'Enter':game.messageOpen?'OK':aiming?'Throw':`Eggs · ${n}`;$('egg-hint').textContent=game.wram[0x118]===0x26?'selected level':game.messageOpen?'confirm':aiming?'press / V':n?'aim / V':'Tongue then Down';}if(debug&&game?.ready&&now-lastDiagnostic>500){$('diagnostic').textContent=JSON.stringify(game.diagnostics(),null,2);lastDiagnostic=now;}requestAnimationFrame(frame);}requestAnimationFrame(frame);
+
+$('test-audio').addEventListener('click',async()=>{
+ if(!debug||!game?.ready)return;closeSettings();await game.unlockAudio();
+ const slot=game.emulator.Module.AL?.currentCtx;if(!slot?.gain)return;
+ const analyser=slot.audioCtx.createAnalyser();analyser.fftSize=2048;slot.gain.connect(analyser);
+ try{await new Promise(r=>setTimeout(r,250));const data=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(data);const rms=Math.sqrt(data.reduce((sum,v)=>sum+v*v,0)/data.length);setStatus(`Native audio: ${slot.audioCtx.state} · signal ${rms.toFixed(5)}`);}finally{slot.gain.disconnect(analyser);analyser.disconnect();}
+});
+$('test-goal').addEventListener('click',async()=>{
+ if(!debug||!game?.ready||game.wram[0x21a]!==0)return;
+ closeSettings();game.stop();
+ // Reload 1-1 through its real entrance loader near the goal. Restore the ROM
+ // data immediately afterwards; never manufacture a goal sprite or completion.
+ const signature=new Uint8Array([0,7,0x77,1,1,7,0x7a,2,2,3,0x7a,3,3,7,0x7a,4]);
+ const heap=game.emulator.Module.HEAPU8,sites:number[]=[];
+ for(let p=0;p<heap.length-signature.length;p++)if(heap[p]===0&&signature.every((v,i)=>heap[p+i]===v))sites.push(p);
+ if(!sites.length||sites.length>4){setStatus('Entrance fixture signature is ambiguous.');return;}
+ const manager=game.emulator.gameManager;
+ const wait=async(mode:number)=>{const began=performance.now();while(game!.wram[0x118]!==mode){if(performance.now()-began>12000)throw new Error('Native entrance timed out.');await waitForNativeFrames(manager);}};
+ try{
+  for(const p of sites){heap[p+1]=0xdd;heap[p+2]=0x69;}
+  game.goToMap();await wait(0x26);controls.pulse(0,performance.now());await wait(0x13);game.gsu[0x1d6]=0xff;game.gsu[0x1d7]=0x7f;
+  setStatus('Native goal approach loaded (invincible test fixture).');
+ }catch(e){setStatus((e as Error).message);}
+ finally{for(const p of sites)heap.set(signature,p);}
+});

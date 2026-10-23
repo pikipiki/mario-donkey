@@ -1,4 +1,5 @@
-export interface CoreModule { HEAPU8: Uint8Array; AL?: { contexts?: Array<{audioCtx: AudioContext}>; currentCtx?: {audioCtx: AudioContext} } }
+export interface NativeAudioSlot {audioCtx:AudioContext;gain?:GainNode}
+export interface CoreModule { HEAPU8: Uint8Array; AL?: { contexts?: Record<string,NativeAudioSlot> | Array<NativeAudioSlot>; currentCtx?: NativeAudioSlot } }
 export interface GameManager {
  Module: CoreModule;
  simulateInput(player: number, index: number, value: number): void;

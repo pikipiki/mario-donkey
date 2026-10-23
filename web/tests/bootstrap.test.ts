@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {validateStartState} from '../src/bootstrap';
 describe('bundled initial level',()=>{
  it('validates the shipped snapshot for the exact bundled core',async()=>{
-  const bytes=new Uint8Array(await readFile(new URL('../public/bootstrap/yoshi-eu-snes9x-2.0.2.state',import.meta.url)));
+  const bytes=new Uint8Array(await readFile(new URL('../public/bootstrap/yoshi-eu-map-snes9x-2.0.2.state',import.meta.url)));
   expect(await validateStartState(bytes)).toBe(bytes);
  });
  it('rejects truncated files and HTML fallback responses',async()=>{

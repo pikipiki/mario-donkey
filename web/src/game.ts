@@ -1,16 +1,17 @@
+import { nativeAudioContexts, resumeNativeAudio } from './audio';
 import { loadStartState } from './bootstrap';
-import { bounded, readBeforeDeadline } from './startup';
+import { readBeforeDeadline } from './startup';
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
 import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing, waitForNativeFrames } from './engine';
-import { PROFILE as P, absorbHit, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
+import { PROFILE as P, KONG_JUMP_VELOCITY, KONG_JUMP_HOLD_MS, hideNativePlayer, absorbHit, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
 import { storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
 import { readCampaign,writeCampaign } from './campaign';
 export type { Character } from './adventure';
 const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
-const INITIAL='campaign-original-eu-start-v2-snes9x-2.0.2';
+const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
 export class LiveGame {
  wramBase=0;gsuBase=0;ready=false;paused=false;kills=0;walls=0;adventure=new Adventure();autoSkip=false;
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
@@ -18,21 +19,18 @@ export class LiveGame {
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
  get eggCount():number{return Math.min(6,word(this.gsu,0x1df6)>>>1);}
- get messageOpen():boolean{return this.ready&&this.wram[0xd11]!==0;}
+ get messageOpen():boolean{return this.ready&&this.wram[P.mode]===P.gameplay&&this.wram[0xd11]!==0;}
  get aiming():boolean{return word(this.gsu,0xec)!==0;}
  get character():Character{return this.adventure.active;}
  set character(character:Character){if(this.adventure.select(character))this.changed();}
  get wram():Uint8Array{return this.emulator.Module.HEAPU8.subarray(this.wramBase,this.wramBase+0x20000);}
  get gsu():Uint8Array{return this.emulator.Module.HEAPU8.subarray(this.gsuBase,this.gsuBase+0x8000);}
- get audio():AudioContext|undefined{return this.emulator.Module.AL?.currentCtx?.audioCtx??this.emulator.Module.AL?.contexts?.find(c=>c?.audioCtx)?.audioCtx;}
- get stageLabel():string{return `World ${this.wram[0x218]+1} · ${this.wram[P.stage]<8?'Level '+(this.wram[P.stage]+1):'Extra / bonus'}`;}
+ get audio():AudioContext|undefined{return this.emulator.Module.AL?.currentCtx?.audioCtx??nativeAudioContexts(this.emulator.Module)[0];}
+ get stageLabel():string{return this.wram[P.mode]===0x26?`World ${this.wram[0x218]+1} · Choose a level`:`World ${this.wram[0x218]+1} · ${this.wram[P.stage]<8?'Level '+(this.wram[P.stage]+1):'Extra / bonus'}`;}
  get room():string{return `${this.wram[0x218]}:${this.wram[P.stage]}:${word(this.wram,0x32).toString(16)}:${this.wram[0x34]}`;}
  async unlockAudio():Promise<void>{
   primeAudio();
-  const contexts=this.emulator.Module.AL?.contexts?.map(c=>c.audioCtx)??[];
-  if(this.audio)contexts.push(this.audio);
-  await bounded(Promise.all([...new Set(contexts.filter(Boolean))].map(async ctx=>{try{if(ctx.state!=='running')await ctx.resume();}catch{}})),500,[]);
-  this.emulator.setVolume(1);
+  await resumeNativeAudio(this.emulator.Module,()=>this.emulator.setVolume(1));
  }
  async prepare():Promise<void>{
   const m=this.emulator.gameManager,start=performance.now();
@@ -45,13 +43,20 @@ export class LiveGame {
   const campaign=fresh?undefined:await readBeforeDeadline(readCampaign().catch(()=>undefined),4000);
   if(campaign){
    m.loadState(campaign.state);await waitForNativeFrames(m);
-   if(this.wram[P.mode]<=0x50){this.adventure=new Adventure(campaign.adventure);this.finishBoot();return;}
+   if(this.wram[P.mode]<=0x50){
+    this.adventure=new Adventure(campaign.adventure);
+    if(this.wram[P.mode]!==0x26){
+     this.onStatus('Opening the stage selection…');this.goToMap();const began=performance.now();
+     while(this.wram[P.mode]!==0x26){if(performance.now()-began>10000)throw new Error('The stage selection did not open. Reload the page to retry.');await waitForNativeFrames(m);}
+    }
+    this.finishBoot();return;
+   }
   }
-  this.onStatus('Opening level 1-1…');
+  this.onStatus('Opening the stage selection…');
   m.functions.toggleFastForward(0);
   // Use a verified bundled snapshot instead of driving title-screen menus.
   const initial=await loadStartState();m.loadState(initial);await waitForNativeFrames(m);
-  if(this.wram[P.mode]!==P.gameplay||word(this.gsu,P.x)===0)throw new Error('The starting level could not be restored. Reload the page to retry.');
+  if(this.wram[P.mode]!==0x26)throw new Error('The starting level could not be restored. Reload the page to retry.');
   void storeFile(INITIAL,initial).catch(()=>{});
   this.finishBoot();
  }
@@ -65,12 +70,16 @@ export class LiveGame {
  private updateVisibility():void{
   // Modify the verified ROM copy directly. Persistent cheats can restore stale
   // bytes when toggled, leaving native Yoshi hidden after a mount change.
-  const hide=this.adventure.mount!=='yoshi'&&word(this.gsu,0xae)===0;
+  const hide=hideNativePlayer(this.wram[P.mode],this.adventure.mount,word(this.gsu,0xae));
   setNativeDrawing(this.emulator.Module.HEAPU8,this.drawSite,hide);this.hidden=hide;
  }
  mount(mount:Mount):void{if(this.adventure.ride(mount)){this.updateVisibility();this.changed();}}
  stop():void{this.controls.stop();this.setInputs(new Set());}
  setPaused(value:boolean):void{this.stop();this.paused=value;this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){void this.audio?.suspend();void this.save();}else void this.unlockAudio();}
+ /** Native fade-out and overworld initialization; keeps completed-level progress. */
+ goToMap():void{
+  this.stop();this.wram[P.mode]=0x23;writeWord(this.wram,0x200,0x010f);
+ }
  skipDialogue():void{this.skipUntil=performance.now()+5000;}
  async save():Promise<void>{
   if(!this.ready||this.saving)return;this.saving=true;const m=this.emulator.gameManager;
@@ -80,16 +89,16 @@ export class LiveGame {
  tick(now:number):void{
   if(!this.ready||this.paused)return;
   const g=this.gsu;
-  if(inGoal(g)){this.setInputs(new Set());this.draw(now,false);return;}
+  if(this.wram[P.mode]===P.gameplay&&inGoal(g)){this.setInputs(new Set());this.draw(now,false);return;}
   const next=new Set<number>(),direction=this.controls.movement(now),rolling=now<this.controls.rollUntil;
-  const yoshi=this.adventure.mount==='yoshi',jumpFrom=this.controls.jumpUntil-750,hop=now<this.controls.jumpUntil&&now<jumpFrom+150;
+  const yoshi=this.adventure.mount==='yoshi',jumpFrom=this.controls.jumpUntil-750,hop=now<this.controls.jumpUntil&&now<jumpFrom+KONG_JUMP_HOLD_MS;
   if(direction)next.add(direction<0?INPUT.left:INPUT.right);
   if(yoshi?now<this.controls.jumpUntil:hop)next.add(INPUT.b);
   if(now<this.controls.tongueUntil)next.add(INPUT.y);
   // Patient scheme supports two separate taps on touch, mouse and keyboard.
   if(this.wram[P.mode]===P.gameplay)writeWord(g,0x82,0);
-  const confirming=this.wram[0xd11]!==0&&this.controls.eggPressed(now);
-  if(confirming)this.skipUntil=now+5000;else if(this.controls.eggPressed(now))next.add(INPUT.a);
+  const confirming=this.wram[P.mode]===P.gameplay&&this.wram[0xd11]!==0&&this.controls.eggPressed(now);
+  if(confirming)this.skipUntil=now+5000;else if(this.controls.eggPressed(now))next.add(this.wram[P.mode]===0x26?INPUT.b:INPUT.a);
   const vertical=this.controls.verticalAxis(now);if(vertical)next.add(vertical<0?INPUT.up:INPUT.down);
   for(const [button,until]of this.controls.extra)if(now<until)next.add(button);
   this.setInputs(next);
@@ -111,7 +120,7 @@ export class LiveGame {
     if(yoshi&&word(g,0xae)===0)writeWord(g,P.vx,this.controls.facing*0x360);
     const hits=applyRoll(g,this.controls.facing);this.kills+=hits.length;for(const hit of hits)this.particles.push({...hit,until:now+420});
    }
-   if(this.controls.jumpSequence!==this.jumpSequence){this.jumpSequence=this.controls.jumpSequence;if(!disabled&&this.adventure.mount==='winky')writeWord(g,P.vy,-0x700);else if(!disabled&&!yoshi)writeWord(g,P.vy,-0x4c0);}
+   if(this.controls.jumpSequence!==this.jumpSequence){this.jumpSequence=this.controls.jumpSequence;if(!disabled&&this.adventure.mount==='winky')writeWord(g,P.vy,-0x700);else if(!disabled&&!yoshi)writeWord(g,P.vy,KONG_JUMP_VELOCITY);}
    if(this.adventure.mount==='squawks'&&now<this.controls.jumpUntil&&!disabled)writeWord(g,P.vy,-0x180);
    const walls=breakTerrain(this.wram,g,this.controls.facing,rolling&&onFoot);this.walls+=walls.length;
    for(const hit of walls)this.particles.push({...hit,until:now+500});
@@ -119,8 +128,8 @@ export class LiveGame {
    this.adventure.observe(this.room,x,y,grounded);
    const collected=this.adventure.breakNearby(this.room,x,y,rolling&&!disabled);
    if(collected.length){writeWord(g,P.sound,0x11);this.updateVisibility();this.changed();for(const item of collected)this.particles.push({x:item.x,y:item.y,until:now+500});}
-   if(this.lastStage!==this.stageLabel){this.lastStage=this.stageLabel;this.onStatus(this.stageLabel);this.changed();}
   }
+  if(this.lastStage!==this.stageLabel){this.lastStage=this.stageLabel;this.onStatus(this.stageLabel);this.changed();}
   this.draw(now,rolling);
   if(now-this.lastSave>20000&&!this.saving)void this.save();
  }
@@ -147,5 +156,5 @@ export class LiveGame {
  }
  /** DEV fixture: real map16 wall in empty space ahead; no campaign fixture is shipped. */
  testWall():number{const g=this.gsu,x=(word(g,P.x)+48)&~15,y=word(g,P.y)&~15;let count=0;for(const dy of [0,16]){const address=tileAddress(g,x,y+dy);if(address!==undefined&&replaceTile(this.wram,g,x,y+dy,0x7b00,0xa022))count++;}return count;}
- diagnostics():Record<string,unknown>{return {mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.overlay.height,frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
+ diagnostics():Record<string,unknown>{return {mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.overlay.height,frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
 }

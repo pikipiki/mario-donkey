@@ -1,7 +1,7 @@
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
 import { type Emulator, INPUT, resolveMemory, resolveDrawing, setNativeDrawing } from './engine';
-import { PROFILE as P, applyRoll, babyIsLost, signed16, skipOpenDialogue, word, writeWord } from './profile';
+import { PROFILE as P, applyRoll, babyIsLost, dkcRun, holdBabyStars, signed16, skipOpenDialogue, word, writeWord } from './profile';
 import { loadFile,storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
@@ -79,28 +79,35 @@ export class LiveGame {
  tick(now:number):void{
   if(!this.ready||this.paused)return;
   const g=this.gsu,next=new Set<number>(),direction=this.controls.movement(now),rolling=now<this.controls.rollUntil;
+  const yoshi=this.adventure.mount==='yoshi',jumpFrom=this.controls.jumpUntil-750,hop=now<this.controls.jumpUntil&&now<jumpFrom+150;
   if(direction)next.add(direction<0?INPUT.left:INPUT.right);
-  if(now<this.controls.jumpUntil)next.add(INPUT.b);
+  if(yoshi?now<this.controls.jumpUntil:hop)next.add(INPUT.b);
   if(now<this.controls.tongueUntil)next.add(INPUT.y);
   // Patient scheme supports two separate taps on touch, mouse and keyboard.
   if(this.wram[P.mode]===P.gameplay)writeWord(g,0x82,0);
   if(this.controls.eggPressed(now))next.add(INPUT.a);
-  if(now<this.controls.verticalUntil)next.add(this.controls.vertical<0?INPUT.up:INPUT.down);
+  const vertical=this.controls.verticalAxis(now);if(vertical)next.add(vertical<0?INPUT.up:INPUT.down);
   for(const [button,until]of this.controls.extra)if(now<until)next.add(button);
   this.setInputs(next);
   if((this.autoSkip||now<this.skipUntil)&&skipOpenDialogue(this.wram,g))this.skipUntil=now+1000;
   const gameplay=this.wram[P.mode]===P.gameplay;
   this.updateVisibility();
   if(gameplay){
-   const lost=babyIsLost(g);if(lost&&!this.previousBabyLost){this.adventure.hit();this.updateVisibility();this.changed();}this.previousBabyLost=lost;
+   const lost=babyIsLost(g),stars=word(this.wram,0x3b6),kept=holdBabyStars(stars,lost);
+   if(kept!==undefined){if(stars<=0){writeWord(g,P.baby,0x8000);writeWord(this.wram,0x379,this.previousLives);}writeWord(this.wram,0x3b6,kept);}
+   if(lost&&!this.previousBabyLost){this.adventure.hit();this.updateVisibility();this.changed();}this.previousBabyLost=babyIsLost(g);
    const lives=this.wram[0x379];if(lives<this.previousLives)this.adventure.resetRoom(this.room);this.previousLives=lives;
    const disabled=word(g,0x1ae)!==0;
+   if(!yoshi&&!disabled&&word(g,0xae)===0){
+    const axis=rolling?this.controls.facing:this.controls.runAxis();
+    writeWord(g,P.vx,rolling?this.controls.facing*0x360:dkcRun(signed16(word(g,P.vx)),axis));
+   }
    if(rolling&&!disabled){
     writeWord(g,P.invincible,Math.max(word(g,P.invincible),4));
     if(this.adventure.mount==='rambi')writeWord(g,P.vx,this.controls.facing*0x480);
     const hits=applyRoll(g,this.controls.facing);this.kills+=hits.length;for(const hit of hits)this.particles.push({...hit,until:now+420});
    }
-   if(this.controls.jumpSequence!==this.jumpSequence){this.jumpSequence=this.controls.jumpSequence;if(this.adventure.mount==='winky'&&!disabled)writeWord(g,P.vy,-0x700);}
+   if(this.controls.jumpSequence!==this.jumpSequence){this.jumpSequence=this.controls.jumpSequence;if(!disabled&&this.adventure.mount==='winky')writeWord(g,P.vy,-0x700);else if(!disabled&&!yoshi)writeWord(g,P.vy,-0x4c0);}
    if(this.adventure.mount==='squawks'&&now<this.controls.jumpUntil&&!disabled)writeWord(g,P.vy,-0x180);
    const animal=this.adventure.mount!=='foot'&&this.adventure.mount!=='yoshi';
    const walls=breakTerrain(this.wram,g,this.controls.facing,rolling||(animal&&direction!==0));this.walls+=walls.length;

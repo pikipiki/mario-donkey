@@ -23,6 +23,17 @@ export function patchYoshiDrawing(original: Uint8Array): Uint8Array {
 }
 
 export function babyIsLost(gsu: Uint8Array): boolean { return (word(gsu,PROFILE.baby)&0x8000)===0; }
+/** $7E03B6 stores the star countdown ×10. Reaching 0 starts Baby Mario’s escape and the death. */
+export const STAR_FLOOR=30;
+export function holdBabyStars(stars:number,lost:boolean):number|undefined{if(!lost||stars>STAR_FLOOR)return undefined;return STAR_FLOOR;}
+/** Approach a target run speed. Reversing takes a longer skid than releasing the stick. */
+export function dkcRun(vx:number,axis:number):number{
+ const target=Math.round(Math.max(-1,Math.min(1,axis))*0x2a0);
+ const delta=target-vx;if(delta===0)return target;
+ const reversing=target!==0&&vx!==0&&Math.sign(target)!==Math.sign(vx);
+ const step=reversing?0x48:0x1c;
+ return Math.abs(delta)<=step?target:vx+Math.sign(delta)*step;
+}
 
 // Ordinary enemies identified in the public sprite_inits table. Bosses,
 // invulnerable hazards, Baby Mario, shells, items and scenery stay protected.

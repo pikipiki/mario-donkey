@@ -16,3 +16,10 @@ describe('commandes mobiles à un doigt',()=>{
 it('viser libère Bas et la langue pour ne pas annuler immédiatement le lancer',()=>{const c=new Controls();c.activate('right',0);c.activate('down',10);c.activate('tongue',20);c.activate('roll',30);c.activate('egg',40);expect(c.verticalUntil).toBe(0);expect(c.tongueUntil).toBe(0);expect(c.rollUntil).toBe(0);expect(c.movement(50)).toBe(0);expect(c.eggUntil).toBe(170);});
 
 it('sépare deux appuis rapides sur Œuf par un relâchement natif',()=>{const c=new Controls();c.activate('egg',1000);c.activate('egg',1050);expect(c.eggPressed(1100)).toBe(true);expect(c.eggPressed(1160)).toBe(false);expect(c.eggPressed(1210)).toBe(true);expect(c.eggPressed(1341)).toBe(false);c.activate('egg',2000);c.activate('egg',2010);c.stop();expect(c.eggPressed(2300)).toBe(false);});
+
+it('le stick rond couvre les diagonales et revient au centre',()=>{
+ const c=new Controls();c.setStick(-0.8,-0.9);
+ expect(c.movement(0)).toBe(-1);expect(c.verticalAxis(0)).toBe(-1);expect(c.runAxis()).toBeCloseTo(-0.8);
+ c.setStick(0.1,0.1);expect(c.movement(0)).toBe(0);expect(c.verticalAxis(0)).toBe(0);
+ c.releaseStick();expect(c.runAxis()).toBe(0);
+});

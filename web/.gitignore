@@ -3,4 +3,6 @@ dist/
 .netlify/
 *.sfc
 *.smc
+!public/rom/
+!public/rom/**
 .env*

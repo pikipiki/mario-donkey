@@ -1,5 +1,7 @@
 *.sfc
 *.smc
+!web/public/rom/
+!web/public/rom/**
 *.srm
 *.mst
 __pycache__/

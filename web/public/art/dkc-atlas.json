@@ -1,0 +1,695 @@
+{
+  "cell": 96,
+  "columns": 16,
+  "origin": [
+    48,
+    80
+  ],
+  "groups": {
+    "dk": {
+      "idle": {
+        "frames": 21,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_DonkeyKong_Idle1",
+          "GFX_DonkeyKong_Idle2",
+          "GFX_DonkeyKong_Idle3",
+          "GFX_DonkeyKong_Idle4",
+          "GFX_DonkeyKong_Idle5",
+          "GFX_DonkeyKong_Idle6",
+          "GFX_DonkeyKong_Idle7",
+          "GFX_DonkeyKong_Idle8",
+          "GFX_DonkeyKong_Idle9",
+          "GFX_DonkeyKong_Idle10",
+          "GFX_DonkeyKong_Idle11",
+          "GFX_DonkeyKong_Idle12",
+          "GFX_DonkeyKong_Idle13",
+          "GFX_DonkeyKong_Idle14",
+          "GFX_DonkeyKong_Idle15",
+          "GFX_DonkeyKong_Idle16",
+          "GFX_DonkeyKong_Idle17",
+          "GFX_DonkeyKong_Idle18",
+          "GFX_DonkeyKong_Idle19",
+          "GFX_DonkeyKong_Idle20",
+          "GFX_DonkeyKong_Idle21"
+        ],
+        "start": 0
+      },
+      "walk": {
+        "frames": 20,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_DonkeyKong_Run1",
+          "GFX_DonkeyKong_Run2",
+          "GFX_DonkeyKong_Run3",
+          "GFX_DonkeyKong_Run4",
+          "GFX_DonkeyKong_Run5",
+          "GFX_DonkeyKong_Run6",
+          "GFX_DonkeyKong_Run7",
+          "GFX_DonkeyKong_Run8",
+          "GFX_DonkeyKong_Run9",
+          "GFX_DonkeyKong_Run10",
+          "GFX_DonkeyKong_Run11",
+          "GFX_DonkeyKong_Run12",
+          "GFX_DonkeyKong_Run13",
+          "GFX_DonkeyKong_Run14",
+          "GFX_DonkeyKong_Run15",
+          "GFX_DonkeyKong_Run16",
+          "GFX_DonkeyKong_Run17",
+          "GFX_DonkeyKong_Run18",
+          "GFX_DonkeyKong_Run19",
+          "GFX_DonkeyKong_Run20"
+        ],
+        "start": 21
+      },
+      "jump": {
+        "frames": 11,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_DonkeyKong_Jump1",
+          "GFX_DonkeyKong_Jump2",
+          "GFX_DonkeyKong_Jump3",
+          "GFX_DonkeyKong_Jump4",
+          "GFX_DonkeyKong_Jump5",
+          "GFX_DonkeyKong_Jump6",
+          "GFX_DonkeyKong_Jump7",
+          "GFX_DonkeyKong_Jump8",
+          "GFX_DonkeyKong_Jump9",
+          "GFX_DonkeyKong_Jump10",
+          "GFX_DonkeyKong_Jump11"
+        ],
+        "start": 41
+      },
+      "roll": {
+        "frames": 14,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_DonkeyKong_Roll1",
+          "GFX_DonkeyKong_Roll2",
+          "GFX_DonkeyKong_Roll3",
+          "GFX_DonkeyKong_Roll4",
+          "GFX_DonkeyKong_Roll5",
+          "GFX_DonkeyKong_Roll6",
+          "GFX_DonkeyKong_Roll7",
+          "GFX_DonkeyKong_Roll8",
+          "GFX_DonkeyKong_Roll9",
+          "GFX_DonkeyKong_Roll10",
+          "GFX_DonkeyKong_Roll11",
+          "GFX_DonkeyKong_Roll12",
+          "GFX_DonkeyKong_Roll13",
+          "GFX_DonkeyKong_Roll14"
+        ],
+        "start": 52
+      },
+      "ride": {
+        "frames": 9,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_DonkeyKong_RideAnimalBuddy1",
+          "GFX_DonkeyKong_RideAnimalBuddy2",
+          "GFX_DonkeyKong_RideAnimalBuddy3",
+          "GFX_DonkeyKong_RideAnimalBuddy4",
+          "GFX_DonkeyKong_RideAnimalBuddy5",
+          "GFX_DonkeyKong_RideAnimalBuddy6",
+          "GFX_DonkeyKong_RideAnimalBuddy7",
+          "GFX_DonkeyKong_RideAnimalBuddy8",
+          "GFX_DonkeyKong_RideAnimalBuddy9"
+        ],
+        "start": 66
+      }
+    },
+    "diddy": {
+      "idle": {
+        "frames": 22,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Diddy_IdleSway1",
+          "GFX_Diddy_IdleSway2",
+          "GFX_Diddy_IdleSway3",
+          "GFX_Diddy_IdleSway4",
+          "GFX_Diddy_IdleSway5",
+          "GFX_Diddy_IdleSway6",
+          "GFX_Diddy_IdleSway7",
+          "GFX_Diddy_IdleSway8",
+          "GFX_Diddy_IdleSway9",
+          "GFX_Diddy_IdleSway10",
+          "GFX_Diddy_IdleSway11",
+          "GFX_Diddy_IdleSway12",
+          "GFX_Diddy_IdleSway13",
+          "GFX_Diddy_IdleSway14",
+          "GFX_Diddy_IdleSway15",
+          "GFX_Diddy_IdleSway16",
+          "GFX_Diddy_IdleSway17",
+          "GFX_Diddy_IdleSway18",
+          "GFX_Diddy_IdleSway19",
+          "GFX_Diddy_IdleSway20",
+          "GFX_Diddy_IdleSway21",
+          "GFX_Diddy_IdleSway22"
+        ],
+        "start": 75
+      },
+      "walk": {
+        "frames": 13,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Diddy_Run1",
+          "GFX_Diddy_Run2",
+          "GFX_Diddy_Run3",
+          "GFX_Diddy_Run4",
+          "GFX_Diddy_Run5",
+          "GFX_Diddy_Run6",
+          "GFX_Diddy_Run7",
+          "GFX_Diddy_Run8",
+          "GFX_Diddy_Run9",
+          "GFX_Diddy_Run10",
+          "GFX_Diddy_Run11",
+          "GFX_Diddy_Run12",
+          "GFX_Diddy_Run13"
+        ],
+        "start": 97
+      },
+      "jump": {
+        "frames": 13,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Diddy_Jump1",
+          "GFX_Diddy_Jump2",
+          "GFX_Diddy_Jump3",
+          "GFX_Diddy_Jump4",
+          "GFX_Diddy_Jump5",
+          "GFX_Diddy_Jump6",
+          "GFX_Diddy_Jump7",
+          "GFX_Diddy_Jump8",
+          "GFX_Diddy_Jump9",
+          "GFX_Diddy_Jump10",
+          "GFX_Diddy_Jump11",
+          "GFX_Diddy_Jump12",
+          "GFX_Diddy_Jump13"
+        ],
+        "start": 110
+      },
+      "roll": {
+        "frames": 20,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Diddy_Roll1",
+          "GFX_Diddy_Roll2",
+          "GFX_Diddy_Roll3",
+          "GFX_Diddy_Roll4",
+          "GFX_Diddy_Roll5",
+          "GFX_Diddy_Roll6",
+          "GFX_Diddy_Roll7",
+          "GFX_Diddy_Roll8",
+          "GFX_Diddy_Roll9",
+          "GFX_Diddy_Roll10",
+          "GFX_Diddy_Roll11",
+          "GFX_Diddy_Roll12",
+          "GFX_Diddy_Roll13",
+          "GFX_Diddy_Roll14",
+          "GFX_Diddy_Roll15",
+          "GFX_Diddy_Roll16",
+          "GFX_Diddy_Roll17",
+          "GFX_Diddy_Roll18",
+          "GFX_Diddy_Roll19",
+          "GFX_Diddy_Roll20"
+        ],
+        "start": 123
+      },
+      "ride": {
+        "frames": 5,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Diddy_RideAnimalBuddy1",
+          "GFX_Diddy_RideAnimalBuddy2",
+          "GFX_Diddy_RideAnimalBuddy3",
+          "GFX_Diddy_RideAnimalBuddy4",
+          "GFX_Diddy_RideAnimalBuddy5"
+        ],
+        "start": 143
+      }
+    },
+    "rambi": {
+      "idle": {
+        "frames": 6,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Rambi_Idle1",
+          "GFX_Rambi_Idle2",
+          "GFX_Rambi_Idle3",
+          "GFX_Rambi_Idle4",
+          "GFX_Rambi_Idle5",
+          "GFX_Rambi_Idle6"
+        ],
+        "start": 148
+      },
+      "walk": {
+        "frames": 15,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Rambi_Walk1",
+          "GFX_Rambi_Walk2",
+          "GFX_Rambi_Walk3",
+          "GFX_Rambi_Walk4",
+          "GFX_Rambi_Walk5",
+          "GFX_Rambi_Walk6",
+          "GFX_Rambi_Walk7",
+          "GFX_Rambi_Walk8",
+          "GFX_Rambi_Walk9",
+          "GFX_Rambi_Walk10",
+          "GFX_Rambi_Walk11",
+          "GFX_Rambi_Walk12",
+          "GFX_Rambi_Walk13",
+          "GFX_Rambi_Walk14",
+          "GFX_Rambi_Walk15"
+        ],
+        "start": 154
+      },
+      "jump": {
+        "frames": 7,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Rambi_Jump1",
+          "GFX_Rambi_Jump2",
+          "GFX_Rambi_Jump3",
+          "GFX_Rambi_Jump4",
+          "GFX_Rambi_Jump5",
+          "GFX_Rambi_Jump6",
+          "GFX_Rambi_Jump7"
+        ],
+        "start": 169
+      },
+      "roll": {
+        "frames": 8,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Rambi_Stab1",
+          "GFX_Rambi_Stab2",
+          "GFX_Rambi_Stab3",
+          "GFX_Rambi_Stab4",
+          "GFX_Rambi_Stab5",
+          "GFX_Rambi_Stab6",
+          "GFX_Rambi_Stab7",
+          "GFX_Rambi_Stab8"
+        ],
+        "start": 176
+      }
+    },
+    "winky": {
+      "idle": {
+        "frames": 11,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Winky_Idle1",
+          "GFX_Winky_Idle2",
+          "GFX_Winky_Idle3",
+          "GFX_Winky_Idle4",
+          "GFX_Winky_Idle5",
+          "GFX_Winky_Idle6",
+          "GFX_Winky_Idle7",
+          "GFX_Winky_Idle8",
+          "GFX_Winky_Idle9",
+          "GFX_Winky_Idle10",
+          "GFX_Winky_Idle11"
+        ],
+        "start": 184
+      },
+      "walk": {
+        "frames": 17,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Winky_Jump1",
+          "GFX_Winky_Jump2",
+          "GFX_Winky_Jump3",
+          "GFX_Winky_Jump4",
+          "GFX_Winky_Jump5",
+          "GFX_Winky_Jump6",
+          "GFX_Winky_Jump7",
+          "GFX_Winky_Jump8",
+          "GFX_Winky_Jump9",
+          "GFX_Winky_Jump10",
+          "GFX_Winky_Jump11",
+          "GFX_Winky_Jump12",
+          "GFX_Winky_Jump13",
+          "GFX_Winky_Jump14",
+          "GFX_Winky_Jump15",
+          "GFX_Winky_Jump16",
+          "GFX_Winky_Jump17"
+        ],
+        "start": 195
+      },
+      "jump": {
+        "frames": 17,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Winky_Jump1",
+          "GFX_Winky_Jump2",
+          "GFX_Winky_Jump3",
+          "GFX_Winky_Jump4",
+          "GFX_Winky_Jump5",
+          "GFX_Winky_Jump6",
+          "GFX_Winky_Jump7",
+          "GFX_Winky_Jump8",
+          "GFX_Winky_Jump9",
+          "GFX_Winky_Jump10",
+          "GFX_Winky_Jump11",
+          "GFX_Winky_Jump12",
+          "GFX_Winky_Jump13",
+          "GFX_Winky_Jump14",
+          "GFX_Winky_Jump15",
+          "GFX_Winky_Jump16",
+          "GFX_Winky_Jump17"
+        ],
+        "start": 212
+      },
+      "roll": {
+        "frames": 17,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Winky_Jump1",
+          "GFX_Winky_Jump2",
+          "GFX_Winky_Jump3",
+          "GFX_Winky_Jump4",
+          "GFX_Winky_Jump5",
+          "GFX_Winky_Jump6",
+          "GFX_Winky_Jump7",
+          "GFX_Winky_Jump8",
+          "GFX_Winky_Jump9",
+          "GFX_Winky_Jump10",
+          "GFX_Winky_Jump11",
+          "GFX_Winky_Jump12",
+          "GFX_Winky_Jump13",
+          "GFX_Winky_Jump14",
+          "GFX_Winky_Jump15",
+          "GFX_Winky_Jump16",
+          "GFX_Winky_Jump17"
+        ],
+        "start": 229
+      }
+    },
+    "expresso": {
+      "idle": {
+        "frames": 19,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Expresso_Idle1",
+          "GFX_Expresso_Idle2",
+          "GFX_Expresso_Idle3",
+          "GFX_Expresso_Idle4",
+          "GFX_Expresso_Idle5",
+          "GFX_Expresso_Idle6",
+          "GFX_Expresso_Idle7",
+          "GFX_Expresso_Idle8",
+          "GFX_Expresso_Idle9",
+          "GFX_Expresso_Idle10",
+          "GFX_Expresso_Idle11",
+          "GFX_Expresso_Idle12",
+          "GFX_Expresso_Idle13",
+          "GFX_Expresso_Idle14",
+          "GFX_Expresso_Idle15",
+          "GFX_Expresso_Idle16",
+          "GFX_Expresso_Idle17",
+          "GFX_Expresso_Idle18",
+          "GFX_Expresso_Idle19"
+        ],
+        "start": 246
+      },
+      "walk": {
+        "frames": 18,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Expresso_Run1",
+          "GFX_Expresso_Run2",
+          "GFX_Expresso_Run3",
+          "GFX_Expresso_Run4",
+          "GFX_Expresso_Run5",
+          "GFX_Expresso_Run6",
+          "GFX_Expresso_Run7",
+          "GFX_Expresso_Run8",
+          "GFX_Expresso_Run9",
+          "GFX_Expresso_Run10",
+          "GFX_Expresso_Run11",
+          "GFX_Expresso_Run12",
+          "GFX_Expresso_Run13",
+          "GFX_Expresso_Run14",
+          "GFX_Expresso_Run15",
+          "GFX_Expresso_Run16",
+          "GFX_Expresso_Run17",
+          "GFX_Expresso_Run18"
+        ],
+        "start": 265
+      },
+      "jump": {
+        "frames": 8,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Expresso_Jump1",
+          "GFX_Expresso_Jump2",
+          "GFX_Expresso_Jump3",
+          "GFX_Expresso_Jump4",
+          "GFX_Expresso_Jump5",
+          "GFX_Expresso_Jump6",
+          "GFX_Expresso_Jump7",
+          "GFX_Expresso_Jump8"
+        ],
+        "start": 283
+      },
+      "roll": {
+        "frames": 18,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Expresso_Run1",
+          "GFX_Expresso_Run2",
+          "GFX_Expresso_Run3",
+          "GFX_Expresso_Run4",
+          "GFX_Expresso_Run5",
+          "GFX_Expresso_Run6",
+          "GFX_Expresso_Run7",
+          "GFX_Expresso_Run8",
+          "GFX_Expresso_Run9",
+          "GFX_Expresso_Run10",
+          "GFX_Expresso_Run11",
+          "GFX_Expresso_Run12",
+          "GFX_Expresso_Run13",
+          "GFX_Expresso_Run14",
+          "GFX_Expresso_Run15",
+          "GFX_Expresso_Run16",
+          "GFX_Expresso_Run17",
+          "GFX_Expresso_Run18"
+        ],
+        "start": 291
+      }
+    },
+    "enguarde": {
+      "idle": {
+        "frames": 8,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Enguarde_Swim1",
+          "GFX_Enguarde_Swim2",
+          "GFX_Enguarde_Swim3",
+          "GFX_Enguarde_Swim4",
+          "GFX_Enguarde_Swim5",
+          "GFX_Enguarde_Swim6",
+          "GFX_Enguarde_Swim7",
+          "GFX_Enguarde_Swim8"
+        ],
+        "start": 309
+      },
+      "walk": {
+        "frames": 8,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Enguarde_Swim1",
+          "GFX_Enguarde_Swim2",
+          "GFX_Enguarde_Swim3",
+          "GFX_Enguarde_Swim4",
+          "GFX_Enguarde_Swim5",
+          "GFX_Enguarde_Swim6",
+          "GFX_Enguarde_Swim7",
+          "GFX_Enguarde_Swim8"
+        ],
+        "start": 317
+      },
+      "jump": {
+        "frames": 8,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Enguarde_Swim1",
+          "GFX_Enguarde_Swim2",
+          "GFX_Enguarde_Swim3",
+          "GFX_Enguarde_Swim4",
+          "GFX_Enguarde_Swim5",
+          "GFX_Enguarde_Swim6",
+          "GFX_Enguarde_Swim7",
+          "GFX_Enguarde_Swim8"
+        ],
+        "start": 325
+      },
+      "roll": {
+        "frames": 7,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Enguarde_Stab1",
+          "GFX_Enguarde_Stab2",
+          "GFX_Enguarde_Stab3",
+          "GFX_Enguarde_Stab4",
+          "GFX_Enguarde_Stab5",
+          "GFX_Enguarde_Stab6",
+          "GFX_Enguarde_Stab7"
+        ],
+        "start": 333
+      }
+    },
+    "squawks": {
+      "idle": {
+        "frames": 14,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Squawks_Fly1",
+          "GFX_Squawks_Fly2",
+          "GFX_Squawks_Fly3",
+          "GFX_Squawks_Fly4",
+          "GFX_Squawks_Fly5",
+          "GFX_Squawks_Fly6",
+          "GFX_Squawks_Fly7",
+          "GFX_Squawks_Fly8",
+          "GFX_Squawks_Fly9",
+          "GFX_Squawks_Fly10",
+          "GFX_Squawks_Fly11",
+          "GFX_Squawks_Fly12",
+          "GFX_Squawks_Fly13",
+          "GFX_Squawks_Fly14"
+        ],
+        "start": 340
+      },
+      "walk": {
+        "frames": 14,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Squawks_Fly1",
+          "GFX_Squawks_Fly2",
+          "GFX_Squawks_Fly3",
+          "GFX_Squawks_Fly4",
+          "GFX_Squawks_Fly5",
+          "GFX_Squawks_Fly6",
+          "GFX_Squawks_Fly7",
+          "GFX_Squawks_Fly8",
+          "GFX_Squawks_Fly9",
+          "GFX_Squawks_Fly10",
+          "GFX_Squawks_Fly11",
+          "GFX_Squawks_Fly12",
+          "GFX_Squawks_Fly13",
+          "GFX_Squawks_Fly14"
+        ],
+        "start": 354
+      },
+      "jump": {
+        "frames": 14,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_Squawks_Fly1",
+          "GFX_Squawks_Fly2",
+          "GFX_Squawks_Fly3",
+          "GFX_Squawks_Fly4",
+          "GFX_Squawks_Fly5",
+          "GFX_Squawks_Fly6",
+          "GFX_Squawks_Fly7",
+          "GFX_Squawks_Fly8",
+          "GFX_Squawks_Fly9",
+          "GFX_Squawks_Fly10",
+          "GFX_Squawks_Fly11",
+          "GFX_Squawks_Fly12",
+          "GFX_Squawks_Fly13",
+          "GFX_Squawks_Fly14"
+        ],
+        "start": 368
+      },
+      "roll": {
+        "frames": 14,
+        "fps": 18,
+        "sourceFrames": [
+          "GFX_Squawks_Fly1",
+          "GFX_Squawks_Fly2",
+          "GFX_Squawks_Fly3",
+          "GFX_Squawks_Fly4",
+          "GFX_Squawks_Fly5",
+          "GFX_Squawks_Fly6",
+          "GFX_Squawks_Fly7",
+          "GFX_Squawks_Fly8",
+          "GFX_Squawks_Fly9",
+          "GFX_Squawks_Fly10",
+          "GFX_Squawks_Fly11",
+          "GFX_Squawks_Fly12",
+          "GFX_Squawks_Fly13",
+          "GFX_Squawks_Fly14"
+        ],
+        "start": 382
+      }
+    },
+    "barrel": {
+      "idle": {
+        "frames": 6,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_DKBarrel_Barrel1",
+          "GFX_DKBarrel_Barrel2",
+          "GFX_DKBarrel_Barrel3",
+          "GFX_DKBarrel_Barrel4",
+          "GFX_DKBarrel_Barrel5",
+          "GFX_DKBarrel_Barrel6"
+        ],
+        "start": 396
+      }
+    },
+    "crate-rambi": {
+      "idle": {
+        "frames": 1,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_AnimalBuddyBox_Rambi"
+        ],
+        "start": 402
+      }
+    },
+    "crate-winky": {
+      "idle": {
+        "frames": 1,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_AnimalBuddyBox_Winky"
+        ],
+        "start": 403
+      }
+    },
+    "crate-expresso": {
+      "idle": {
+        "frames": 1,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_AnimalBuddyBox_Expresso"
+        ],
+        "start": 404
+      }
+    },
+    "crate-enguarde": {
+      "idle": {
+        "frames": 1,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_AnimalBuddyBox_Enguarde"
+        ],
+        "start": 405
+      }
+    },
+    "crate-squawks": {
+      "idle": {
+        "frames": 1,
+        "fps": 12,
+        "sourceFrames": [
+          "GFX_AnimalBuddyBox_Squawks"
+        ],
+        "start": 406
+      }
+    }
+  }
+}

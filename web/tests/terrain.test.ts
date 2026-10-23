@@ -1,0 +1,13 @@
+import {describe,it,expect} from 'vitest';
+import {breakTerrain,tileAddress,replaceTile} from '../src/terrain';
+import {word,writeWord} from '../src/profile';
+function fixture(){const w=new Uint8Array(0x20000),g=new Uint8Array(0x8000);w[0x118]=0x13;writeWord(w,0x9f1,0xffff);writeWord(g,0x8c,100);writeWord(g,0x90,100);writeWord(g,0xa4,0);writeWord(g,0xa6,0);return {w,g};}
+describe('attaques sans œufs sur les murs natifs',()=>{
+ it('perce une pierre et met à jour collision, cache et file VRAM sans consommer les œufs',()=>{const {w,g}=fixture();const a=tileAddress(g,128,112)!;writeWord(w,a,0x7b00);writeWord(g,0x1df6,0);const hits=breakTerrain(w,g,1,true);expect(hits).toHaveLength(1);expect(word(w,a)).toBe(0);expect(word(g,0x409e+0x1d0)).toBe(0);expect(word(w,0x9ef)).toBe(4);expect(word(w,0x9f3)).toBe(0x33f2);expect(word(w,0x9f5)).toBe(0xffff);expect(word(g,0x1df6)).toBe(0);});
+ it('protège le terrain ordinaire, les tuyaux et le sol sous les pieds',()=>{const {w,g}=fixture();for(const [x,y,t]of [[128,96,0x1000],[128,112,0x6000],[128,128,0x7b00]])writeWord(w,tileAddress(g,x,y)!,t);expect(breakTerrain(w,g,1,true)).toEqual([]);});
+ it('ne détruit rien au repos, en dialogue, en transformation ou avec contrôle désactivé',()=>{for(const reason of ['idle','dialogue','form','disabled']){const {w,g}=fixture();writeWord(w,tileAddress(g,128,112)!,0x7a00);if(reason==='dialogue')w[0xd11]=9;if(reason==='form')writeWord(g,0xae,2);if(reason==='disabled')writeWord(g,0x1ae,1);expect(breakTerrain(w,g,1,reason!=='idle')).toEqual([]);}});
+ it('respecte le côté de l’attaque et ne vide pas les murs derrière',()=>{const {w,g}=fixture();writeWord(w,tileAddress(g,80,112)!,0x7b00);expect(breakTerrain(w,g,1,true)).toEqual([]);expect(breakTerrain(w,g,-1,true)).toHaveLength(1);});
+ it('ne change pas les collisions si la file native est pleine ou invalide',()=>{const {w,g}=fixture();const a=tileAddress(g,128,112)!;writeWord(w,a,0x7b00);writeWord(w,0x9ef,0x100);expect(breakTerrain(w,g,1,true)).toEqual([]);expect(word(w,a)).toBe(0x7b00);});
+ it('adresse les bons écrans, y compris à une frontière 256px',()=>{const {g}=fixture();g[0xcaa]=3;g[0xcab]=7;expect(tileAddress(g,240,16)).toBe(0x18000+3*512+62);expect(tileAddress(g,256,16)).toBe(0x18000+7*512+32);expect(tileAddress(g,-1,0)).toBeUndefined();});
+ it('préserve les entrées déjà en file et refuse les blocs hors caméra',()=>{const {w,g}=fixture();expect(replaceTile(w,g,128,112,0x7b00,0xa022)).toBe(true);const first=w.slice(0x9f1,0x9f5);expect(replaceTile(w,g,144,112,0,0x33f2)).toBe(true);expect(w.slice(0x9f1,0x9f5)).toEqual(first);expect(replaceTile(w,g,400,112,0,0x33f2)).toBe(false);});
+});

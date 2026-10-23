@@ -1,0 +1,101 @@
+{
+  "source": "Original DKC USA Rev 2, decoded from local ROM OAM/VRAM/CGRAM",
+  "cell": 96,
+  "columns": 12,
+  "characters": {
+    "dk": {
+      "idle": {
+        "row": 0,
+        "frames": 12,
+        "fps": 12,
+        "anchor": [
+          48,
+          80
+        ]
+      },
+      "walk": {
+        "row": 1,
+        "frames": 12,
+        "fps": 18,
+        "anchor": [
+          48,
+          80
+        ]
+      },
+      "jump": {
+        "row": 2,
+        "frames": 12,
+        "fps": 12,
+        "anchor": [
+          48,
+          80
+        ]
+      },
+      "roll": {
+        "row": 3,
+        "frames": 12,
+        "fps": 18,
+        "anchor": [
+          48,
+          80
+        ]
+      },
+      "ride": {
+        "row": 4,
+        "frames": 12,
+        "fps": 12,
+        "anchor": [
+          48,
+          80
+        ]
+      }
+    },
+    "diddy": {
+      "idle": {
+        "row": 5,
+        "frames": 12,
+        "fps": 12,
+        "anchor": [
+          48,
+          80
+        ]
+      },
+      "walk": {
+        "row": 6,
+        "frames": 12,
+        "fps": 18,
+        "anchor": [
+          48,
+          80
+        ]
+      },
+      "jump": {
+        "row": 7,
+        "frames": 12,
+        "fps": 12,
+        "anchor": [
+          48,
+          80
+        ]
+      },
+      "roll": {
+        "row": 8,
+        "frames": 12,
+        "fps": 18,
+        "anchor": [
+          48,
+          80
+        ]
+      },
+      "ride": {
+        "row": 9,
+        "frames": 12,
+        "fps": 12,
+        "anchor": [
+          48,
+          80
+        ]
+      }
+    }
+  }
+}

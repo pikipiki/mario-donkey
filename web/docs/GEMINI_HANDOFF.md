@@ -1,3 +1,11 @@
+# Zoom au spam des boutons — correctif après86a9f79
+
+Retour réel utilisateur : zoom200% en appuyant rapidement, en portrait/paysage ; le CSS précédent ne suffisait pas. Nouveau src/touch.ts installé sur .shell : touchend capture et passive:false pour annuler le défaut natif sur [data-control]/#stick (les actions sont déjà exécutées par pointerdown). Ne synthétise pas de click ; conserve les clicks natifs des autres boutons/selects et le clavier. Bloque dblclick/gesturestart/gesturechange et touchmove multitouch ; ne bloque pas le scroll1doigt des options. touch-action:none aussi aux ancêtreshtml/body/#app et aux descendants des commandes. Viewport initial1/maximum1/user-scalable=no, choix explicite pour ce jeu où l’utilisateur veut bloquer le zoom ; Safari peut ignorer ce meta, d’où les gardes d’événements en plus.
+
+94tests et build valides, bundle index-D0x9lEKz.js, CSS index-CS1DDHCj.css. Recette dans onglet31/serveur5179, page responsive.html de test non publiée : portrait375x812 et paysage812x375,400touchend synthétiques par format,400défauts annulés,gesturestart annulé,viewport1,pas de débordement. Ce sont des événements synthétiques sur navigateurMac, PAS une preuve de vrais gestes iPhone. Capture outputs/verification-zoom-paysage.png. Ne pas prétendre avoir testé sur matérielmobile. Son et basculeYoshi du commit86a9f79 conservés.
+
+---
+
 # Audio iPhone de nouveau muet au lancement — correctif suivant
 
 Base25a31fe, comparaison674a168->25a31fe : aucun code audio n’avait changé, donc le lien causal avec le commit bébé n’est pas établi. Retour utilisateur : son absent dès lancement et bouton♪ inefficace.

@@ -35,3 +35,7 @@
 .plush-portrait{display:block;width:32px;height:28px;background-image:url('/art/plush.png');background-repeat:no-repeat;background-size:360px 320px}.plush-portrait.pink{background-position:-7px -3px}.plush-portrait.violet{background-position:-288px -128.5px}
 
 @media(min-width:1100px) and (min-height:650px){.party-row{flex-direction:column}.character-picker{flex:none;width:100%}.mount-picker{width:100%}.character{font-size:11px}.character img{width:28px;height:28px}}
+
+/* Stop smart zoom at the viewport/scrolling ancestors too, in either orientation. */
+html,body,#app{touch-action:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+[data-control],[data-control] *,#stick,#stick *{touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}

@@ -13,19 +13,24 @@ export interface Emulator { gameManager: GameManager; frontend?: {canvas: HTMLCa
 declare global { interface Window { EJS_emulator: Emulator; [key: `EJS_${string}`]: unknown } }
 export const INPUT={b:0,y:1,select:2,start:3,up:4,down:5,left:6,right:7,a:8} as const;
 export const iosDevice=()=>/iPad|iPhone|iPod|CriOS/.test(navigator.userAgent)||/iPad|iPhone|iPod/.test(navigator.platform)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-let sharedAudio:AudioContext|undefined;
-/** Create and resume audio inside the tap, then reuse that context. iOS drops audio created later. */
+const NativeAudio=window.AudioContext||(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
+let sharedAudio:AudioContext|undefined,audioShimmed=false;
+function shareAudioContext():void{
+ if(audioShimmed||!NativeAudio||!sharedAudio||(!iosDevice()&&navigator.maxTouchPoints<1))return;
+ audioShimmed=true;
+ const share=function SharedAudio(this:unknown){return sharedAudio;} as unknown as typeof AudioContext;
+ share.prototype=NativeAudio.prototype;
+ window.AudioContext=share;(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext=share;
+}
+/** Create and resume audio inside a completed tap. Mobile blocks this on pointerdown. */
 export function primeAudio():void{
- const Native=window.AudioContext||(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
- if(!Native)return;
- if(!sharedAudio||sharedAudio.state==='closed')sharedAudio=new Native();
+ if(!NativeAudio)return;
+ if(!sharedAudio||sharedAudio.state==='closed')sharedAudio=new NativeAudio();
  const ctx=sharedAudio;
+ if(ctx.state==='running'){shareAudioContext();return;}
  try{const buffer=ctx.createBuffer(1,1,22050),src=ctx.createBufferSource();src.buffer=buffer;src.connect(ctx.destination);src.start();}catch{}
  void ctx.resume().catch(()=>{});
- if(!iosDevice()&&navigator.maxTouchPoints<1)return;
- const share=function SharedAudio(this:unknown){return sharedAudio;} as unknown as typeof AudioContext;
- share.prototype=Native.prototype;
- window.AudioContext=share;(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext=share;
+ shareAudioContext();
 }
 
 export function findUnique(bytes: Uint8Array, signature: Uint8Array): number {

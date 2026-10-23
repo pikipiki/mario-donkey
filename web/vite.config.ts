@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 export default defineConfig({
+  base: process.env.VITE_BASE_PATH || '/',
   plugins: [{ name: 'local-rom-dev-only', configureServer(server) {
     server.middlewares.use('/__local-rom', async (_req, res) => {
       try {

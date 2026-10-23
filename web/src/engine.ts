@@ -45,14 +45,14 @@ export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): P
   Object.assign(window,{
    EJS_player:'#emulator',EJS_core:'snes9x',EJS_gameName:'Kong Island',
    EJS_gameUrl:new Blob([rom.slice().buffer],{type:'application/octet-stream'}),
-   EJS_pathtodata:'/emulator/',EJS_startOnLoaded:true,EJS_volume:0.65,
+   EJS_pathtodata:`${import.meta.env.BASE_URL}emulator/`,EJS_startOnLoaded:true,EJS_volume:0.65,
    EJS_language:'fr-FR',EJS_disableAutoLang:true,EJS_threads:false,EJS_noAutoFocus:true,
    EJS_disableLocalStorage:true,EJS_controlScheme:'none',EJS_virtualGamepad:false,
    EJS_defaultOptions:{'vsync':'enabled','fps':'disabled'},
    EJS_Buttons:{playPause:false,restart:false,mute:false,settings:false,fullscreen:false,saveState:false,loadState:false,screenRecord:false,gamepad:false,cheat:false,volume:false,saveSavFiles:false,loadSavFiles:false,quickSave:false,quickLoad:false,screenshot:false,cacheManager:false},
    EJS_onGameStart:()=>{clearTimeout(timeout);resolve(window.EJS_emulator);},
   });
-  const script=document.createElement('script');script.src='/emulator/loader.js';
+  const script=document.createElement('script');script.src=`${import.meta.env.BASE_URL}emulator/loader.js`;
   script.onerror=()=>{clearTimeout(timeout);reject(new Error('Impossible de charger le moteur local.'));};document.body.append(script);
  });
 }

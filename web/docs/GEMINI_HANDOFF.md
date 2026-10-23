@@ -13,11 +13,11 @@ Sur iPhone et Android : écran noir après Play, seule indication « Fast Forwar
 - Le premier boot mobile tourne désormais à vitesse normale, sans accélération ×6 ; iPhone, Android et iPad en mode bureau détectés. L’accélération desktop reste disponible.
 - Impulsions Start/B synchronisées sur les frames natives (3 frames maintenues, plus de 20 entre appuis), plutôt que 85 ms arbitraires.
 - Chargement visible pendant le démarrage, progression en secondes ; timeout explicite si les frames cessent d’avancer pendant 12 s, délai total mobile 90 s.
-- `AudioContext.resume()` ne peut plus bloquer le lancement indéfiniment (500 ms maximum). Chargement des sauvegardes plafonné à 2 s, écriture de l’état initial à 1,5 s.
+- `AudioContext.resume()` ne peut plus bloquer le lancement indéfiniment (500 ms maximum). Chargement des sauvegardes plafonné à 4 s sans autoriser l’écrasement d’une sauvegarde lente, écriture de l’état initial à 1,5 s.
 - Import de `engine.ts` compatible Node pour les tests mémoire (plus de lecture de window non protégée au chargement du module).
 - Les contrôles anglais, joystick, correction audio au relâchement du doigt, fuite originale de Mario, œufs et murs des commits récents sont conservés.
 
-**Validation : 60 tests passent, build TypeScript/Vite réussi.** Premier démarrage neuf avec branche mobile forcée testé dans un onglet Mac séparé : niveau 1-1 atteint, pas de Fast Forward. Ce n’est pas un test sur iPhone/Android physique. Ne pas prétendre que le problème matériel est confirmé résolu sans retour utilisateur.
+**Validation : 61 tests passent, build TypeScript/Vite réussi.** Premier démarrage neuf avec branche mobile forcée testé dans un onglet Mac séparé : niveau 1-1 atteint, pas de Fast Forward. Ce n’est pas un test sur iPhone/Android physique. Ne pas prétendre que le problème matériel est confirmé résolu sans retour utilisateur.
 
 ## Fichiers concernés
 
@@ -27,7 +27,7 @@ Sur iPhone et Android : écran noir après Play, seule indication « Fast Forwar
 
 ## Suite à faire après publication
 
-1. Vérifier que Netlify publie le nouveau commit puis que le HTML public référence `index-DK6zxXmc.js`.
+1. Vérifier que Netlify publie le nouveau commit puis que le HTML public référence `index-BED4v4xo.js`.
 2. Demander un essai réel iPhone ET Android avec rechargement de la page. Observer progression, entrée en 1-1, son après tap, reprise après arrière-plan, sauvegarde/reprise, portrait/paysage.
 3. Si écran noir persiste : lire le message de progression ou erreur, modèle/version OS. Inspecter le navigateur distant pour distinguer compteur natif bloqué et rendu WebGL noir. Ne pas continuer à deviner seulement l’audio.
 4. Si le compteur s’arrête : étudier main loop / visibilité / audio du bundle exact. Si le compteur avance sans image : inspecter canvas / WebGL. Si le niveau apparaît mais le mod échoue : sondes WRAM/GSU et restauration des états.

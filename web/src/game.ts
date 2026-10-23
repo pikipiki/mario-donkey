@@ -1,4 +1,4 @@
-import { bounded, mobileDevice } from './startup';
+import { bounded, mobileDevice, readBeforeDeadline } from './startup';
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
 import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing } from './engine';
@@ -41,12 +41,12 @@ export class LiveGame {
   m.toggleMainLoop(0);
   try{this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000);this.gsuBase=await resolveMemory(m,0x7007e0,0x7e0,0x8000);this.drawSite=await resolveDrawing(m);}finally{m.toggleMainLoop(1);}
   const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
-  const campaign=fresh?undefined:await bounded(readCampaign().catch(()=>undefined),2000,undefined);
+  const campaign=fresh?undefined:await readBeforeDeadline(readCampaign().catch(()=>undefined),4000);
   if(campaign){
    m.loadState(campaign.state);await sleep(100);
    if(this.wram[P.mode]<=0x50){this.adventure=new Adventure(campaign.adventure);this.finishBoot();return;}
   }
-  const initial=fresh?undefined:await bounded(loadFile(INITIAL).catch(()=>undefined),2000,undefined);
+  const initial=fresh?undefined:await readBeforeDeadline(loadFile(INITIAL).catch(()=>undefined),4000);
   if(initial){m.loadState(initial);await sleep(100);if(this.wram[P.mode]===P.gameplay){this.finishBoot();return;}}
   const mobile=mobileDevice(navigator)||(import.meta.env.DEV&&new URLSearchParams(location.search).has('mobile'));
   this.onStatus('Getting your first adventure ready…');

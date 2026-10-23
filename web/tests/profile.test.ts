@@ -21,5 +21,6 @@ describe('roulade offensive',()=>{
  it('ne tue pas un ennemi sur une autre plateforme',()=>{expect(applyRoll(fixture(0x1e,116,1800),1)).toEqual([]);});
  it('ne touche pas un ennemi hors de portée ou derrière',()=>{expect(applyRoll(fixture(0x1e,200),1)).toEqual([]);expect(applyRoll(fixture(0x1e,70),1)).toEqual([]);});
  it('fonctionne en roulant à gauche',()=>{expect(applyRoll(fixture(0x1e,75),-1)).toHaveLength(1);});
- it('tue une plante carnivore à portée de roulade',()=>{const ram=fixture(0x66,110,1910);expect(applyRoll(ram,1)).toHaveLength(1);expect(word(ram,P.spriteState+4)).toBe(0x0c);});
+ it('retire un pot de fleur sans lancer son script',()=>{const ram=fixture(0x66,110,1910);expect(applyRoll(ram,1)).toHaveLength(1);expect(word(ram,P.spriteState+4)).toBe(0);expect(word(ram,P.spriteId+4)).toBe(0);});
+ it('ne déverrouille pas un objet pendant la courte invincibilité de la roulade',()=>{const ram=new Uint8Array(0x8000);writeWord(ram,P.baby,0x8000);writeWord(ram,0x1ae,1);writeWord(ram,P.invincible,4);expect(absorbHit(ram)).toBe(false);expect(word(ram,0x1ae)).toBe(1);writeWord(ram,P.invincible,0xa0);expect(absorbHit(ram)).toBe(true);expect(word(ram,0x1ae)).toBe(0);});
 });

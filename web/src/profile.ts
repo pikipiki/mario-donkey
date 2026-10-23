@@ -41,9 +41,9 @@ export function absorbHit(gsu:Uint8Array):boolean{
  const locked=word(gsu,0x1ae)!==0||word(gsu,0x1b0)!==0;
  const crying=baby===0,riding=(baby&0x8000)!==0;
  if(crying){if(!locked&&inv===0)return false;}
- else if(!(riding&&locked&&inv>0))return false;
+ else if(!(riding&&locked&&inv>=0x40))return false;
  writeWord(gsu,0x1ae,0);writeWord(gsu,0x1b0,0);
- if(inv<24)writeWord(gsu,PROFILE.invincible,24);
+ if(baby===0&&inv<24)writeWord(gsu,PROFILE.invincible,24);
  return true;
 }
 /** Approach a target run speed. Reversing takes a longer skid than releasing the stick. */
@@ -63,6 +63,7 @@ export const ROLL_TARGETS = new Set([
  0x13f,0x140,0x141,0x142,0x143,0x164,0x165,
  0x169,0x16a,0x16b,0x16c,0x16d,0x16e,0x16f,0x181,0x184,0x192,0x199,0x19b,0x19c,
 ]); // $1f is a rotating door; $21 is a bucket. Flowers: piranhas, nippers, petal and fake flowers.
+const PLANT_POTS=new Set([0x54,0x66,0x6d,0x6e,0x9f,0xee,0xf0,0xf1,0xf4,0x110,0x181,0x192,0x199]);
 export interface RollHit { slot: number; x: number; y: number }
 export function applyRoll(gsu: Uint8Array, direction: number): RollHit[] {
   const x=word(gsu,PROFILE.x), y=word(gsu,PROFILE.y); const hits: RollHit[]=[];
@@ -72,7 +73,8 @@ export function applyRoll(gsu: Uint8Array, direction: number): RollHit[] {
     const ex=word(gsu,PROFILE.spriteX+offset), ey=word(gsu,PROFILE.spriteY+offset);
     const dx=signed16(ex-x), dy=signed16(ey-y);
     if (Math.abs(dx)<=36 && Math.abs(dy)<=40 && dx*direction>=-16) {
-      writeWord(gsu,PROFILE.spriteState+offset,0x0c); // Native collision death, not an erased object.
+      if(PLANT_POTS.has(id)){writeWord(gsu,PROFILE.spriteState+offset,0);writeWord(gsu,PROFILE.spriteId+offset,0);}
+      else writeWord(gsu,PROFILE.spriteState+offset,0x0c);
       hits.push({slot,x:ex,y:ey});
     }
   }

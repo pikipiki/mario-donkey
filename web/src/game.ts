@@ -144,8 +144,7 @@ export class LiveGame {
    const state=rolling?'roll':jumping?'jump':moving?'walk':'idle',mount=this.adventure.mount;
    const key=`${this.character}:${mount}:${state}`;if(key!==this.animationKey){this.animationKey=key;this.animationStart=now;}const animationTime=now-this.animationStart;
    if(mount!=='foot'&&mount!=='yoshi')this.atlas.draw(c,mount,state,sx,sy,animationTime,this.controls.facing);
-   const yoshiRoll=mount==='yoshi'&&rolling;
-   this.atlas.draw(c,this.character,mount==='foot'||yoshiRoll?state:'ride',sx+(yoshiRoll?this.controls.facing*18:0),sy,animationTime,this.controls.facing);
+   if(!(mount==='yoshi'&&rolling))this.atlas.draw(c,this.character,mount==='foot'?state:'ride',sx,sy,animationTime,this.controls.facing);
    // Keep the native tongue's reach visible when Yoshi's body is hidden.
    if(mount!=='yoshi'&&(Math.abs(signed16(word(g,0x152)))+Math.abs(signed16(word(g,0x154)))>12)){const tx=signed16(word(g,0x15a)-cx),ty=signed16(word(g,0x15c)-cy)+this.topPadding;c.strokeStyle='#e8788e';c.lineWidth=3;c.lineCap='round';c.beginPath();c.moveTo(sx+this.controls.facing*12,sy-23);c.lineTo(tx,ty);c.stroke();}
   }

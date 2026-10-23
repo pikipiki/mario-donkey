@@ -59,7 +59,7 @@ void loadBundledRom().catch(e=>setStatus((e as Error).message));
 $('play').addEventListener('click',async()=>{
  if(starting)return;if(game&&!game.ready){location.reload();return;}if(!rom){setStatus('The game is still loading…');return;}
  primeAudio();
- starting=true;$('welcome').hidden=true;$('loading').hidden=true;
+ starting=true;$('welcome').hidden=true;$('loading').hidden=true;setStatus('Loading the SNES core…');
  try{const atlas=await SpriteAtlas.load();const emulator=await launch(rom,setStatus);game=new LiveGame(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty);game.autoSkip=$<HTMLInputElement>('auto-skip').checked;await game.prepare();$('loading').hidden=true;
   for(const id of ['pause','skip','save'])$<HTMLButtonElement>(id).disabled=false;
   await game.unlockAudio().catch(()=>{});if(game.audio?.state!=='running')setStatus('Tap ♪ Sound in the options to enable audio.');syncParty();

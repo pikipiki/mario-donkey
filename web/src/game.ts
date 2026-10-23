@@ -27,7 +27,9 @@ export class LiveGame {
  async unlockAudio():Promise<void>{await this.audio?.resume();this.emulator.setVolume(.65);}
  async prepare():Promise<void>{
   const m=this.emulator.gameManager,start=performance.now();
-  while(m.functions.getFrameNum()<5&&performance.now()-start<3000)await sleep(30);
+  await this.unlockAudio().catch(()=>{});
+  while(m.functions.getFrameNum()<5&&performance.now()-start<15000){if(m.functions.getFrameNum()<1)await this.unlockAudio().catch(()=>{});await sleep(30);}
+  if(m.functions.getFrameNum()<1)throw new Error('Le moteur SNES ne produit pas d’image. Réessaie.');
   m.toggleMainLoop(0);
   try{this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000);this.gsuBase=await resolveMemory(m,0x7007e0,0x7e0,0x8000);this.drawSite=await resolveDrawing(m);}finally{m.toggleMainLoop(1);}
   const campaign=await readCampaign().catch(()=>undefined);

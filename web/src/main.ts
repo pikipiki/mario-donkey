@@ -1,6 +1,6 @@
 import './style.css';
 import { Controls,type Button } from './controls';
-import { launch } from './engine';
+import { launch,primeAudio } from './engine';
 import { LiveGame } from './game';
 import { SpriteAtlas } from './atlas';
 import { ANIMALS,type Character,type Mount } from './adventure';
@@ -57,7 +57,8 @@ async function loadBundledRom():Promise<void>{
 void loadBundledRom().catch(e=>setStatus((e as Error).message));
 $('play').addEventListener('click',async()=>{
  if(starting)return;if(game&&!game.ready){location.reload();return;}if(!rom){setStatus('Le jeu est encore en chargement…');return;}
- starting=true;$('welcome').hidden=true;$('loading').hidden=false;
+ primeAudio();
+ starting=true;$('welcome').hidden=true;$('loading').hidden=true;
  try{const atlas=await SpriteAtlas.load();const emulator=await launch(rom,setStatus);game=new LiveGame(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty);game.autoSkip=$<HTMLInputElement>('auto-skip').checked;await game.prepare();$('loading').hidden=true;
   for(const id of ['pause','skip','save'])$<HTMLButtonElement>(id).disabled=false;
   await game.unlockAudio().catch(()=>{});if(game.audio?.state!=='running')setStatus('Appuie sur ♪ Son dans les options pour activer l’audio.');syncParty();

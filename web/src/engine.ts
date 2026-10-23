@@ -12,6 +12,19 @@ export interface GameManager {
 export interface Emulator { gameManager: GameManager; frontend?: {canvas: HTMLCanvasElement}; paused: boolean; togglePlaying(): void; setVolume(value: number): void; Module: CoreModule }
 declare global { interface Window { EJS_emulator: Emulator; [key: `EJS_${string}`]: unknown } }
 export const INPUT={b:0,y:1,select:2,start:3,up:4,down:5,left:6,right:7,a:8} as const;
+export const iosDevice=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let sharedAudio:AudioContext|undefined;
+/** Create and resume audio inside the tap, then reuse that context. iOS drops audio created later. */
+export function primeAudio():void{
+ const Native=window.AudioContext||(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
+ if(!Native)return;
+ if(!sharedAudio||sharedAudio.state==='closed')sharedAudio=new Native();
+ void sharedAudio.resume().catch(()=>{});
+ if(!iosDevice())return;
+ const share=function SharedAudio(this:unknown){return sharedAudio;} as unknown as typeof AudioContext;
+ share.prototype=Native.prototype;
+ window.AudioContext=share;(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext=share;
+}
 
 export function findUnique(bytes: Uint8Array, signature: Uint8Array): number {
  const found: number[]=[];let from=0;
@@ -50,21 +63,30 @@ export async function resolveMemory(manager:GameManager,address:number,offset:nu
 
 export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): Promise<Emulator> {
  onStatus('Chargement du moteur SNES…');
+ const ios=iosDevice();
  return await new Promise((resolve,reject)=>{
-  const timeout=window.setTimeout(()=>reject(new Error('Le moteur SNES met trop de temps à charger. Réessaie.')),90000);
+  let settled=false;
+  const finish=(ok:boolean,value?:Emulator|Error)=>{if(settled)return;settled=true;window.clearTimeout(timeout);window.clearInterval(watch);ok?resolve(value as Emulator):reject(value);};
+  const timeout=window.setTimeout(()=>finish(false,new Error('Le moteur SNES met trop de temps à charger. Réessaie.')),45000);
+  const watch=window.setInterval(()=>{
+   const error=document.querySelector('#emulator .ejs_error_text')?.textContent?.trim();
+   if(error){finish(false,new Error(error));return;}
+   const progress=document.querySelector('#emulator .ejs_loading_text')?.textContent?.trim();
+   if(progress)onStatus(progress);
+  },400);
   Object.assign(window,{
    EJS_player:'#emulator',EJS_core:'snes9x',EJS_gameName:'Kong Island',
    EJS_gameUrl:new Blob([rom.slice().buffer],{type:'application/octet-stream'}),
    EJS_pathtodata:`${import.meta.env.BASE_URL}emulator/`,EJS_startOnLoaded:true,EJS_volume:0.65,
    EJS_language:'fr-FR',EJS_disableAutoLang:true,EJS_threads:false,EJS_noAutoFocus:true,
-   EJS_forceLegacyCores:/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),
+   EJS_forceLegacyCores:ios,EJS_disableDatabases:ios,
    EJS_disableLocalStorage:true,EJS_controlScheme:'none',EJS_virtualGamepad:false,
-   EJS_defaultOptions:{'vsync':'enabled','fps':'disabled'},
+   EJS_defaultOptions:{'vsync':ios?'disabled':'enabled','fps':'disabled'},
    EJS_Buttons:{playPause:false,restart:false,mute:false,settings:false,fullscreen:false,saveState:false,loadState:false,screenRecord:false,gamepad:false,cheat:false,volume:false,saveSavFiles:false,loadSavFiles:false,quickSave:false,quickLoad:false,screenshot:false,cacheManager:false},
-   EJS_onGameStart:()=>{clearTimeout(timeout);resolve(window.EJS_emulator);},
+   EJS_onGameStart:()=>{void sharedAudio?.resume().catch(()=>{});finish(true,window.EJS_emulator);},
   });
   const script=document.createElement('script');script.src=`${import.meta.env.BASE_URL}emulator/loader.js`;
-  script.onerror=()=>{clearTimeout(timeout);reject(new Error('Impossible de charger le moteur local.'));};document.body.append(script);
+  script.onerror=()=>finish(false,new Error('Impossible de charger le moteur local.'));document.body.append(script);
  });
 }
 

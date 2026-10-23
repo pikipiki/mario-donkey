@@ -3,7 +3,7 @@ import {bounded} from './startup';
 /** WebKit otherwise treats Web Audio as ambient and can mute a running context
  * with the iPhone silent switch. Configure this before creating/resuming it. */
 export function requestPlaybackAudio(host: {audioSession?:{type:string}}):boolean{
- try{if(!host.audioSession)return false;host.audioSession.type='playback';return host.audioSession.type==='playback';}catch{return false;}
+ try{if(!host.audioSession)return false;if(host.audioSession.type!=='playback')host.audioSession.type='playback';return host.audioSession.type==='playback';}catch{return false;}
 }
 /** Emscripten OpenAL uses numeric object keys, not an Array. */
 export function nativeAudioContexts(module:Pick<CoreModule,'AL'>):AudioContext[]{
@@ -14,7 +14,13 @@ export function nativeAudioContexts(module:Pick<CoreModule,'AL'>):AudioContext[]
 /** Invoke resume synchronously in the tap handler, before waiting on any promise. */
 export async function resumeNativeAudio(module:Pick<CoreModule,'AL'>,volume:()=>void):Promise<void>{
  const pending=nativeAudioContexts(module).map(ctx=>{
-  try{return ctx.state==='running'?Promise.resolve():ctx.resume().catch(()=>{});}catch{return Promise.resolve();}
+  try{return ctx.resume().catch(()=>{});}catch{return Promise.resolve();}
  });
  volume();await bounded(Promise.all(pending),500,[]);
+}
+
+/** An unmuted silent media element activates iOS media playback independently of
+ * Web Audio's ambient route (WebKit bug 237322). Call inside the original gesture. */
+export function unlockMediaPlayback(media:Pick<HTMLMediaElement,'play'>):void{
+ try{void media.play().catch(()=>{});}catch{}
 }

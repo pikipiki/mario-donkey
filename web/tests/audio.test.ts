@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import {nativeAudioContexts,resumeNativeAudio,requestPlaybackAudio} from '../src/audio';
+import {nativeAudioContexts,resumeNativeAudio,requestPlaybackAudio,unlockMediaPlayback} from '../src/audio';
 import type {CoreModule} from '../src/engine';
 const context=(state='suspended',resume=vi.fn().mockResolvedValue(undefined))=>({state,resume}) as unknown as AudioContext;
 describe('native OpenAL audio',()=>{
@@ -34,5 +34,21 @@ describe('iPhone playback session',()=>{
  it('supports browsers without the API and denied session changes',()=>{
   expect(requestPlaybackAudio({})).toBe(false);
   expect(requestPlaybackAudio({get audioSession():{type:string}{throw new Error('unsupported');}})).toBe(false);
+ });
+});
+
+describe('iPhone media playback recovery',()=>{
+ it('starts media synchronously in the gesture even when a running context was silent',()=>{
+ const media={play:vi.fn().mockResolvedValue(undefined)};unlockMediaPlayback(media);expect(media.play).toHaveBeenCalledOnce();
+ });
+ it('does not crash startup when media playback is refused',async()=>{
+ expect(()=>unlockMediaPlayback({play:()=>{throw new Error('blocked');}})).not.toThrow();
+ unlockMediaPlayback({play:()=>Promise.reject(new Error('gesture required'))});await Promise.resolve();
+ });
+ it('requests resume even if state still says running during an interruption',async()=>{
+ const audioCtx=context('running');await resumeNativeAudio({AL:{currentCtx:{audioCtx}}} as Pick<CoreModule,'AL'>,vi.fn());expect(audioCtx.resume).toHaveBeenCalledOnce();
+ });
+ it('leaves an active playback session untouched instead of reconfiguring it on each tap',()=>{
+ const setter=vi.fn();const session={get type(){return 'playback';},set type(value:string){setter(value);}};expect(requestPlaybackAudio({audioSession:session})).toBe(true);expect(setter).not.toHaveBeenCalled();
  });
 });

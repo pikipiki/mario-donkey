@@ -7,7 +7,7 @@ import type {SpriteAtlas} from '../src/atlas';
 vi.mock('../src/engine',async importOriginal=>({...await importOriginal<typeof import('../src/engine')>(),setNativeDrawing:vi.fn()}));
 function fixture(){
  const heap=new Uint8Array(0x28000),controls=new Controls();
- const simulateInput=vi.fn();const emulator={Module:{HEAPU8:heap},gameManager:{simulateInput}} as unknown as Emulator;
+ const simulateInput=vi.fn();const emulator={Module:{HEAPU8:heap},setVolume:vi.fn(),gameManager:{simulateInput,toggleMainLoop:vi.fn()}} as unknown as Emulator;
  const ctx={clearRect:vi.fn()} as unknown as CanvasRenderingContext2D;
  const overlay={height:224,getContext:()=>ctx} as unknown as HTMLCanvasElement;
  const game=new LiveGame(emulator,controls,overlay,{draw:vi.fn()} as unknown as SpriteAtlas,vi.fn());game.gsuBase=0x20000;game.ready=true;game.wram[P.mode]=P.gameplay;
@@ -26,5 +26,12 @@ describe('native Baby Mario rescue bridge',()=>{
  });
  it('does not reset the chosen character when Mario is recovered',()=>{
  const {game}=fixture();game.adventure.select('pink');writeWord(game.gsu,P.baby,0);game.tick(1000);writeWord(game.gsu,P.baby,0x8000);game.tick(1100);expect(game.character).toBe('pink');expect(game.adventure.mount).toBe('yoshi');
+ });
+});
+
+describe('pause audio routing',()=>{
+ it('mutes without suspending the context, avoiding an async suspend/resume race',()=>{
+ const {game}=fixture();game.ready=false;const audioCtx={state:'running',resume:vi.fn().mockResolvedValue(undefined),suspend:vi.fn()} as unknown as AudioContext;
+ game.emulator.Module.AL={currentCtx:{audioCtx}};game.setPaused(true);expect(game.emulator.setVolume).toHaveBeenCalledWith(0);expect(audioCtx.suspend).not.toHaveBeenCalled();
  });
 });

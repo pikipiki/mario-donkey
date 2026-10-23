@@ -1,3 +1,15 @@
+# Audio iPhone de nouveau muet au lancement — correctif suivant
+
+Base25a31fe, comparaison674a168->25a31fe : aucun code audio n’avait changé, donc le lien causal avec le commit bébé n’est pas établi. Retour utilisateur : son absent dès lancement et bouton♪ inefficace.
+
+Correctif : avant création du contexte, primeAudio lance un élément HTMLAudioElement non muté en boucle, source locale audio/ios-unlock.wav (PCM mono11025Hz,1s de silence,22094octets). Il conserve la route média durant le chargement asynchrone du cœur et est relancé synchroniquement aux gestes. Contournement documenté WebKit237322 : https://bugs.webkit.org/show_bug.cgi?id=237322 . Ce fichier ne remplace jamais la musiqueSNES : il est silencieux. Session playback conservée mais ne réécrit plus le type à chaque appel si déjà playback. resumeNativeAudio appelle resume même si l’état indique encore running. Pause : volume0 avec cœur arrêté, sans suspend manuel ; évite qu’un suspend asynchrone tardif annule le resume d’un geste. unlockAudio respecte le volume0 tant que game.paused. Le bouton♪ ferme les options puis reprend.
+
+86tests et build valides (index-acxR9WhV.js). Tests du lancement média synchronique/refusé, reprise contexte running, setter session idempotent, absence suspend lors pause. Aucun accès au téléphone physique : ne pas annoncer une preuve de son audible. En cas d’échec persistant relever iOS/modèle et éventuels écouteurs/Bluetooth ; WebKit peut avoir une sortie muette malgré API running, non détectable par simple état JS. Le dernier comportement bébé/Yoshi est conservé.
+
+Suite : confirmer HTML Netlify sur nouveau bundle et présence WAV200 ; test iPhone neuf puis même onglet après pause/retour arrière-plan. L’élément média silencieux peut faire apparaître les contrôles de lecture système iOS. Pas de dépendance supplémentaire, pas de microphone.
+
+---
+
 # Récupération bébé Mario — bascule Yoshi automatique
 
 Base 674a168. À la transition bébé monté -> bébé perdu, Adventure.hit sélectionne Yoshi, conserve le personnage et les animaux débloqués. La détection intervient avant calcul des inputs et physique dans LiveGame.tick, annule la roulade en cours et restaure immédiatement le dessin natif de Yoshi. Les caisses animales ne peuvent pas remplacer Yoshi durant la poursuite. Le drapeau bébé et le compteur natifs ne sont pas forcés : il faut toujours toucher la bulle pour récupérer Mario. Après récupération, le personnage reste monté sur Yoshi ; on peut ensuite changer de monture manuellement.

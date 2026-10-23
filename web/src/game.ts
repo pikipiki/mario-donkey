@@ -30,7 +30,7 @@ export class LiveGame {
  get room():string{return `${this.wram[0x218]}:${this.wram[P.stage]}:${word(this.wram,0x32).toString(16)}:${this.wram[0x34]}`;}
  async unlockAudio():Promise<void>{
   primeAudio();
-  await resumeNativeAudio(this.emulator.Module,()=>this.emulator.setVolume(1));
+  await resumeNativeAudio(this.emulator.Module,()=>this.emulator.setVolume(this.paused?0:1));
  }
  async prepare():Promise<void>{
   const m=this.emulator.gameManager,start=performance.now();
@@ -75,7 +75,7 @@ export class LiveGame {
  }
  mount(mount:Mount):void{if(this.adventure.ride(mount)){this.updateVisibility();this.changed();}}
  stop():void{this.controls.stop();this.setInputs(new Set());}
- setPaused(value:boolean):void{this.stop();this.paused=value;this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){void this.audio?.suspend();void this.save();}else void this.unlockAudio();}
+ setPaused(value:boolean):void{this.stop();this.paused=value;this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
  /** Native fade-out and overworld initialization; keeps completed-level progress. */
  goToMap():void{
   this.stop();this.wram[P.mode]=0x23;writeWord(this.wram,0x200,0x010f);

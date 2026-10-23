@@ -19,8 +19,10 @@ export function primeAudio():void{
  const Native=window.AudioContext||(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
  if(!Native)return;
  if(!sharedAudio||sharedAudio.state==='closed')sharedAudio=new Native();
- void sharedAudio.resume().catch(()=>{});
- if(!iosDevice())return;
+ const ctx=sharedAudio;
+ try{const buffer=ctx.createBuffer(1,1,22050),src=ctx.createBufferSource();src.buffer=buffer;src.connect(ctx.destination);src.start();}catch{}
+ void ctx.resume().catch(()=>{});
+ if(!iosDevice()&&navigator.maxTouchPoints<1)return;
  const share=function SharedAudio(this:unknown){return sharedAudio;} as unknown as typeof AudioContext;
  share.prototype=Native.prototype;
  window.AudioContext=share;(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext=share;
@@ -31,7 +33,7 @@ export function findUnique(bytes: Uint8Array, signature: Uint8Array): number {
  while(from<bytes.length){const index=bytes.indexOf(signature[0],from);if(index<0)break;
   if(signature.every((b,j)=>bytes[index+j]===b))found.push(index);from=index+1;
  }
- if(found.length!==1)throw new Error(`Accès mémoire refusé : ${found.length} signatures trouvées.`);
+ if(found.length!==1)throw new Error(`Memory access denied: ${found.length} signatures found.`);
  return found[0];
 }
 
@@ -40,7 +42,7 @@ async function waitForNativeFrames(manager:GameManager):Promise<void>{
  if(!manager.functions?.getFrameNum){await new Promise<void>(r=>setTimeout(r,300));return;}
  const first=manager.functions.getFrameNum(),began=Date.now();
  while(manager.functions.getFrameNum()<first+2){
-  if(Date.now()-began>10000)throw new Error('Le moteur SNES ne produit pas d’image. Recharge le jeu.');
+  if(Date.now()-began>10000)throw new Error('The SNES core is not drawing. Reload the game.');
   await new Promise<void>(r=>setTimeout(r,16));
  }
 }
@@ -56,18 +58,18 @@ export async function resolveMemory(manager:GameManager,address:number,offset:nu
   await waitForNativeFrames(manager);
   manager.toggleMainLoop(0);
   const pointer=findUnique(manager.Module.HEAPU8,marker),base=pointer-offset;
-  if(base<0||base+length>manager.Module.HEAPU8.length)throw new Error('Région mémoire hors limites.');
+  if(base<0||base+length>manager.Module.HEAPU8.length)throw new Error('Memory region is out of range.');
   return base;
  }finally{manager.toggleMainLoop(0);manager.resetCheat();manager.loadState(state);}
 }
 
 export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): Promise<Emulator> {
- onStatus('Chargement du moteur SNES…');
+ onStatus('Loading the SNES core…');
  const ios=iosDevice();
  return await new Promise((resolve,reject)=>{
   let settled=false;
   const finish=(ok:boolean,value?:Emulator|Error)=>{if(settled)return;settled=true;window.clearTimeout(timeout);window.clearInterval(watch);ok?resolve(value as Emulator):reject(value);};
-  const timeout=window.setTimeout(()=>finish(false,new Error('Le moteur SNES met trop de temps à charger. Réessaie.')),45000);
+  const timeout=window.setTimeout(()=>finish(false,new Error('The SNES core is taking too long to load. Try again.')),45000);
   const watch=window.setInterval(()=>{
    const error=document.querySelector('#emulator .ejs_error_text')?.textContent?.trim();
    if(error){finish(false,new Error(error));return;}
@@ -77,8 +79,8 @@ export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): P
   Object.assign(window,{
    EJS_player:'#emulator',EJS_core:'snes9x',EJS_gameName:'Kong Island',
    EJS_gameUrl:new Blob([rom.slice().buffer],{type:'application/octet-stream'}),
-   EJS_pathtodata:`${import.meta.env.BASE_URL}emulator/`,EJS_startOnLoaded:true,EJS_volume:0.65,
-   EJS_language:'fr-FR',EJS_disableAutoLang:true,EJS_threads:false,EJS_noAutoFocus:true,
+   EJS_pathtodata:`${import.meta.env.BASE_URL}emulator/`,EJS_startOnLoaded:true,EJS_volume:1,
+   EJS_language:'en-US',EJS_disableAutoLang:true,EJS_threads:false,EJS_noAutoFocus:true,
    EJS_forceLegacyCores:ios,EJS_disableDatabases:ios,
    EJS_disableLocalStorage:true,EJS_controlScheme:'none',EJS_virtualGamepad:false,
    EJS_defaultOptions:{'vsync':ios?'disabled':'enabled','fps':'disabled'},
@@ -86,7 +88,7 @@ export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): P
    EJS_onGameStart:()=>{void sharedAudio?.resume().catch(()=>{});finish(true,window.EJS_emulator);},
   });
   const script=document.createElement('script');script.src=`${import.meta.env.BASE_URL}emulator/loader.js`;
-  script.onerror=()=>finish(false,new Error('Impossible de charger le moteur local.'));document.body.append(script);
+  script.onerror=()=>finish(false,new Error('Couldn’t load the local core.'));document.body.append(script);
  });
 }
 
@@ -98,13 +100,13 @@ export async function resolveDrawing(manager:GameManager):Promise<number>{
  const heap=manager.Module.HEAPU8,candidates:number[]=[];
  for(let i=0;i<=heap.length-DRAW_SIGNATURE.length;i++)if(heap[i]===DRAW_SIGNATURE[0]&&DRAW_SIGNATURE.every((b,j)=>heap[i+j]===b))candidates.push(i);
  if(candidates.length===1)return candidates[0];
- if(!candidates.length)throw new Error('Routine de dessin Yoshi introuvable.');
+ if(!candidates.length)throw new Error('Yoshi’s draw routine was not found.');
  const saved=new Uint8Array(manager.getState());let pointer:number|undefined;
  try{
   HIDDEN_DRAW.forEach((b,i)=>manager.setCheat(100+i,true,(0x04faeb+i).toString(16).padStart(6,'0')+b.toString(16).padStart(2,'0')));
   manager.toggleMainLoop(1);await waitForNativeFrames(manager);manager.toggleMainLoop(0);
   const live=candidates.filter(p=>HIDDEN_DRAW.every((b,j)=>manager.Module.HEAPU8[p+j]===b));
-  if(live.length!==1)throw new Error(`Routine de dessin Yoshi ambiguë : ${candidates.length} copies, ${live.length} modifiées.`);pointer=live[0];return pointer;
+  if(live.length!==1)throw new Error(`Yoshi’s draw routine is ambiguous: ${candidates.length} copies, ${live.length} modified.`);pointer=live[0];return pointer;
  }finally{
   manager.toggleMainLoop(0);manager.resetCheat();manager.loadState(saved);
   if(pointer!==undefined)manager.Module.HEAPU8.set(DRAW_SIGNATURE.subarray(0,3),pointer);
@@ -114,6 +116,6 @@ export function setNativeDrawing(heap:Uint8Array,pointer:number,hidden:boolean):
  const normal=DRAW_SIGNATURE.subarray(0,3);
  if(!Number.isInteger(pointer)||pointer<0||pointer+DRAW_SIGNATURE.length>heap.length||
   !DRAW_SIGNATURE.subarray(3).every((b,j)=>heap[pointer+3+j]===b)||
-  ![normal,HIDDEN_DRAW].some(sig=>sig.every((b,j)=>heap[pointer+j]===b)))throw new Error('Routine de dessin modifiée : accès refusé.');
+  ![normal,HIDDEN_DRAW].some(sig=>sig.every((b,j)=>heap[pointer+j]===b)))throw new Error('The draw routine was modified: access denied.');
  heap.set(hidden?HIDDEN_DRAW:normal,pointer);
 }

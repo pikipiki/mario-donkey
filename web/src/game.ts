@@ -1,7 +1,7 @@
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
-import { type Emulator, INPUT, resolveMemory, resolveDrawing, setNativeDrawing } from './engine';
-import { PROFILE as P, applyRoll, babyIsLost, dkcRun, holdBabyStars, signed16, skipOpenDialogue, word, writeWord } from './profile';
+import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing } from './engine';
+import { PROFILE as P, absorbHit, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
 import { loadFile,storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
@@ -16,20 +16,27 @@ export class LiveGame {
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
  get eggCount():number{return Math.min(6,word(this.gsu,0x1df6)>>>1);}
+ get messageOpen():boolean{return this.ready&&this.wram[0xd11]!==0;}
  get aiming():boolean{return word(this.gsu,0xec)!==0;}
  get character():Character{return this.adventure.active;}
  set character(character:Character){if(this.adventure.select(character))this.changed();}
  get wram():Uint8Array{return this.emulator.Module.HEAPU8.subarray(this.wramBase,this.wramBase+0x20000);}
  get gsu():Uint8Array{return this.emulator.Module.HEAPU8.subarray(this.gsuBase,this.gsuBase+0x8000);}
  get audio():AudioContext|undefined{return this.emulator.Module.AL?.currentCtx?.audioCtx??this.emulator.Module.AL?.contexts?.find(c=>c?.audioCtx)?.audioCtx;}
- get stageLabel():string{return `Monde ${this.wram[0x218]+1} · ${this.wram[P.stage]<8?'Niveau '+(this.wram[P.stage]+1):'Extra / bonus'}`;}
+ get stageLabel():string{return `World ${this.wram[0x218]+1} · ${this.wram[P.stage]<8?'Level '+(this.wram[P.stage]+1):'Extra / bonus'}`;}
  get room():string{return `${this.wram[0x218]}:${this.wram[P.stage]}:${word(this.wram,0x32).toString(16)}:${this.wram[0x34]}`;}
- async unlockAudio():Promise<void>{await this.audio?.resume();this.emulator.setVolume(.65);}
+ async unlockAudio():Promise<void>{
+  primeAudio();
+  const contexts=this.emulator.Module.AL?.contexts?.map(c=>c.audioCtx)??[];
+  if(this.audio)contexts.push(this.audio);
+  await Promise.all(contexts.filter(Boolean).map(ctx=>ctx.state==='running'?undefined:ctx.resume().catch(()=>{})));
+  this.emulator.setVolume(1);
+ }
  async prepare():Promise<void>{
   const m=this.emulator.gameManager,start=performance.now();
   await this.unlockAudio().catch(()=>{});
   while(m.functions.getFrameNum()<5&&performance.now()-start<15000){if(m.functions.getFrameNum()<1)await this.unlockAudio().catch(()=>{});await sleep(30);}
-  if(m.functions.getFrameNum()<1)throw new Error('Le moteur SNES ne produit pas d’image. Réessaie.');
+  if(m.functions.getFrameNum()<1)throw new Error('The SNES core is not drawing. Try again.');
   m.toggleMainLoop(0);
   try{this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000);this.gsuBase=await resolveMemory(m,0x7007e0,0x7e0,0x8000);this.drawSite=await resolveDrawing(m);}finally{m.toggleMainLoop(1);}
   const campaign=await readCampaign().catch(()=>undefined);
@@ -39,7 +46,7 @@ export class LiveGame {
   }
   const initial=await loadFile(INITIAL).catch(()=>undefined);
   if(initial){m.loadState(initial);await sleep(100);if(this.wram[P.mode]===P.gameplay){this.finishBoot();return;}}
-  this.onStatus('Préparation de ta première aventure…');m.functions.setFastForwardRatio(6);m.functions.toggleFastForward(1);
+  this.onStatus('Getting your first adventure ready…');m.functions.setFastForwardRatio(6);m.functions.toggleFastForward(1);
   const began=performance.now();let skipped=false,lastPress=0;
   try{
    while(performance.now()-began<35000){
@@ -52,13 +59,13 @@ export class LiveGame {
     else if(performance.now()-lastPress>330){lastPress=performance.now();this.setInputs(new Set([mode<0xd?INPUT.start:INPUT.b]));await sleep(85);this.setInputs(new Set());}
     await sleep(25);
    }
-   throw new Error('Le jeu n’a pas démarré. Recharge la page pour réessayer.');
+   throw new Error('The game did not start. Reload the page to try again.');
   }finally{m.functions.toggleFastForward(0);this.setInputs(new Set());}
  }
  private finishBoot():void{
   const h=this.emulator.gameManager.functions.getVideoDimensions('height');if(h>=224&&h<=256){this.overlay.height=h;this.topPadding=(h-224)>>1;}
   this.ready=true;this.previousX=word(this.gsu,P.x);this.previousBabyLost=babyIsLost(this.gsu);this.previousLives=this.wram[0x379];this.lastSave=performance.now();
-  this.updateVisibility();this.onStatus(this.stageLabel+' · À toi de jouer');this.changed();
+  this.updateVisibility();this.onStatus(this.stageLabel+' · Your turn');this.changed();
  }
  private setInputs(next:Set<number>):void{for(let button=0;button<12;button++)this.emulator.gameManager.simulateInput(0,button,next.has(button)?1:0);}
  private updateVisibility():void{
@@ -78,14 +85,17 @@ export class LiveGame {
  }
  tick(now:number):void{
   if(!this.ready||this.paused)return;
-  const g=this.gsu,next=new Set<number>(),direction=this.controls.movement(now),rolling=now<this.controls.rollUntil;
+  const g=this.gsu;
+  if(inGoal(g)){this.setInputs(new Set());this.draw(now,false);return;}
+  const next=new Set<number>(),direction=this.controls.movement(now),rolling=now<this.controls.rollUntil;
   const yoshi=this.adventure.mount==='yoshi',jumpFrom=this.controls.jumpUntil-750,hop=now<this.controls.jumpUntil&&now<jumpFrom+150;
   if(direction)next.add(direction<0?INPUT.left:INPUT.right);
   if(yoshi?now<this.controls.jumpUntil:hop)next.add(INPUT.b);
   if(now<this.controls.tongueUntil)next.add(INPUT.y);
   // Patient scheme supports two separate taps on touch, mouse and keyboard.
   if(this.wram[P.mode]===P.gameplay)writeWord(g,0x82,0);
-  if(this.controls.eggPressed(now))next.add(INPUT.a);
+  const confirming=this.wram[0xd11]!==0&&this.controls.eggPressed(now);
+  if(confirming)this.skipUntil=now+5000;else if(this.controls.eggPressed(now))next.add(INPUT.a);
   const vertical=this.controls.verticalAxis(now);if(vertical)next.add(vertical<0?INPUT.up:INPUT.down);
   for(const [button,until]of this.controls.extra)if(now<until)next.add(button);
   this.setInputs(next);
@@ -93,24 +103,23 @@ export class LiveGame {
   const gameplay=this.wram[P.mode]===P.gameplay;
   this.updateVisibility();
   if(gameplay){
-   const lost=babyIsLost(g),stars=word(this.wram,0x3b6),kept=holdBabyStars(stars,lost);
-   if(kept!==undefined){if(stars<=0){writeWord(g,P.baby,0x8000);writeWord(this.wram,0x379,this.previousLives);}writeWord(this.wram,0x3b6,kept);}
-   if(lost&&!this.previousBabyLost){this.adventure.hit();this.updateVisibility();this.changed();}this.previousBabyLost=babyIsLost(g);
+   const lost=babyIsLost(g),stars=word(this.wram,0x3b6);
+   if(!(lost&&stars<=0))absorbHit(g);
+   if(lost&&!this.previousBabyLost){this.adventure.hit();this.updateVisibility();this.changed();}this.previousBabyLost=lost;
    const lives=this.wram[0x379];if(lives<this.previousLives)this.adventure.resetRoom(this.room);this.previousLives=lives;
-   const disabled=word(g,0x1ae)!==0;
-   if(!yoshi&&!disabled&&word(g,0xae)===0){
+   const disabled=word(g,0x1ae)!==0,onFoot=this.adventure.mount==='foot';
+   if(onFoot&&!disabled&&word(g,0xae)===0){
     const axis=rolling?this.controls.facing:this.controls.runAxis();
     writeWord(g,P.vx,rolling?this.controls.facing*0x360:dkcRun(signed16(word(g,P.vx)),axis));
    }
    if(rolling&&!disabled){
     writeWord(g,P.invincible,Math.max(word(g,P.invincible),4));
-    if(this.adventure.mount==='rambi')writeWord(g,P.vx,this.controls.facing*0x480);
+    if(yoshi&&word(g,0xae)===0)writeWord(g,P.vx,this.controls.facing*0x360);
     const hits=applyRoll(g,this.controls.facing);this.kills+=hits.length;for(const hit of hits)this.particles.push({...hit,until:now+420});
    }
    if(this.controls.jumpSequence!==this.jumpSequence){this.jumpSequence=this.controls.jumpSequence;if(!disabled&&this.adventure.mount==='winky')writeWord(g,P.vy,-0x700);else if(!disabled&&!yoshi)writeWord(g,P.vy,-0x4c0);}
    if(this.adventure.mount==='squawks'&&now<this.controls.jumpUntil&&!disabled)writeWord(g,P.vy,-0x180);
-   const animal=this.adventure.mount!=='foot'&&this.adventure.mount!=='yoshi';
-   const walls=breakTerrain(this.wram,g,this.controls.facing,rolling||(animal&&direction!==0));this.walls+=walls.length;
+   const walls=breakTerrain(this.wram,g,this.controls.facing,rolling&&onFoot);this.walls+=walls.length;
    for(const hit of walls)this.particles.push({...hit,until:now+500});
    const x=word(g,P.x),y=word(g,P.y),grounded=signed16(word(g,P.vy))===0&&!disabled&&!lost&&word(g,0xae)===0;
    this.adventure.observe(this.room,x,y,grounded);
@@ -135,7 +144,8 @@ export class LiveGame {
    const state=rolling?'roll':jumping?'jump':moving?'walk':'idle',mount=this.adventure.mount;
    const key=`${this.character}:${mount}:${state}`;if(key!==this.animationKey){this.animationKey=key;this.animationStart=now;}const animationTime=now-this.animationStart;
    if(mount!=='foot'&&mount!=='yoshi')this.atlas.draw(c,mount,state,sx,sy,animationTime,this.controls.facing);
-   this.atlas.draw(c,this.character,mount==='foot'?state:'ride',sx,sy,animationTime,this.controls.facing);
+   const yoshiRoll=mount==='yoshi'&&rolling;
+   this.atlas.draw(c,this.character,mount==='foot'||yoshiRoll?state:'ride',sx+(yoshiRoll?this.controls.facing*18:0),sy,animationTime,this.controls.facing);
    // Keep the native tongue's reach visible when Yoshi's body is hidden.
    if(mount!=='yoshi'&&(Math.abs(signed16(word(g,0x152)))+Math.abs(signed16(word(g,0x154)))>12)){const tx=signed16(word(g,0x15a)-cx),ty=signed16(word(g,0x15c)-cy)+this.topPadding;c.strokeStyle='#e8788e';c.lineWidth=3;c.lineCap='round';c.beginPath();c.moveTo(sx+this.controls.facing*12,sy-23);c.lineTo(tx,ty);c.stroke();}
   }
@@ -144,5 +154,5 @@ export class LiveGame {
  }
  /** DEV fixture: real map16 wall in empty space ahead; no campaign fixture is shipped. */
  testWall():number{const g=this.gsu,x=(word(g,P.x)+48)&~15,y=word(g,P.y)&~15;let count=0;for(const dy of [0,16]){const address=tileAddress(g,x,y+dy);if(address!==undefined&&replaceTile(this.wram,g,x,y+dy,0x7b00,0xa022))count++;}return count;}
- diagnostics():Record<string,unknown>{return {mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.overlay.height,frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'indisponible',nativeDrawHidden:this.hidden,eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
+ diagnostics():Record<string,unknown>{return {mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.overlay.height,frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
 }

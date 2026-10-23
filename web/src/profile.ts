@@ -17,15 +17,35 @@ export function patchYoshiDrawing(original: Uint8Array): Uint8Array {
   for (let i=0;i<=original.length-signature.length;i++) {
     if (signature.every((byte,j)=>original[i+j]===byte)) matches.push(i);
   }
-  if (matches.length!==1) throw new Error('Révision du jeu incompatible : signature de dessin absente ou ambiguë.');
+  if (matches.length!==1) throw new Error('This game revision is not supported: the draw signature is missing or ambiguous.');
   const patched=original.slice(); patched.set([0xa9,0,0], matches[0]);
   return patched;
 }
 
 export function babyIsLost(gsu: Uint8Array): boolean { return (word(gsu,PROFILE.baby)&0x8000)===0; }
-/** $7E03B6 stores the star countdown ×10. Reaching 0 starts Baby Mario’s escape and the death. */
-export const STAR_FLOOR=30;
-export function holdBabyStars(stars:number,lost:boolean):number|undefined{if(!lost||stars>STAR_FLOOR)return undefined;return STAR_FLOOR;}
+/** A touch knocks Baby Mario off ($0000) and locks Yoshi ($1AE) plus sprites ($1B0). Clear that freeze so he can be chased, and leave the original countdown and escape alone. Pipes lock controls without starting invincibility, so those stay. */
+export function inGoal(gsu:Uint8Array):boolean{
+ const state=word(gsu,0xac);if(state===0x14||state===0x15)return true;
+ if(word(gsu,0x1ae)===0||word(gsu,PROFILE.baby)!==0x8000)return false;
+ const x=word(gsu,PROFILE.x),y=word(gsu,PROFILE.y);
+ for(let slot=0;slot<24;slot++){
+  const o=slot*4;if(word(gsu,PROFILE.spriteId+o)!==0x0d||word(gsu,PROFILE.spriteState+o)<8)continue;
+  const dx=Math.abs(signed16(word(gsu,PROFILE.spriteX+o)-x)),dy=Math.abs(signed16(word(gsu,PROFILE.spriteY+o)-y));
+  if(dx<80&&dy<80)return true;
+ }
+ return false;
+}
+export function absorbHit(gsu:Uint8Array):boolean{
+ if(inGoal(gsu))return false;
+ const baby=word(gsu,PROFILE.baby),inv=word(gsu,PROFILE.invincible);
+ const locked=word(gsu,0x1ae)!==0||word(gsu,0x1b0)!==0;
+ const crying=baby===0,riding=(baby&0x8000)!==0;
+ if(crying){if(!locked&&inv===0)return false;}
+ else if(!(riding&&locked&&inv>0))return false;
+ writeWord(gsu,0x1ae,0);writeWord(gsu,0x1b0,0);
+ if(inv<24)writeWord(gsu,PROFILE.invincible,24);
+ return true;
+}
 /** Approach a target run speed. Reversing takes a longer skid than releasing the stick. */
 export function dkcRun(vx:number,axis:number):number{
  const target=Math.round(Math.max(-1,Math.min(1,axis))*0x2a0);
@@ -38,10 +58,11 @@ export function dkcRun(vx:number,axis:number):number{
 // Ordinary enemies identified in the public sprite_inits table. Bosses,
 // invulnerable hazards, Baby Mario, shells, items and scenery stay protected.
 export const ROLL_TARGETS = new Set([
- 0x1e,0x20,0x5b,0x62,0x74,0xa3,0xa4,0xd2,0x108,0x12a,0x133,
+ 0x1e,0x20,0x54,0x5b,0x62,0x66,0x6d,0x6e,0x74,0x9f,0xa3,0xa4,0xd2,0xee,0xf0,0xf1,0xf4,
+ 0x108,0x110,0x12a,0x133,
  0x13f,0x140,0x141,0x142,0x143,0x164,0x165,
- 0x169,0x16a,0x16b,0x16c,0x16d,0x16e,0x16f,0x184,0x19b,0x19c,
-]); // $1f is a rotating door; $21 is a bucket.
+ 0x169,0x16a,0x16b,0x16c,0x16d,0x16e,0x16f,0x181,0x184,0x192,0x199,0x19b,0x19c,
+]); // $1f is a rotating door; $21 is a bucket. Flowers: piranhas, nippers, petal and fake flowers.
 export interface RollHit { slot: number; x: number; y: number }
 export function applyRoll(gsu: Uint8Array, direction: number): RollHit[] {
   const x=word(gsu,PROFILE.x), y=word(gsu,PROFILE.y); const hits: RollHit[]=[];
@@ -50,7 +71,7 @@ export function applyRoll(gsu: Uint8Array, direction: number): RollHit[] {
     if (word(gsu,PROFILE.spriteState+offset)!==0x10 || !ROLL_TARGETS.has(id)) continue;
     const ex=word(gsu,PROFILE.spriteX+offset), ey=word(gsu,PROFILE.spriteY+offset);
     const dx=signed16(ex-x), dy=signed16(ey-y);
-    if (Math.abs(dx)<=34 && Math.abs(dy)<=28 && dx*direction>=-16) {
+    if (Math.abs(dx)<=36 && Math.abs(dy)<=40 && dx*direction>=-16) {
       writeWord(gsu,PROFILE.spriteState+offset,0x0c); // Native collision death, not an erased object.
       hits.push({slot,x:ex,y:ey});
     }

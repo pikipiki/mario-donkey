@@ -3,7 +3,7 @@ import { Controls,type Button } from './controls';
 import { launch,primeAudio,waitForNativeFrames } from './engine';
 import { LiveGame } from './game';
 import { SpriteAtlas } from './atlas';
-import { ANIMALS,type Character,type Mount } from './adventure';
+import { ANIMALS,CHARACTERS,type Character,type Mount } from './adventure';
 import { ROM_SHA256,patchYoshiDrawing } from './profile';
 import { loadFile,storeFile } from './storage';
 const animalNames:Record<string,string>={foot:'On foot',yoshi:'Yoshi',rambi:'Rambi',winky:'Winky',expresso:'Expresso',enguarde:'Enguarde',squawks:'Squawks'};
@@ -22,12 +22,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
  <section class="game-layout" aria-label="The game and its controls">
   <div class="play-column"><div class="screen-frame"><div class="screen">
    <div id="emulator" aria-label="SNES game screen"></div><canvas id="actor" width="256" height="239" aria-hidden="true"></canvas>
-   <div id="welcome" class="welcome"><p class="eyebrow">DONKEY KONG COUNTRY × YOSHI’S ISLAND</p><h1>One island.<br>A whole adventure.</h1><p class="intro">The real Kongs. Yoshi’s world.</p><button id="play" class="play-button" disabled>Play / continue <span aria-hidden="true">↗</span></button></div>
+   <div id="welcome" class="welcome"><p class="eyebrow">DONKEY KONG COUNTRY × YOSHI’S ISLAND</p><h1>One island.<br>A whole adventure.</h1><p class="intro">PlushGoonk and the Kongs. Yoshi’s world.</p><button id="play" class="play-button" disabled>Play / continue <span aria-hidden="true">↗</span></button></div>
    <div id="loading" class="loading" hidden><span aria-hidden="true">✳</span><p>Getting the adventure ready…</p></div>
   </div></div></div>
   <aside class="controller" aria-label="Touch controls">
    <div class="stick-wrap"><div id="stick" class="stick" role="group" aria-label="Move in every direction"><div id="stick-nub" class="stick-nub"></div></div></div>
-   <div class="hud-side"><div class="party-row"><div class="character-picker" role="group" aria-label="Choose a character"><button data-character="dk" class="character selected" aria-pressed="true"><img src="${base}art/portraits/dk.png" alt=""><span>Donkey</span></button><button data-character="diddy" class="character" aria-pressed="false"><img src="${base}art/portraits/diddy.png" alt=""><span>Diddy<small id="partner-status"></small></span></button></div><label class="character-select"><span>Kong</span><select id="character" aria-label="Choose a character"><option value="dk">Donkey</option><option value="diddy">Diddy</option></select></label><label class="mount-picker"><span>Partner</span><select id="mount" aria-label="Choose a mount"><option value="foot">On foot</option><option value="yoshi">Yoshi</option></select></label></div>
+   <div class="hud-side"><div class="party-row"><div class="character-picker" role="group" aria-label="Choose a character">${CHARACTERS.map(char=>`<button data-character="${char}" class="character ${char==='violet'?'selected':''}" aria-pressed="${char==='violet'}">${char==='violet'||char==='pink'?`<span class="plush-portrait ${char}" aria-hidden="true"></span>`:`<img src="${base}art/portraits/${char}.png" alt="">`}<span>${({violet:'Violet',pink:'Pink',dk:'Donkey',diddy:'Diddy'})[char]}${char==='diddy'?'<small id="partner-status"></small>':''}</span></button>`).join('')}</div><label class="character-select"><span>Character</span><select id="character" aria-label="Choose a character">${CHARACTERS.map(char=>`<option value="${char}">${({violet:'PlushGoonk violet',pink:'PlushGoonk rose',dk:'Donkey',diddy:'Diddy'})[char]}</option>`).join('')}</select></label><label class="mount-picker"><span>Partner</span><select id="mount" aria-label="Choose a mount"><option value="foot">On foot</option><option value="yoshi">Yoshi</option></select></label></div>
    <div class="action-pad"><button data-control="jump" class="jump-button"><span aria-hidden="true">↗</span><strong>Jump</strong><small>and flutter</small></button><button data-control="roll" class="roll-button"><span aria-hidden="true">↻</span><strong>Roll</strong><small>attack</small></button><button data-control="tongue" class="tongue-button"><span aria-hidden="true">⌁</span><strong>Tongue</strong><small>grab</small></button><button data-control="egg" class="egg-button"><span aria-hidden="true">◉</span><strong id="egg-label">Egg</strong><small id="egg-hint">throw · confirm · V</small></button></div></div>
   </aside>
  </section>
@@ -38,12 +38,18 @@ const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 function unlockFromGesture(event:Event):void{if(!event.isTrusted)return;primeAudio();void game?.unlockAudio().catch(()=>{});}
 window.addEventListener('pointerup',unlockFromGesture,{capture:true});
 window.addEventListener('touchend',unlockFromGesture,{capture:true});
+window.addEventListener('click',unlockFromGesture,{capture:true});
+window.addEventListener('keydown',unlockFromGesture,{capture:true});
+// Prevent iOS long-press callouts on gameplay while preserving native form controls.
+document.addEventListener('contextmenu',event=>{
+ if(event.target instanceof Element&&event.target.closest('.shell')&&!event.target.closest('input,textarea,select'))event.preventDefault();
+});
 const controls=new Controls();let rom:Uint8Array|undefined,game:LiveGame|undefined,starting=false,menuResume=false;
 const setStatus=(message:string)=>{$('status').textContent=message;$('loading').querySelector('p')!.textContent=message;};
 function syncParty():void{
  const a=game?.adventure;
- document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>{const char=b.dataset.character as Character,active=(a?.active??'dk')===char;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active));b.disabled=a?!a.available.includes(char):false;});
- const character=$<HTMLSelectElement>('character');character.value=a?.active??'dk';character.querySelectorAll('option').forEach(o=>{o.disabled=a?!a.available.includes(o.value as Character):false;});
+ document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>{const char=b.dataset.character as Character,active=(a?.active??'violet')===char;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active));b.disabled=a?!a.available.includes(char):false;});
+ const character=$<HTMLSelectElement>('character');character.value=a?.active??'violet';character.querySelectorAll('option').forEach(o=>{o.disabled=a?!a.available.includes(o.value as Character):false;});
  $('partner-status').textContent=a?.available.includes('diddy')?'':'';
  const mounts:Mount[]=['foot','yoshi',...(a?.animals??[])];const select=$<HTMLSelectElement>('mount');select.innerHTML=mounts.map(m=>`<option value="${m}">${animalNames[m]}</option>`).join('');select.value=a?.mount??'foot';
  if(game?.ready)$('stage-name').textContent=game.stageLabel;
@@ -106,7 +112,7 @@ function enableSound():void{
  primeAudio();void game.unlockAudio().then(()=>{
   const on=game?.audio?.state==='running';
   $('sound-quick').setAttribute('aria-label',on?'Restore game sound':'Enable game sound');
-  setStatus(on?'Game sound is on.':'Tap ♪ again to enable sound.');
+  setStatus(on?'Audio enabled · If silent, check the iPhone media volume.':'Tap ♪ again to enable sound.');
  }).catch(()=>setStatus('Tap ♪ again to enable sound.'));
  releaseUiFocus($('sound-quick'));
 }
@@ -132,7 +138,7 @@ $('test-egg').addEventListener('click',()=>{if(!debug||!game?.ready)return;close
 $('test-hit').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();game.gsu[0x8c]=0xd0;game.gsu[0x8d]=1;game.gsu[0x90]=0x70;game.gsu[0x91]=7;});
 $('test-roll').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-24);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);controls.facing=1;controls.activate('roll',performance.now());break;}}});
 $('test-dialogue').addEventListener('click',()=>{if(!debug||!game?.ready||game.wram[0x118]!==0x13)return;closeSettings();if(game.paused)pause(false);game.stop();game.wram[0xd11]=1;game.gsu[0x4070]=0x2c;game.gsu[0x4071]=0;});
-$('test-unlock').addEventListener('click',()=>{if(!debug||!game)return;game.adventure.available=['dk','diddy'];game.adventure.animals=[...ANIMALS];syncParty();});
+$('test-unlock').addEventListener('click',()=>{if(!debug||!game)return;game.adventure.available=[...CHARACTERS];game.adventure.animals=[...ANIMALS];syncParty();});
 let lastDiagnostic=0;function frame():void{const now=performance.now();game?.tick(now);refreshButtons();if(game?.ready){const n=game.eggCount,aiming=game.aiming;$('egg-label').textContent=game.wram[0x118]===0x26?'Enter':game.messageOpen?'OK':aiming?'Throw':`Eggs · ${n}`;$('egg-hint').textContent=game.wram[0x118]===0x26?'selected level':game.messageOpen?'confirm':aiming?'press / V':n?'aim / V':'Tongue then Down';}if(debug&&game?.ready&&now-lastDiagnostic>500){$('diagnostic').textContent=JSON.stringify(game.diagnostics(),null,2);lastDiagnostic=now;}requestAnimationFrame(frame);}requestAnimationFrame(frame);
 
 $('test-audio').addEventListener('click',async()=>{

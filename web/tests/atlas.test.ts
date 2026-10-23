@@ -6,3 +6,13 @@ describe('animations originales compactées',()=>{
  it('maintient la dernière pose de saut au lieu de boucler le décollage dans les airs',()=>{const {a,c}=fixture();a.draw(c,'dk','jump',100,120,2000);expect(c.drawImage).toHaveBeenCalledWith(a.image,0,192,96,96,-48,-80,96,96);});
  it('miroite uniquement le personnage, jamais le décor ou ses collisions',()=>{const {a,c}=fixture();a.draw(c,'dk','idle',100,120,0,-1);expect(c.translate).toHaveBeenCalledWith(100,120);expect(c.scale).toHaveBeenCalledWith(-1,1);expect(c.imageSmoothingEnabled).toBe(false);});
 });
+
+describe('PlushGoonk model renders',()=>{
+ it('draws violet roll frames and mirrors the model without moving world coordinates',()=>{
+ const {a,c}=fixture();const image={} as HTMLImageElement;a.plush={image,manifest:{frames:[{x:1,y:2,w:50,h:51,ox:-24,oy:-47},{x:60,y:2,w:50,h:51,ox:-24,oy:-47}],groups:{violet_roll:[0,1]}}};
+ a.draw(c,'violet','roll',100,120,70,-1);expect(c.drawImage).toHaveBeenCalledWith(image,60,2,50,51,-24*.72,-47*.72,50*.72,51*.72);expect(c.scale).toHaveBeenCalledWith(-1,1);
+ });
+ it('uses the sitting animation above the native Yoshi saddle',()=>{
+ const {a,c}=fixture();a.plush={image:{} as HTMLImageElement,manifest:{frames:[{x:0,y:0,w:40,h:40,ox:-20,oy:-36}],groups:{pink_ride:[0]}}};a.draw(c,'pink','ride',100,120,0);expect(c.translate).toHaveBeenCalledWith(100,98);
+ });
+});

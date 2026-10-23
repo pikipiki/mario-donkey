@@ -1,3 +1,4 @@
+import {requestPlaybackAudio} from './audio';
 export interface NativeAudioSlot {audioCtx:AudioContext;gain?:GainNode}
 export interface CoreModule { HEAPU8: Uint8Array; AL?: { contexts?: Record<string,NativeAudioSlot> | Array<NativeAudioSlot>; currentCtx?: NativeAudioSlot } }
 export interface GameManager {
@@ -25,6 +26,7 @@ function shareAudioContext():void{
 }
 /** Create and resume audio inside a completed tap. Mobile blocks this on pointerdown. */
 export function primeAudio():void{
+ requestPlaybackAudio(navigator as Navigator & {audioSession?:{type:string}});
  if(!NativeAudio)return;
  if(!sharedAudio||sharedAudio.state==='closed')sharedAudio=new NativeAudio();
  const ctx=sharedAudio;

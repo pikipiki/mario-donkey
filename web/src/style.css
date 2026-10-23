@@ -18,3 +18,20 @@
  .toolbar{order:0;display:grid;grid-template-columns:44px 44px;gap:4px}.tool.skip{width:44px}.tool.skip span{display:none}
  .sound-tool{order:2;width:92px;height:44px;font-size:24px}.stick-wrap{padding-top:168px;overflow:visible}.stick{flex-shrink:0}
 }
+
+/* Gameplay gestures must never become zoom, text selection or a copy callout.
+   Keep native selects, editable fields and the options sheet usable. */
+.shell{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+.shell img{-webkit-user-drag:none;pointer-events:none}
+.shell button,.shell canvas,.shell .stick{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.shell dialog{touch-action:pan-y;overscroll-behavior:contain}
+.shell select,.shell input,.shell textarea{touch-action:manipulation;font-size:16px}
+.shell input[type=text],.shell textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+
+/* Four large character targets fit narrow portrait without shrinking hit areas. */
+.character{flex-direction:column;gap:0;font-size:10px;padding:3px 1px;min-width:44px}.character img{height:28px;width:28px}.character small:empty{display:none}
+@media(max-width:370px){.mount-picker{width:82px}.party-row{gap:4px}.character-picker{gap:3px}}
+
+.plush-portrait{display:block;width:32px;height:28px;background-image:url('/art/plush.png');background-repeat:no-repeat;background-size:360px 320px}.plush-portrait.pink{background-position:-7px -3px}.plush-portrait.violet{background-position:-288px -128.5px}
+
+@media(min-width:1100px) and (min-height:650px){.party-row{flex-direction:column}.character-picker{flex:none;width:100%}.mount-picker{width:100%}.character{font-size:11px}.character img{width:28px;height:28px}}

@@ -1,5 +1,10 @@
 import type {CoreModule} from './engine';
 import {bounded} from './startup';
+/** WebKit otherwise treats Web Audio as ambient and can mute a running context
+ * with the iPhone silent switch. Configure this before creating/resuming it. */
+export function requestPlaybackAudio(host: {audioSession?:{type:string}}):boolean{
+ try{if(!host.audioSession)return false;host.audioSession.type='playback';return host.audioSession.type==='playback';}catch{return false;}
+}
 /** Emscripten OpenAL uses numeric object keys, not an Array. */
 export function nativeAudioContexts(module:Pick<CoreModule,'AL'>):AudioContext[]{
  const entries=Object.values(module.AL?.contexts??{});

@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import {nativeAudioContexts,resumeNativeAudio} from '../src/audio';
+import {nativeAudioContexts,resumeNativeAudio,requestPlaybackAudio} from '../src/audio';
 import type {CoreModule} from '../src/engine';
 const context=(state='suspended',resume=vi.fn().mockResolvedValue(undefined))=>({state,resume}) as unknown as AudioContext;
 describe('native OpenAL audio',()=>{
@@ -23,5 +23,16 @@ describe('native OpenAL audio',()=>{
    const pending=resumeNativeAudio({AL:{contexts:{1:{audioCtx:a},2:{audioCtx:b},3:{audioCtx:c}}}} as Pick<CoreModule,'AL'>,vi.fn());
    expect(c.resume).toHaveBeenCalledOnce();await vi.advanceTimersByTimeAsync(500);await pending;
   }finally{vi.useRealTimers();}
+ });
+});
+
+describe('iPhone playback session',()=>{
+ it('requests playback before unlocking instead of leaving running Web Audio ambient',()=>{
+  const host={audioSession:{type:'ambient'}};
+  expect(requestPlaybackAudio(host)).toBe(true);expect(host.audioSession.type).toBe('playback');
+ });
+ it('supports browsers without the API and denied session changes',()=>{
+  expect(requestPlaybackAudio({})).toBe(false);
+  expect(requestPlaybackAudio({get audioSession():{type:string}{throw new Error('unsupported');}})).toBe(false);
  });
 });

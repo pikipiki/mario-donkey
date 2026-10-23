@@ -1,3 +1,14 @@
+# Correctif iPhone et PlushGoonk — 23 octobre 2026
+
+Base : 1a870a0. Travail isolé : work/web-iphone-audio (serveur 5178). Les autres onglets de jeu utilisateur ne sont pas touchés.
+
+- Son : le contexte OpenAL peut être running tout en restant muet avec le commutateur silencieux iPhone. `requestPlaybackAudio` demande `navigator.audioSession.type = playback` avant toute création/reprise audio, avec détection et catch pour les navigateurs sans API. Source primaire : https://bugs.webkit.org/show_bug.cgi?id=237322 (commentaire WebKit du 25 septembre 2024). Déblocage aussi sur click et keydown réels, en complément pointerup/touchend. Le message ne prétend plus prouver le son audible à partir de l’état running. Pas de preuve sur téléphone physique ; confirmer avec utilisateur. Ancien iOS sans AudioSession peut rester soumis au commutateur silencieux.
+- Tactile : shell et commandes touch-action:none, user-select:none / -webkit-user-select:none, -webkit-touch-callout:none ; contextmenu annulé sur gameplay hors champs. Options conservent pan-y, champs/selects manipulation et police16 pour éviter le zoom au focus. Pas de maximum-scale/user-scalable=no global.
+- PlushGoonk rose/violette : vrais assets locaux `goonk-country/public/rom2d/plush.{png,json}` (68 poses issues du rendu des modèles3D) copiés dans public/art. Rendu Canvas2D des animations idle/walk/jump/roll/ride, sans moteur3D supplémentaire ; ce sont des images prérendues et pas des modèles3D temps réel. Sélecteur4 personnages, DK/Diddy conservés. Violet par défaut. Migration des anciennes campagnes vers violet en gardant progression, monture, animaux ; characterSet:1 sauvegarde ensuite le choix explicite. Les miniatures de carte natives et cinématiques natives restent Yoshi.
+- Tests : 74 tests réussis et build valide. Tests migration choix/default, dessin pose roulade/monture, session playback et API absente/refusée. Aucun test Mac ne doit être présenté comme confirmation audio iPhone ni validation réelle du zoom tactile iOS.
+
+---
+
 # En cours — audio, carte, graphismes, sauts et paysage (23 octobre 2026)
 
 Dernières demandes : pas de son ; départ normal permettant de choisir les stages ; murs/textures parasites après certaines destructions, pas seulement un flash sur les plantes ; cercle de sortie disparu ; en paysage placer les quatre boutons et le nom de niveau à gauche au-dessus du joystick ; DK/Diddy à pied doivent sauter plus haut sans modifier leur accélération/freinage.

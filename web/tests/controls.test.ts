@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { Controls } from '../src/controls';
 describe('commandes mobiles à un doigt',()=>{
  it('garde la direction après le relâchement, puis permet un saut séparé',()=>{
-  const c=new Controls();c.activate('right',0);c.release('right');c.activate('jump',100);
+  const c=new Controls(true);c.activate('right',0);c.release('right');c.activate('jump',100);
   expect(c.movement(120)).toBe(1);expect(c.jumpUntil).toBe(850);
  });
- it('un second appui sur la direction arrête',()=>{const c=new Controls();c.activate('left',0);c.activate('left',10);expect(c.movement(20)).toBe(0);});
+ it('un second appui sur la direction arrête',()=>{const c=new Controls(true);c.activate('left',0);c.activate('left',10);expect(c.movement(20)).toBe(0);});
  it('roule avec un seul bouton même à l’arrêt',()=>{const c=new Controls();c.activate('roll',0);expect(c.movement(100)).toBe(1);expect(c.movement(600)).toBe(0);});
  it('la roulade suit la dernière direction choisie',()=>{const c=new Controls();c.activate('left',0);c.activate('left',1);c.activate('roll',2);expect(c.movement(100)).toBe(-1);});
  it('Stop annule direction, saut et roulade',()=>{const c=new Controls();c.activate('right',0);c.activate('jump',0);c.activate('roll',0);c.stop();expect(c.movement(100)).toBe(0);expect(c.rollUntil).toBe(0);expect(c.jumpUntil).toBe(0);});
@@ -63,5 +63,18 @@ describe('native flutter tap edges',()=>{
  it('starts immediately after a previous hold expired and clears the pending press on stop',()=>{
   const c=new Controls();c.activate('jump',1000);c.activate('jump',1800);expect(c.jumpPressed(1800)).toBe(true);
   c.activate('jump',1900);c.stop();expect(c.jumpPressed(1960)).toBe(false);
+ });
+});
+
+
+describe('directions momentanées par défaut',()=>{
+ it('arrête les deux axes au relâchement, même après un saut',()=>{
+  const c=new Controls();expect(c.sticky).toBe(false);c.setStick(1,-1);expect(c.movement(0)).toBe(1);
+  c.releaseStick();c.activate('jump',100);expect(c.movement(110)).toBe(0);expect(c.verticalAxis(110)).toBe(0);
+  c.setStick(-1,0);c.releaseStick();expect(c.movement(120)).toBe(0);
+ });
+ it('relâche aussi une touche directionnelle et permet de changer de sens',()=>{
+  const c=new Controls();c.activate('right',0);expect(c.movement(1)).toBe(1);c.release('right');expect(c.movement(2)).toBe(0);
+  c.activate('left',3);expect(c.movement(4)).toBe(-1);c.release('left');expect(c.movement(5)).toBe(0);
  });
 });

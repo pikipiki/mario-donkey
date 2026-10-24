@@ -35,3 +35,20 @@ describe('pause audio routing',()=>{
  game.emulator.Module.AL={currentCtx:{audioCtx}};game.setPaused(true);expect(game.emulator.setVolume).toHaveBeenCalledWith(0);expect(audioCtx.suspend).not.toHaveBeenCalled();
  });
 });
+
+describe('rescue countdown integration',()=>{
+ it('replaces a five-star rescue with ten active seconds, then allows native capture',()=>{
+  const {game}=fixture();writeWord(game.gsu,P.baby,0);writeWord(game.wram,0x3b6,50);game.tick(1000);
+  expect(word(game.wram,0x3b6)).toBe(100);
+  writeWord(game.wram,0x3b6,1);game.tick(6000);expect(word(game.wram,0x3b6)).toBe(50);
+  writeWord(game.wram,0x3b6,1);game.tick(11000);expect(word(game.wram,0x3b6)).toBe(0);
+  game.tick(11100);expect(word(game.wram,0x3b6)).toBe(0);
+  writeWord(game.gsu,P.baby,0x8000);writeWord(game.wram,0x3b6,150);game.tick(12000);expect(word(game.wram,0x3b6)).toBe(150);
+ });
+ it('keeps the remaining time after pausing the live game',()=>{
+  const {game}=fixture();vi.spyOn(game,'save').mockResolvedValue();vi.spyOn(game,'unlockAudio').mockResolvedValue();
+  writeWord(game.gsu,P.baby,0);game.tick(1000);game.tick(4000);expect(word(game.wram,0x3b6)).toBe(70);
+  game.setPaused(true);game.tick(14000);game.setPaused(false);game.tick(15000);expect(word(game.wram,0x3b6)).toBe(70);
+  game.tick(16000);expect(word(game.wram,0x3b6)).toBe(60);
+ });
+});

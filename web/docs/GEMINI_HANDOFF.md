@@ -1,3 +1,15 @@
+# État courant — secours et direction, après ef98e18
+
+La direction est momentanée par défaut : Controls(sticky=false), option Keep walking after release décochée. Relâcher le joystick annule ses deux axes ; la marche persistante reste un choix explicite. Les sauts et roulades accessibles restent disponibles.
+
+RescueTimer dans src/rescue.ts donne au moins10 secondes actives à chaque nouvelle perte de bébé, ou le nombre supérieur d’étoiles déjà présent converti en secondes (unités RAM03B6 = dixièmes du compteur affiché). Il compense la décrémentation native, conserve les bonus ramassés pendant le secours, exclut pause/arrière-plan et instructions, puis laisse le compteur arriver à0 pour la capture native. La récupération ou sortie du gameplay réinitialise le suivi ; la réserve d’étoiles du bébé en sécurité n’est pas modifiée. L’ancien compteur n’était pas une horloge en secondes et pouvait laisser trop peu de temps sur mobile.
+
+Validation : 155tests passent, TypeScript et Vite valides (index-BOnE570S.js). Recette moteur sur Mac, onglet isolé5181 : option de marche persistante décochée ; direction0 après relâchement ; choc réel en1-1, compteur10 puis encore6 après5secondes actives, puis compteur0 et capture native après6,5secondes supplémentaires. Pause respectée entre observations. Ce n’est pas une validation matérielle iPhone/Android. Capture outputs/verification-delai-secours.png.
+
+Tests ajoutés pour les directions relâchées, les dix secondes, le compteur faible, les réserves supérieures, bonus, pause, dialogues, fin normale et intégration LiveGame. Les validations historiques ci-dessous sont conservées mais le mode persistant par défaut de ef98e18 est remplacé.
+
+---
+
 # État courant — audit du niveau 1-1, 24 octobre 2026
 
 Cette section prévaut sur les notes historiques ci-dessous. Base335096c, copie isolée work/web-playthrough-20261024, serveur5180. **144 tests passent et build Vite valide** : index-Dxq6NEPY.js, CSS index-CS1DDHCj.css. Consulter [la recette détaillée](QA_1_1_2026-10-24.md) pour les reproductions, preuves et limites.

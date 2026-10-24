@@ -4,7 +4,7 @@ export class Controls {
  direction:Direction=0;vertical:Direction=0;keyboardDirection:Direction=0;
  stickX=0;stickY=0;usingStick=false;
  jumpUntil=0;jumpResumeAt=0;rollUntil=0;tongueUntil=0;eggUntil=0;eggNextAt=0;verticalUntil=0;facing:-1|1=1;jumpSequence=0;extra=new Map<number,number>();
- constructor(public sticky=true){}
+ constructor(public sticky=false){}
  setStick(x:number,y:number):void{
   this.usingStick=true;this.stickX=Math.max(-1,Math.min(1,x));this.stickY=Math.max(-1,Math.min(1,y));
   const horizontal:Direction=Math.abs(this.stickX)>0.22?(this.stickX<0?-1:1):0;

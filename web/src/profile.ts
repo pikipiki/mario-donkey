@@ -93,8 +93,9 @@ export function canWriteVelocity(gsu:Uint8Array,axis:'x'|'y',velocity:number):bo
  * Arm on the ground and wait for native takeoff before replacing its impulse.
  * A zero Y velocity at the apex is never a second ground contact. */
 export class NativeJumpBoost{
- private pendingUntil=0;private lastGroundedAt=-Infinity;private spent=false;private mount='';
- reset():void{this.pendingUntil=0;this.lastGroundedAt=-Infinity;this.spent=false;this.mount='';}
+ private inputUntil=0;private pendingUntil=0;private lastGroundedAt=-Infinity;private spent=false;private mount='';
+ inputPressed(now:number):boolean{return now<this.inputUntil;}
+ reset():void{this.inputUntil=0;this.pendingUntil=0;this.lastGroundedAt=-Infinity;this.spent=false;this.mount='';}
  update(gsu:Uint8Array,mount:string,now:number,requested:boolean,enabled=true):number|undefined{
   if(!enabled||mount==='yoshi'||mount==='squawks'||!canModifyJump(gsu)){this.reset();return;}
   if(this.mount!==mount){this.reset();this.mount=mount;}
@@ -103,12 +104,31 @@ export class NativeJumpBoost{
   // The core may have consumed B after the previous bridge tick. Accept that
   // first rising frame, but never an airborne press after the ground window.
   const takeoff=airborne===6&&vy<0;
-  if(requested&&!this.spent&&(grounded||(takeoff&&now-this.lastGroundedAt<=100)))this.pendingUntil=now+KONG_JUMP_HOLD_MS;
+  if(requested){
+   const launch=!this.spent&&(grounded||(takeoff&&now-this.lastGroundedAt<=100));
+   this.inputUntil=launch?now+KONG_JUMP_HOLD_MS:0;
+   if(launch)this.pendingUntil=this.inputUntil;
+  }
   if(now>this.pendingUntil||(!grounded&&!takeoff))this.pendingUntil=0;
   if(this.pendingUntil&&takeoff){
    this.pendingUntil=0;this.spent=true;this.lastGroundedAt=-Infinity;
    return Math.min(vy,mount==='winky'?-0x700:KONG_JUMP_VELOCITY);
   }
+ }
+}
+/** Flutter requires a fresh native B edge while descending. A continuous
+ * physical hold supplies that edge once per jump, without replacing velocity
+ * or extending the native flutter cycle. Kongs never use this adapter. */
+export class NativeFlutterInput{
+ private handled=-1;private releaseUntil=0;
+ reset():void{this.handled=-1;this.releaseUntil=0;}
+ pressed(gsu:Uint8Array,now:number,sequence:number,held:boolean,pressed:boolean,enabled:boolean):boolean{
+  if(!enabled||!held){this.reset();return pressed;}
+  if(word(gsu,0xc0)===0)this.reset();
+  else if(sequence!==this.handled&&signed16(word(gsu,PROFILE.vy))>0&&word(gsu,0xd2)===0){
+   this.handled=sequence;this.releaseUntil=now+60;
+  }
+  return pressed&&now>=this.releaseUntil;
  }
 }
 export interface RollHit { slot: number; x: number; y: number }

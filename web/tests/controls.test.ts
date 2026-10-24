@@ -78,3 +78,29 @@ describe('directions momentanées par défaut',()=>{
   c.activate('left',3);expect(c.movement(4)).toBe(-1);c.release('left');expect(c.movement(5)).toBe(0);
  });
 });
+
+describe('maintien réel du saut',()=>{
+ it('maintient au-delà de 750ms et libère au relâchement du clavier',()=>{
+  const c=new Controls();c.holdJump('keyboard',1000);expect(c.jumpPressed(4000)).toBe(true);
+  c.releaseJump('keyboard',4000);expect(c.jumpHeld).toBe(false);expect(c.jumpPressed(4000)).toBe(false);
+ });
+ it('donne un court front natif à un tap tactile très rapide',()=>{
+  const c=new Controls();c.holdJump('pointer:1',1000);c.releaseJump('pointer:1',1010);
+  expect(c.jumpPressed(1050)).toBe(true);expect(c.jumpPressed(1080)).toBe(false);
+ });
+ it('ne relâche pas une autre source encore appuyée et ignore les répétitions clavier',()=>{
+  const c=new Controls();c.holdJump('keyboard',1000);c.holdJump('keyboard',1100);c.holdJump('pointer:2',1200);
+  expect(c.jumpSequence).toBe(1);c.releaseJump('pointer:2',3000);expect(c.jumpPressed(3000)).toBe(true);
+  c.releaseJump('keyboard',3100);expect(c.jumpPressed(3100)).toBe(false);
+ });
+ it('annule aussi le maintien lors de Stop, blur, annulation tactile ou visée',()=>{
+  const c=new Controls();c.holdJump('pointer:1',1000);c.stop();expect(c.jumpPressed(2000)).toBe(false);
+  c.holdJump('keyboard',3000);c.activate('egg',3100);expect(c.jumpHeld).toBe(false);expect(c.jumpPressed(3100)).toBe(false);
+ });
+});
+
+
+it('fournit un nouveau front après un long maintien suivi d’un réappui très rapide',()=>{
+ const c=new Controls();c.holdJump('keyboard',1000);c.releaseJump('keyboard',4000);c.holdJump('keyboard',4001);
+ expect(c.jumpPressed(4001)).toBe(false);expect(c.jumpPressed(4059)).toBe(false);expect(c.jumpPressed(4060)).toBe(true);
+});

@@ -1,3 +1,15 @@
+# État courant — maintien du saut de Yoshi, après2281d8f
+
+Le saut tactile/souris et Espace suivent maintenant un vrai appui maintenu jusqu’au relâchement. Le timer de750ms ne sert plus qu’au click d’accessibilité sans pointerdown/keyup. Les sources clavier/pointeurs sont suivies séparément ; Stop, blur, annulation et visée les libèrent. Un tap très court garde80ms de signal pour ne pas être perdu entre deux frames natives.
+
+Yoshi : NativeFlutterInput envoie un seul relâchement/réappui60ms au début de descente si le bouton est toujours maintenu et que le flottement n’est pas déjà actif. C’est nécessaire car le code natif exige un nouveau frontB (GSU bank0B:CD52–CDAA). Le pont ne remplace pas la vitesse verticale ni la durée native du cycle, et ne répète pas automatiquement des cycles infinis. Les appuis manuels restent possibles.
+
+Kongs à pied : NativeJumpBoost n’autorise B que pour un saut commencé au sol, pendant au plus260ms ; un nouvel appui en l’air ne crée plus le front qui pourrait activer le flottement de Yoshi. Donkey et Diddy gardent leur impulsion et leur physique existantes. S’ils chevauchent Yoshi, ils bénéficient naturellement de ses pouvoirs. Les montures animales gardent leur comportement et Squawks son vol.
+
+162tests passent ; validation moteur sur Mac isolé5182 : maintien clavier1100ms et souris1100ms surYoshi, D2=6 (flottement actif), vy=-9 puis7 ; Donkey et Diddy maintenus1200ms à pied sont au solC0=0, vy=0, D2=1 (armement natif, aucun flottement actif). Captures outputs/verification-saut-yoshi.png et verification-saut-diddy.png. Pas de test de matériel mobile physique. Le libellé du bouton indique hold to flutter surYoshi, normal jump à pied, hold to fly surSquawks. TypeScript et Vite valides. Couverture des maintiens longs, relâchement, double source, tap rapide, interruption, sautDK/Diddy au sol, refus de flutter en plein vol, cycle natifYoshi et cavalier surYoshi. Le compteur de secours original et la direction momentanée de2281d8f sont conservés.
+
+---
+
 # État courant — compteur original restauré après303d56a
 
 Demande utilisateur : conserver les mêmes valeurs que Yoshi’s Island original. Le minimum forcé de10secondes à chaque choc ajouté par303d56a était une modification des règles ; il est supprimé avec src/rescue.ts et ses tests de minuterie personnalisée. Le pont ne modifie plus WRAM03B6.

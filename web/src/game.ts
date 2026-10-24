@@ -3,7 +3,6 @@ import { loadStartState } from './bootstrap';
 import { readBeforeDeadline } from './startup';
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
-import { RescueTimer } from './rescue';
 import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing, waitForNativeFrames } from './engine';
 import { PROFILE as P, KONG_JUMP_HOLD_MS, NativeJumpBoost, canModifyJump, canWriteVelocity, hideNativePlayer, absorbHit, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
 import { storeFile } from './storage';
@@ -16,7 +15,7 @@ const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
 export class LiveGame {
  wramBase=0;gsuBase=0;ready=false;paused=false;kills=0;walls=0;adventure=new Adventure();autoSkip=false;
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
- private skipUntil=0;private lastSave=0;private saving=false;private jumpSequence=0;private lastStage='';private wasFinishing=false;private rescueTimer=new RescueTimer();
+ private skipUntil=0;private lastSave=0;private saving=false;private jumpSequence=0;private lastStage='';private wasFinishing=false;
  private jumpBoost=new NativeJumpBoost();
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
@@ -77,7 +76,7 @@ export class LiveGame {
  }
  mount(mount:Mount):void{if(this.adventure.ride(mount)){this.updateVisibility();this.changed();}}
  stop():void{this.controls.stop();this.jumpBoost.reset();this.setInputs(new Set());}
- setPaused(value:boolean):void{this.stop();this.rescueTimer.pause();this.paused=value;this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
+ setPaused(value:boolean):void{this.stop();this.paused=value;this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
  /** Native fade-out and overworld initialization; keeps completed-level progress. */
  goToMap():void{
   this.stop();this.wram[P.mode]=0x23;writeWord(this.wram,0x200,0x010f);
@@ -97,10 +96,8 @@ export class LiveGame {
   // Clear once on entry so new confirmation presses still work afterwards.
   if(finishing&&!this.wasFinishing){this.stop();this.jumpSequence=this.controls.jumpSequence;}
   this.wasFinishing=finishing;
-  if(goalHandoff){this.rescueTimer.reset();this.jumpBoost.reset();this.setInputs(new Set());this.updateVisibility();this.draw(now,false);return;}
+  if(goalHandoff){this.jumpBoost.reset();this.setInputs(new Set());this.updateVisibility();this.draw(now,false);return;}
   const gameplay=this.wram[P.mode]===P.gameplay,dialogue=this.messageOpen,lost=gameplay&&babyIsLost(g);
-  const rescueStars=this.rescueTimer.update(now,lost,word(this.wram,0x3b6),!dialogue);
-  if(rescueStars!==undefined)writeWord(this.wram,0x3b6,rescueStars);
   // Resolve the rescue mount before inputs/physics so Yoshi can flutter this frame.
   if(gameplay){
    if(lost&&!this.previousBabyLost){this.adventure.hit();this.controls.rollUntil=0;this.updateVisibility();this.changed();}

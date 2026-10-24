@@ -1,3 +1,17 @@
+# État courant — compteur original restauré après303d56a
+
+Demande utilisateur : conserver les mêmes valeurs que Yoshi’s Island original. Le minimum forcé de10secondes à chaque choc ajouté par303d56a était une modification des règles ; il est supprimé avec src/rescue.ts et ses tests de minuterie personnalisée. Le pont ne modifie plus WRAM03B6.
+
+Référence primaire : manuel Nintendo original, page12, https://www.nintendo.co.jp/clvs/manuals/common/pdf/CLV-P-SADJE.pdf . Le compteur commence à10, monte jusqu’à30 avec les étoiles. Après récupération de bébé, une réserve inférieure à10 se recharge progressivement jusqu’à10. Un nouveau choc durant la recharge peut donc commencer à5 : ne pas forcer un remplissage à chaque coup.
+
+Vérification code natif local : bank01:AFDC–AFDF initialise03B6 à0064 (100unités internes =10affichés). bank00:E2F5–E310 décrémente le compteur via le diviseur natif0392 ; bank00:E2CC–E2F3 gère la recharge progressive sous006D. Toute cadence, pause, bonus et capture reste gérée par le cœur et la ROM Europe exacts, sans conversion en horloge JavaScript ni modification de ROM.
+
+Validation :149tests passent, TypeScript et Vite valides, bundle index-5fcl7yiP.js.
+
+La direction momentanée par défaut du commit303d56a est conservée : relâcher libère la commande. Tests de pont ajoutés pour les réserves0/1/50/100/109/300, la seconde perte à5, la recharge native et pause/reprise sans écriture du compteur. Les sections suivantes sont historiques ; le minimum forcé qu’elles décrivent n’est plus actif.
+
+---
+
 # État courant — secours et direction, après ef98e18
 
 La direction est momentanée par défaut : Controls(sticky=false), option Keep walking after release décochée. Relâcher le joystick annule ses deux axes ; la marche persistante reste un choix explicite. Les sauts et roulades accessibles restent disponibles.

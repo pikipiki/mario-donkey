@@ -36,19 +36,24 @@ describe('pause audio routing',()=>{
  });
 });
 
-describe('rescue countdown integration',()=>{
- it('replaces a five-star rescue with ten active seconds, then allows native capture',()=>{
-  const {game}=fixture();writeWord(game.gsu,P.baby,0);writeWord(game.wram,0x3b6,50);game.tick(1000);
-  expect(word(game.wram,0x3b6)).toBe(100);
-  writeWord(game.wram,0x3b6,1);game.tick(6000);expect(word(game.wram,0x3b6)).toBe(50);
-  writeWord(game.wram,0x3b6,1);game.tick(11000);expect(word(game.wram,0x3b6)).toBe(0);
-  game.tick(11100);expect(word(game.wram,0x3b6)).toBe(0);
-  writeWord(game.gsu,P.baby,0x8000);writeWord(game.wram,0x3b6,150);game.tick(12000);expect(word(game.wram,0x3b6)).toBe(150);
+describe('original SNES rescue counter',()=>{
+ it('never refills or replaces the native star reserve on damage, including five remaining stars',()=>{
+  for(const stars of [0,1,50,100,109,300]){
+   const {game}=fixture();writeWord(game.wram,0x3b6,stars);writeWord(game.gsu,P.baby,0);
+   game.tick(1000);expect(game.adventure.mount).toBe('yoshi');expect(word(game.wram,0x3b6)).toBe(stars);
+   game.tick(6000);game.tick(11000);expect(word(game.wram,0x3b6)).toBe(stars);
+  }
  });
- it('keeps the remaining time after pausing the live game',()=>{
+ it('preserves native depletion, gradual recovery and a second hit before reaching ten',()=>{
+  const {game}=fixture();writeWord(game.gsu,P.baby,0);writeWord(game.wram,0x3b6,100);game.tick(1000);
+  writeWord(game.wram,0x3b6,40);game.tick(5000);expect(word(game.wram,0x3b6)).toBe(40);
+  writeWord(game.gsu,P.baby,0x8000);game.tick(5100);writeWord(game.wram,0x3b6,50);game.tick(6000);
+  writeWord(game.gsu,P.baby,0);game.tick(6100);expect(word(game.wram,0x3b6)).toBe(50);
+  writeWord(game.wram,0x3b6,0);game.tick(10000);expect(word(game.wram,0x3b6)).toBe(0);
+ });
+ it('does not change native timer values across pause and resume',()=>{
   const {game}=fixture();vi.spyOn(game,'save').mockResolvedValue();vi.spyOn(game,'unlockAudio').mockResolvedValue();
-  writeWord(game.gsu,P.baby,0);game.tick(1000);game.tick(4000);expect(word(game.wram,0x3b6)).toBe(70);
+  writeWord(game.gsu,P.baby,0);writeWord(game.wram,0x3b6,70);game.tick(1000);
   game.setPaused(true);game.tick(14000);game.setPaused(false);game.tick(15000);expect(word(game.wram,0x3b6)).toBe(70);
-  game.tick(16000);expect(word(game.wram,0x3b6)).toBe(60);
  });
 });

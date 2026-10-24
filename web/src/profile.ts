@@ -4,7 +4,7 @@ export const PROFILE = {
   x: 0x8c, y: 0x90, vx: 0xb4, vy: 0xaa, facing: 0xc4,
   baby: 0x1b2, invincible: 0x1d6, sound: 0x7a,
   spriteState: 0xf00, spriteId: 0x1360, spriteX: 0x10e2, spriteY: 0x1182,
-  gameplay: 0x13,
+  gameplay: 0x13, victory: 0x14,
 } as const;
 export function word(bytes: Uint8Array, offset: number): number { return bytes[offset] | bytes[offset + 1] << 8; }
 export function writeWord(bytes: Uint8Array, offset: number, value: number): void { bytes[offset] = value & 255; bytes[offset + 1] = (value >>> 8) & 255; }
@@ -23,27 +23,24 @@ export function patchYoshiDrawing(original: Uint8Array): Uint8Array {
 }
 
 export function babyIsLost(gsu: Uint8Array): boolean { return (word(gsu,PROFILE.baby)&0x8000)===0; }
-/** A touch knocks Baby Mario off ($0000) and locks Yoshi ($1AE) plus sprites ($1B0). Clear that freeze so he can be chased, and leave the original countdown and escape alone. Pipes lock controls without starting invincibility, so those stay. */
+/** The EU goal sprite writes player state $0014 and advances game mode
+ * $13 -> $14 in the same native frame. A nearby ring is not a goal trigger:
+ * damage can lock the player beside it before Baby Mario detaches. */
 export function inGoal(gsu:Uint8Array):boolean{
- const state=word(gsu,0xac);if(state===0x14||state===0x15)return true;
- if(word(gsu,0x1ae)===0||word(gsu,PROFILE.baby)!==0x8000)return false;
- const x=word(gsu,PROFILE.x),y=word(gsu,PROFILE.y);
- for(let slot=0;slot<24;slot++){
-  const o=slot*4;if(word(gsu,PROFILE.spriteId+o)!==0x0d||word(gsu,PROFILE.spriteState+o)<8)continue;
-  const dx=Math.abs(signed16(word(gsu,PROFILE.spriteX+o)-x)),dy=Math.abs(signed16(word(gsu,PROFILE.spriteY+o)-y));
-  if(dx<80&&dy<80)return true;
- }
- return false;
+ return word(gsu,0xac)===0x14;
 }
+/** A touch knocks Baby Mario off ($0000) and locks Yoshi ($1AE) plus sprites
+ * ($1B0). Release those locks and the native grounded stun (invincibility >=
+ * $40, GSU $0B:C7E5), preserving the countdown and native non-playable states. */
 export function absorbHit(gsu:Uint8Array):boolean{
- if(inGoal(gsu))return false;
+ if(word(gsu,0xac)!==0||word(gsu,0xae)!==0)return false;
  const baby=word(gsu,PROFILE.baby),inv=word(gsu,PROFILE.invincible);
  const locked=word(gsu,0x1ae)!==0||word(gsu,0x1b0)!==0;
  const crying=baby===0,riding=(baby&0x8000)!==0;
  if(crying){if(!locked&&inv===0)return false;}
  else if(!(riding&&locked&&inv>=0x40))return false;
  writeWord(gsu,0x1ae,0);writeWord(gsu,0x1b0,0);
- if(baby===0&&inv<24)writeWord(gsu,PROFILE.invincible,24);
+ writeWord(gsu,PROFILE.invincible,Math.min(0x3f,Math.max(inv,24)));
  return true;
 }
 /** Approach a target run speed. Reversing takes a longer skid than releasing the stick. */
@@ -73,11 +70,47 @@ export function freeSpriteGraphics(gsu:Uint8Array,slot:number):void{
  if(index<0x80)writeWord(gsu,0x1ecc,word(gsu,0x1ecc)&~word(gsu,0x1ece+index));
  if(word(gsu,0x1b6)===offset)writeWord(gsu,0x1b6,0);
 }
-/** The native draw routine also advances cinematic animation. Hide it only
- * during interactive gameplay, when the canvas replacement is being drawn. */
-export function hideNativePlayer(mode:number,mount:string,form:number):boolean{return mode===PROFILE.gameplay&&mount!=='yoshi'&&form===0;}
+/** Restore native drawing throughout the goal handoff and victory sequence.
+ * The canvas replacement is only used during interactive gameplay. */
+export function hideNativePlayer(mode:number,mount:string,form:number,goal=false,dialogue=false):boolean{return mode===PROFILE.gameplay&&!goal&&!dialogue&&mount!=='yoshi'&&form===0;}
 export const KONG_JUMP_VELOCITY=-0x640;
 export const KONG_JUMP_HOLD_MS=260;
+/** Locks, morphs and scripted player states own their vertical movement. */
+export function canModifyJump(gsu:Uint8Array):boolean{
+ return word(gsu,0xac)===0&&word(gsu,0xae)===0&&word(gsu,0x1ae)===0&&word(gsu,0x1b0)===0;
+}
+/** $FC records the nine native collision probes: left $180, right $60,
+ * ceiling $18, feet $07 (GSU terrain routines in bank $0B). Wall resolution
+ * pushes out one pixel and zeros speed; reinjecting full speed each frame can
+ * overpower that correction. Preserve it while allowing movement away. */
+export function canWriteVelocity(gsu:Uint8Array,axis:'x'|'y',velocity:number):boolean{
+ if(!canModifyJump(gsu))return false;
+ const mask=axis==='x'?(velocity<0?0x180:velocity>0?0x60:0):(velocity<0?0x18:velocity>0?0x07:0);
+ return (word(gsu,0xfc)&mask)===0;
+}
+/** $C0 is the native airborne state: terrain landing clears it, a normal
+ * takeoff sets it to 6 and walking off a ledge sets it to 8 (GSU bank $0B).
+ * Arm on the ground and wait for native takeoff before replacing its impulse.
+ * A zero Y velocity at the apex is never a second ground contact. */
+export class NativeJumpBoost{
+ private pendingUntil=0;private lastGroundedAt=-Infinity;private spent=false;private mount='';
+ reset():void{this.pendingUntil=0;this.lastGroundedAt=-Infinity;this.spent=false;this.mount='';}
+ update(gsu:Uint8Array,mount:string,now:number,requested:boolean,enabled=true):number|undefined{
+  if(!enabled||mount==='yoshi'||mount==='squawks'||!canModifyJump(gsu)){this.reset();return;}
+  if(this.mount!==mount){this.reset();this.mount=mount;}
+  const airborne=word(gsu,0xc0),vy=signed16(word(gsu,PROFILE.vy)),grounded=airborne===0;
+  if(grounded){this.lastGroundedAt=now;this.spent=false;}
+  // The core may have consumed B after the previous bridge tick. Accept that
+  // first rising frame, but never an airborne press after the ground window.
+  const takeoff=airborne===6&&vy<0;
+  if(requested&&!this.spent&&(grounded||(takeoff&&now-this.lastGroundedAt<=100)))this.pendingUntil=now+KONG_JUMP_HOLD_MS;
+  if(now>this.pendingUntil||(!grounded&&!takeoff))this.pendingUntil=0;
+  if(this.pendingUntil&&takeoff){
+   this.pendingUntil=0;this.spent=true;this.lastGroundedAt=-Infinity;
+   return Math.min(vy,mount==='winky'?-0x700:KONG_JUMP_VELOCITY);
+  }
+ }
+}
 export interface RollHit { slot: number; x: number; y: number }
 export function applyRoll(gsu: Uint8Array, direction: number): RollHit[] {
   const x=word(gsu,PROFILE.x), y=word(gsu,PROFILE.y); const hits: RollHit[]=[];

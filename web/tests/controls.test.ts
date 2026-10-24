@@ -23,3 +23,45 @@ it('le stick rond couvre les diagonales et revient au centre',()=>{
  c.setStick(0.1,0.1);expect(c.movement(0)).toBe(0);expect(c.verticalAxis(0)).toBe(0);
  c.releaseStick();expect(c.runAxis()).toBe(0);
 });
+
+
+describe('joystick accessible à un doigt',()=>{
+ it('conserve la marche pour un saut touché après le relâchement du stick',()=>{
+  const c=new Controls(true);c.setStick(0.8,0);expect(c.runAxis()).toBeCloseTo(.8);c.releaseStick();c.activate('jump',100);
+  expect(c.movement(120)).toBe(1);expect(c.runAxis()).toBe(1);expect(c.jumpUntil).toBe(850);expect(c.usingStick).toBe(false);expect(c.stickX).toBe(0);
+ });
+ it('s’arrête quand on retouche le centre puis relâche',()=>{
+  const c=new Controls(true);c.setStick(-1,0);c.releaseStick();expect(c.movement(20)).toBe(-1);c.setStick(0.1,-0.1);expect(c.movement(30)).toBe(0);c.releaseStick();expect(c.movement(40)).toBe(0);
+ });
+ it('change de direction au prochain geste horizontal',()=>{
+  const c=new Controls(true);c.setStick(1,0);c.releaseStick();c.setStick(-.6,0);c.releaseStick();expect(c.movement(10)).toBe(-1);expect(c.facing).toBe(-1);
+ });
+ it('ne colle jamais la direction verticale après une diagonale',()=>{
+  const c=new Controls(true);c.setStick(.8,-.9);expect(c.verticalAxis(10)).toBe(-1);c.releaseStick();expect(c.verticalAxis(20)).toBe(0);expect(c.movement(20)).toBe(1);
+ });
+ it('le geste vertical seul arrête la marche horizontale mémorisée',()=>{
+  const c=new Controls(true);c.setStick(1,0);c.releaseStick();c.setStick(0,1);expect(c.verticalAxis(10)).toBe(1);c.releaseStick();expect(c.movement(20)).toBe(0);expect(c.verticalAxis(20)).toBe(0);
+ });
+ it('garde un stick momentané en mode classique',()=>{
+  const c=new Controls(false);c.setStick(1,0);expect(c.movement(0)).toBe(1);c.releaseStick();c.activate('jump',100);expect(c.movement(120)).toBe(0);
+ });
+ it('Stop et donc blur annulent la direction mémorisée et la roulade',()=>{
+  const c=new Controls(true);c.setStick(1,0);c.releaseStick();c.activate('roll',0);c.stop();expect(c.movement(100)).toBe(0);expect(c.movement(1000)).toBe(0);expect(c.direction).toBe(0);
+ });
+ it('préserve le clavier après avoir relâché le stick et reprend la marche après une roulade',()=>{
+  const c=new Controls(true);c.keyboardDirection=-1;c.setStick(1,0);c.releaseStick();expect(c.movement(0)).toBe(-1);c.keyboardDirection=0;c.activate('roll',10);expect(c.movement(20)).toBe(1);expect(c.movement(1000)).toBe(1);
+ });
+});
+
+
+describe('native flutter tap edges',()=>{
+ it('releases B between overlapping taps, then provides a complete hold',()=>{
+  const c=new Controls();c.activate('jump',1000);expect(c.jumpPressed(1000)).toBe(true);
+  c.activate('jump',1200);expect(c.jumpPressed(1200)).toBe(false);expect(c.jumpPressed(1259)).toBe(false);
+  expect(c.jumpPressed(1260)).toBe(true);expect(c.jumpPressed(2009)).toBe(true);expect(c.jumpPressed(2010)).toBe(false);
+ });
+ it('starts immediately after a previous hold expired and clears the pending press on stop',()=>{
+  const c=new Controls();c.activate('jump',1000);c.activate('jump',1800);expect(c.jumpPressed(1800)).toBe(true);
+  c.activate('jump',1900);c.stop();expect(c.jumpPressed(1960)).toBe(false);
+ });
+});

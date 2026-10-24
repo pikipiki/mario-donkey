@@ -33,7 +33,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   </aside>
  </section>
  <p id="status" class="status" role="status" aria-live="polite">Loading the game…</p>
- <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">Push the stick in any direction, then it returns to the center. The roll keeps moving on its own. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>One-finger controls</span><input id="sticky" type="checkbox" checked></label><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><button id="level-map" class="sheet-button" disabled>Choose a level · World map</button><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button><button id="test-audio">Check native audio signal (test)</button><button id="test-goal">Approach the 1-1 goal (test)</button></details></dialog>
+ <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">With one-finger controls, move the stick left or right and release to keep walking. Touch its center to stop. Up and down stop when you release the stick. Turn off one-finger controls to stop walking on release. The roll keeps moving on its own. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>One-finger controls</span><input id="sticky" type="checkbox" checked></label><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><button id="level-map" class="sheet-button" disabled>Choose a level · World map</button><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button><button id="test-audio">Check native audio signal (test)</button><button id="test-goal">Approach the 1-1 goal (test)</button></details></dialog>
 </main>`;
 installGameTouchGuards(document.querySelector<HTMLElement>('.shell')!);
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -94,7 +94,7 @@ function placeStick(e:PointerEvent):void{
 stick.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();try{stick.setPointerCapture(e.pointerId);}catch{}stickPointer=e.pointerId;if(game?.ready&&!game.paused)void game.unlockAudio().catch(()=>{});placeStick(e);});
 stick.addEventListener('pointermove',e=>{if(e.pointerId===stickPointer)placeStick(e);});
 const releaseStick=()=>{stickPointer=undefined;nub.style.transform='translate(-50%, -50%)';controls.releaseStick();};
-stick.addEventListener('pointerup',releaseStick);stick.addEventListener('pointercancel',releaseStick);
+stick.addEventListener('pointerup',releaseStick);stick.addEventListener('pointercancel',()=>{releaseStick();game?.stop();controls.stop();refreshButtons();});
 document.querySelectorAll<HTMLButtonElement>('[data-control]').forEach(b=>{
  let pointerHandled=false;
  const activate=()=>{if(game?.ready&&!game.paused){void game.unlockAudio().catch(()=>{});controls.activate(b.dataset.control as Button,performance.now());refreshButtons();}};
@@ -105,6 +105,7 @@ $('pause').addEventListener('click',()=>{if(game)pause(!game.paused);releaseUiFo
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{setStatus('The game already uses all the space in this browser.');}releaseUiFocus($('fullscreen'));});
 const settings=$<HTMLDialogElement>('settings');
 function closeSettings():void{settings.close();if(menuResume)pause(false);menuResume=false;}
+function resumeFromSettings():void{closeSettings();if(game?.ready&&game.paused)pause(false);}
 $('options').addEventListener('click',()=>{menuResume=Boolean(game?.ready&&!game.paused);if(menuResume)pause(true);settings.showModal();});$('close-settings').addEventListener('click',closeSettings);settings.addEventListener('cancel',e=>{e.preventDefault();closeSettings();});
 $<HTMLInputElement>('sticky').addEventListener('change',e=>{controls.stop();controls.sticky=(e.target as HTMLInputElement).checked;refreshButtons();});
 $<HTMLInputElement>('auto-skip').addEventListener('change',e=>{if(game)game.autoSkip=(e.target as HTMLInputElement).checked;});
@@ -119,9 +120,9 @@ function enableSound():void{
  releaseUiFocus($('sound-quick'));
 }
 $('sound').addEventListener('click',enableSound);$('sound-quick').addEventListener('click',enableSound);
-$('level-map').addEventListener('click',()=>{closeSettings();game?.goToMap();});
+$('level-map').addEventListener('click',()=>{resumeFromSettings();game?.goToMap();});
 $('save').addEventListener('click',()=>{void game?.save();});
-document.querySelectorAll<HTMLButtonElement>('[data-native]').forEach(b=>b.addEventListener('click',()=>{const button=Number(b.dataset.native);closeSettings();controls.pulse(button,performance.now());}));
+document.querySelectorAll<HTMLButtonElement>('[data-native]').forEach(b=>b.addEventListener('click',()=>{const button=Number(b.dataset.native);resumeFromSettings();controls.pulse(button,performance.now());}));
 const keys=new Set<string>();const keyActions:Record<string,Button>={Space:'jump',KeyX:'roll',KeyC:'tongue',KeyV:'egg',ArrowUp:'up',ArrowDown:'down'};
 window.addEventListener('keydown',e=>{
  const target=e.target as HTMLElement|null;
@@ -136,7 +137,7 @@ window.addEventListener('keyup',e=>{keys.delete(e.code);controls.keyboardDirecti
 window.addEventListener('blur',()=>{keys.clear();game?.stop();controls.stop();refreshButtons();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&game?.ready)pause(true);});
 $('test-wall').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();if(game.paused)pause(false);game.stop();setStatus(`${game.testWall()} test blocks placed. Roll to break them.`);});
 $('test-reset').addEventListener('click',async()=>{if(!debug||!game)return;const state=await loadFile('campaign-eu-map-v3-snes9x-2.0.2');if(!state)return;closeSettings();game.stop();game.emulator.gameManager.loadState(state);});
-$('test-egg').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-40);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);write(0xc4,0);write(0x1d6,240);controls.facing=1;controls.activate('tongue',performance.now());setTimeout(()=>controls.activate('down',performance.now()),700);break;}}});
+$('test-egg').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-40);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);write(0xc4,0);write(0x1d6,0x3f);controls.facing=1;controls.activate('tongue',performance.now());setTimeout(()=>controls.activate('down',performance.now()),700);break;}}});
 $('test-hit').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();game.gsu[0x8c]=0xd0;game.gsu[0x8d]=1;game.gsu[0x90]=0x70;game.gsu[0x91]=7;});
 $('test-roll').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-24);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);controls.facing=1;controls.activate('roll',performance.now());break;}}});
 $('test-dialogue').addEventListener('click',()=>{if(!debug||!game?.ready||game.wram[0x118]!==0x13)return;closeSettings();if(game.paused)pause(false);game.stop();game.wram[0xd11]=1;game.gsu[0x4070]=0x2c;game.gsu[0x4071]=0;});
@@ -151,7 +152,7 @@ $('test-audio').addEventListener('click',async()=>{
 });
 $('test-goal').addEventListener('click',async()=>{
  if(!debug||!game?.ready||game.wram[0x21a]!==0)return;
- closeSettings();game.stop();
+ resumeFromSettings();game.stop();
  // Reload 1-1 through its real entrance loader near the goal. Restore the ROM
  // data immediately afterwards; never manufacture a goal sprite or completion.
  const signature=new Uint8Array([0,7,0x77,1,1,7,0x7a,2,2,3,0x7a,3,3,7,0x7a,4]);
@@ -162,8 +163,8 @@ $('test-goal').addEventListener('click',async()=>{
  const wait=async(mode:number)=>{const began=performance.now();while(game!.wram[0x118]!==mode){if(performance.now()-began>12000)throw new Error('Native entrance timed out.');await waitForNativeFrames(manager);}};
  try{
   for(const p of sites){heap[p+1]=0xdd;heap[p+2]=0x69;}
-  game.goToMap();await wait(0x26);controls.pulse(0,performance.now());await wait(0x13);game.gsu[0x1d6]=0xff;game.gsu[0x1d7]=0x7f;
-  setStatus('Native goal approach loaded (invincible test fixture).');
+  game.goToMap();await wait(0x26);controls.pulse(0,performance.now());await wait(0x13);game.gsu[0x1d6]=0x3f;game.gsu[0x1d7]=0;
+  pause(true);setStatus('Native goal approach loaded · Resume to test the ring.');
  }catch(e){setStatus((e as Error).message);}
  finally{for(const p of sites)heap.set(signature,p);}
 });

@@ -1,3 +1,17 @@
+# État courant — audit du niveau 1-1, 24 octobre 2026
+
+Cette section prévaut sur les notes historiques ci-dessous. Base335096c, copie isolée work/web-playthrough-20261024, serveur5180. **144 tests passent et build Vite valide** : index-Dxq6NEPY.js, CSS index-CS1DDHCj.css. Consulter [la recette détaillée](QA_1_1_2026-10-24.md) pour les reproductions, preuves et limites.
+
+Corrigé : faux finish lors d’un choc près du cercle ; restauration du rendu natif et purge des anciennes commandes en victoire ; recul/invincibilité qui bloquait le contrôle après choc ; boosts de saut répétés en l’air ; absence de nouveau front B pour le flutter ; mode un doigt et annulation tactile ; carte/boutons SNES ouverts depuis pause ; destruction des murs avec toutes les montures ; traversée des parois par injection de vitesse ; destruction prématurée d’une Piranha porteuse ; personnage dessiné par-dessus les instructions.
+
+Le cercle réel de1-1, la cérémonie, le score, le retour carte, l’ouverture et le démarrage de1-2 puis la sauvegarde/reprise ont été observés dans le moteur natif. La sortie a été vérifiée avec une entrée DEV proche du cercle, sans forcer de victoire. Le parcours d’entrée jusqu’aux plateformes/parois/plantes a été joué séparément, avec15 ennemis éliminés, puis usage de Squawks déverrouillé pour les essais. Ne pas transformer cette couverture en affirmation de partie intégrale sans assistance ou de jeu complet exempt de bugs.
+
+Repères essentiels : état joueurAC14 = goal ; mode global14 = victoire ; AC1A = Piranha porteuse. C0=0 au sol,6 décollage,7/8 descente. ContactsFC gauche180/droite60/plafond18/sol7. L’invincibilité>=64 bloque nativement les commandes au sol ; le pont borne uniquement les chocs reconnus à24..63. Ne jamais forcer les déplacements pendant un script ou une transformation. L’ancienne fixture goal inv7fff bloquait elle-même le joueur ; remplacée par63 et pause dès l’entrée prête. La routine de dessin masquée n’a pas été prouvée responsable de l’avancement des cinématiques : l’ancien commentaire était trop affirmatif.
+
+Reste à valider : appareils physiques iPhone/Android (audio, zoom, rotations), longues sessions, autres niveaux/boss/bonus, tous les passages secrets, transformations, toutes les issues de capture par les plantes. En cas de vieux snapshot coincé dans un mur : revenir à la carte par Options et relancer le stage. Aucun fichier audio, ROM ni format de sauvegarde n’a été changé dans ce lot.
+
+---
+
 # Zoom au spam des boutons — correctif après86a9f79
 
 Retour réel utilisateur : zoom200% en appuyant rapidement, en portrait/paysage ; le CSS précédent ne suffisait pas. Nouveau src/touch.ts installé sur .shell : touchend capture et passive:false pour annuler le défaut natif sur [data-control]/#stick (les actions sont déjà exécutées par pointerdown). Ne synthétise pas de click ; conserve les clicks natifs des autres boutons/selects et le clavier. Bloque dblclick/gesturestart/gesturechange et touchmove multitouch ; ne bloque pas le scroll1doigt des options. touch-action:none aussi aux ancêtreshtml/body/#app et aux descendants des commandes. Viewport initial1/maximum1/user-scalable=no, choix explicite pour ce jeu où l’utilisateur veut bloquer le zoom ; Safari peut ignorer ce meta, d’où les gardes d’événements en plus.

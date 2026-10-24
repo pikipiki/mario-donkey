@@ -4,7 +4,7 @@ import { readBeforeDeadline } from './startup';
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
 import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing, waitForNativeFrames } from './engine';
-import { PROFILE as P, KONG_JUMP_VELOCITY, KONG_JUMP_HOLD_MS, hideNativePlayer, absorbHit, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
+import { PROFILE as P, KONG_JUMP_HOLD_MS, NativeJumpBoost, canModifyJump, canWriteVelocity, hideNativePlayer, absorbHit, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
 import { storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
@@ -15,7 +15,8 @@ const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
 export class LiveGame {
  wramBase=0;gsuBase=0;ready=false;paused=false;kills=0;walls=0;adventure=new Adventure();autoSkip=false;
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
- private skipUntil=0;private lastSave=0;private saving=false;private jumpSequence=0;private lastStage='';
+ private skipUntil=0;private lastSave=0;private saving=false;private jumpSequence=0;private lastStage='';private wasFinishing=false;
+ private jumpBoost=new NativeJumpBoost();
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
  get eggCount():number{return Math.min(6,word(this.gsu,0x1df6)>>>1);}
@@ -70,11 +71,11 @@ export class LiveGame {
  private updateVisibility():void{
   // Modify the verified ROM copy directly. Persistent cheats can restore stale
   // bytes when toggled, leaving native Yoshi hidden after a mount change.
-  const hide=hideNativePlayer(this.wram[P.mode],this.adventure.mount,word(this.gsu,0xae));
+  const hide=hideNativePlayer(this.wram[P.mode],this.adventure.mount,word(this.gsu,0xae),inGoal(this.gsu),this.messageOpen);
   setNativeDrawing(this.emulator.Module.HEAPU8,this.drawSite,hide);this.hidden=hide;
  }
  mount(mount:Mount):void{if(this.adventure.ride(mount)){this.updateVisibility();this.changed();}}
- stop():void{this.controls.stop();this.setInputs(new Set());}
+ stop():void{this.controls.stop();this.jumpBoost.reset();this.setInputs(new Set());}
  setPaused(value:boolean):void{this.stop();this.paused=value;this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
  /** Native fade-out and overworld initialization; keeps completed-level progress. */
  goToMap():void{
@@ -89,17 +90,23 @@ export class LiveGame {
  tick(now:number):void{
   if(!this.ready||this.paused)return;
   const g=this.gsu;
-  if(this.wram[P.mode]===P.gameplay&&inGoal(g)){this.setInputs(new Set());this.draw(now,false);return;}
-  const gameplay=this.wram[P.mode]===P.gameplay,lost=gameplay&&babyIsLost(g);
+  const goalHandoff=this.wram[P.mode]===P.gameplay&&inGoal(g);
+  const finishing=goalHandoff||this.wram[P.mode]===P.victory;
+  // A sticky direction/roll must not carry through the ceremony onto the map.
+  // Clear once on entry so new confirmation presses still work afterwards.
+  if(finishing&&!this.wasFinishing){this.stop();this.jumpSequence=this.controls.jumpSequence;}
+  this.wasFinishing=finishing;
+  if(goalHandoff){this.jumpBoost.reset();this.setInputs(new Set());this.updateVisibility();this.draw(now,false);return;}
+  const gameplay=this.wram[P.mode]===P.gameplay,dialogue=this.messageOpen,lost=gameplay&&babyIsLost(g);
   // Resolve the rescue mount before inputs/physics so Yoshi can flutter this frame.
   if(gameplay){
    if(lost&&!this.previousBabyLost){this.adventure.hit();this.controls.rollUntil=0;this.updateVisibility();this.changed();}
    this.previousBabyLost=lost;
   }
   const next=new Set<number>(),direction=this.controls.movement(now),rolling=now<this.controls.rollUntil;
-  const yoshi=this.adventure.mount==='yoshi',jumpFrom=this.controls.jumpUntil-750,hop=now<this.controls.jumpUntil&&now<jumpFrom+KONG_JUMP_HOLD_MS;
+  const yoshi=this.adventure.mount==='yoshi',jumpFrom=this.controls.jumpUntil-750,hop=this.controls.jumpPressed(now)&&now<jumpFrom+KONG_JUMP_HOLD_MS;
   if(direction)next.add(direction<0?INPUT.left:INPUT.right);
-  if(yoshi?now<this.controls.jumpUntil:hop)next.add(INPUT.b);
+  if(yoshi?this.controls.jumpPressed(now):hop)next.add(INPUT.b);
   if(now<this.controls.tongueUntil)next.add(INPUT.y);
   // Patient scheme supports two separate taps on touch, mouse and keyboard.
   if(this.wram[P.mode]===P.gameplay)writeWord(g,0x82,0);
@@ -110,27 +117,30 @@ export class LiveGame {
   this.setInputs(next);
   if((this.autoSkip||now<this.skipUntil)&&skipOpenDialogue(this.wram,g))this.skipUntil=now+1000;
   this.updateVisibility();
+  const jumpRequested=this.controls.jumpSequence!==this.jumpSequence;this.jumpSequence=this.controls.jumpSequence;
+  const jumpVelocity=this.jumpBoost.update(g,this.adventure.mount,now,jumpRequested,gameplay&&!dialogue);
   if(gameplay){
    const stars=word(this.wram,0x3b6);
-   if(!(lost&&stars<=0))absorbHit(g);
+   if(!dialogue&&!(lost&&stars<=0))absorbHit(g);
    const lives=this.wram[0x379];if(lives<this.previousLives)this.adventure.resetRoom(this.room);this.previousLives=lives;
-   const disabled=word(g,0x1ae)!==0,onFoot=this.adventure.mount==='foot';
-   if(onFoot&&!disabled&&word(g,0xae)===0){
+   const interactive=canModifyJump(g)&&!dialogue,onFoot=this.adventure.mount==='foot';
+   if(onFoot&&interactive){
     const axis=rolling?this.controls.facing:this.controls.runAxis();
-    writeWord(g,P.vx,rolling?this.controls.facing*0x360:dkcRun(signed16(word(g,P.vx)),axis));
+    const velocity=rolling?this.controls.facing*0x360:dkcRun(signed16(word(g,P.vx)),axis);
+    if(canWriteVelocity(g,'x',velocity))writeWord(g,P.vx,velocity);
    }
-   if(rolling&&!disabled){
+   if(rolling&&interactive){
     writeWord(g,P.invincible,Math.max(word(g,P.invincible),4));
-    if(yoshi&&word(g,0xae)===0)writeWord(g,P.vx,this.controls.facing*0x360);
+    if(yoshi&&canWriteVelocity(g,'x',this.controls.facing*0x360))writeWord(g,P.vx,this.controls.facing*0x360);
     const hits=applyRoll(g,this.controls.facing);this.kills+=hits.length;for(const hit of hits)this.particles.push({...hit,until:now+420});
    }
-   if(this.controls.jumpSequence!==this.jumpSequence){this.jumpSequence=this.controls.jumpSequence;if(!disabled&&this.adventure.mount==='winky')writeWord(g,P.vy,-0x700);else if(!disabled&&!yoshi)writeWord(g,P.vy,KONG_JUMP_VELOCITY);}
-   if(this.adventure.mount==='squawks'&&now<this.controls.jumpUntil&&!disabled)writeWord(g,P.vy,-0x180);
-   const walls=breakTerrain(this.wram,g,this.controls.facing,rolling&&onFoot);this.walls+=walls.length;
+   if(jumpVelocity!==undefined&&canWriteVelocity(g,'y',jumpVelocity))writeWord(g,P.vy,jumpVelocity);
+   if(interactive&&this.adventure.mount==='squawks'&&this.controls.jumpPressed(now)&&canWriteVelocity(g,'y',-0x180))writeWord(g,P.vy,-0x180);
+   const walls=breakTerrain(this.wram,g,this.controls.facing,rolling&&interactive&&!lost);this.walls+=walls.length;
    for(const hit of walls)this.particles.push({...hit,until:now+500});
-   const x=word(g,P.x),y=word(g,P.y),grounded=signed16(word(g,P.vy))===0&&!disabled&&!lost&&word(g,0xae)===0;
+   const x=word(g,P.x),y=word(g,P.y),grounded=signed16(word(g,P.vy))===0&&interactive&&!lost;
    this.adventure.observe(this.room,x,y,grounded);
-   const collected=this.adventure.breakNearby(this.room,x,y,rolling&&!disabled&&!lost);
+   const collected=this.adventure.breakNearby(this.room,x,y,rolling&&interactive&&!lost);
    if(collected.length){writeWord(g,P.sound,0x11);this.updateVisibility();this.changed();for(const item of collected)this.particles.push({x:item.x,y:item.y,until:now+500});}
   }
   if(this.lastStage!==this.stageLabel){this.lastStage=this.stageLabel;this.onStatus(this.stageLabel);this.changed();}
@@ -138,7 +148,7 @@ export class LiveGame {
   if(now-this.lastSave>20000&&!this.saving)void this.save();
  }
  private draw(now:number,rolling:boolean):void{
-  const c=this.overlay.getContext('2d')!;c.clearRect(0,0,256,this.overlay.height);if(this.wram[P.mode]!==P.gameplay)return;
+  const c=this.overlay.getContext('2d')!;c.clearRect(0,0,256,this.overlay.height);if(this.wram[P.mode]!==P.gameplay||inGoal(this.gsu)||this.messageOpen)return;
   const brightness=this.wram[0x200];if(brightness&0x80)return;c.globalAlpha=(brightness&15)/15;
   const g=this.gsu,x=word(g,P.x),y=word(g,P.y),cx=word(this.wram,P.cameraX),cy=word(this.wram,P.cameraY);
   const sx=signed16(x-cx)+12,sy=signed16(y-cy)+32+this.topPadding;
@@ -160,5 +170,5 @@ export class LiveGame {
  }
  /** DEV fixture: real map16 wall in empty space ahead; no campaign fixture is shipped. */
  testWall():number{const g=this.gsu,x=(word(g,P.x)+48)&~15,y=word(g,P.y)&~15;let count=0;for(const dy of [0,16]){const address=tileAddress(g,x,y+dy);if(address!==undefined&&replaceTile(this.wram,g,x,y+dy,0x7b00,0xa022))count++;}return count;}
- diagnostics():Record<string,unknown>{return {mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.overlay.height,frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
+ diagnostics():Record<string,unknown>{return {mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),playerState:word(this.gsu,0xac),playerLock:word(this.gsu,0x1ae),spriteLock:word(this.gsu,0x1b0),goal:inGoal(this.gsu),contacts:word(this.gsu,0xfc),nativeVx:signed16(word(this.gsu,0xa8)),vx:signed16(word(this.gsu,P.vx)),vy:signed16(word(this.gsu,P.vy)),airborne:word(this.gsu,0xc0),inputs:{axis:this.controls.runAxis(),jump:this.controls.jumpUntil,roll:this.controls.rollUntil},kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.overlay.height,frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
 }

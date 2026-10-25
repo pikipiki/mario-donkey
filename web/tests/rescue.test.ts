@@ -57,3 +57,12 @@ describe('original SNES rescue counter',()=>{
   game.setPaused(true);game.tick(14000);game.setPaused(false);game.tick(15000);expect(word(game.wram,0x3b6)).toBe(70);
  });
 });
+
+it('transmet Haut + Langue après un geste mobile relâché, sans changer bébé ou son compteur',()=>{
+ const {game,controls,simulateInput}=fixture();writeWord(game.gsu,P.baby,0);writeWord(game.wram,0x3b6,50);game.tick(1000);
+ controls.setStick(0,-1,1100);controls.releaseStick();controls.activate('tongue',1200);simulateInput.mockClear();game.tick(1200);
+ expect(simulateInput).toHaveBeenCalledWith(0,INPUT.up,1);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.y,1);
+ expect(simulateInput).toHaveBeenCalledWith(0,INPUT.left,0);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.right,0);
+ expect(word(game.gsu,P.baby)).toBe(0);expect(word(game.wram,0x3b6)).toBe(50);
+ simulateInput.mockClear();game.tick(1400);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.up,0);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.y,0);
+});

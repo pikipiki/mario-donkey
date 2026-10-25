@@ -1,3 +1,15 @@
+# État courant — secours original et langue verticale à un doigt, 25 octobre2026
+
+Comparaison demandée avec le jeu original : le manuel Nintendo, page11, recommande explicitement la langue vers le haut ou un œuf lorsque bébéMario flotte trop haut. Source primaire : https://www.nintendo.co.jp/clvs/manuals/common/pdf/CLV-P-SADJE.pdf . Le compteur commence à10, monte avec les étoiles jusqu’à30, se recharge progressivement vers10 après sauvetage ; il peut être inférieur à10 au choc suivant. Ces règles et les coordonnées de la bulle ne sont pas modifiées par ce correctif.
+
+Défaut de commande identifié : sur le joystick tactile momentané, relâcher Haut avant de toucher Langue effaçait la direction. Avec un seul doigt, Up+Y n’était donc pas réalisable. Controls mémorise désormais la visée vers le haut pendant2secondes après un gesteHaut. Le joueur relâche, puis touche Langue : le pont envoie ensemble Up+Y uniquement pendant l’attaque140ms. Aucune direction de déplacement ne reste pressée après le relâchement du stick. Le bouton affiche Tongue↑ quand la visée est préparée ; les options expliquent la combinaison et l’usage d’un œuf.
+
+La visée est consommée au premier tir, expire au bout de2secondes, s’annule avec nouveau geste côté/bas/centre, Stop/pause, changement de monture ou visée d’œuf. Les véritables appuis Haut+Langue simultanés restent possibles. Le compteur original, le saut plané deYoshi, les sauts normaux desKongs et la direction momentanée restent actifs.
+
+167tests passent, TypeScript et buildVite valides (index-CSHD8_rt.js). Recette moteurMac dans un onglet isolé5183 : gesteHaut relâché puis boutonLangue au clic, langue native relativeX=0/Y=-48 et direction de déplacement0. Capture outputs/verification-langue-haut.png. Choc réel observé en1-1 : compteur10 et bulle native, puis instruction originale invitant à sauter ou utiliser la langue. Le sauvetage complet dans cette dernière séquence n’est pas revendiqué, l’essai ayant été interrompu par cette instruction. Pas de validation sur téléphone physique. Tests du relâchement sans mouvement, comboUp+Y, expiration, annulation et conservation du bébé/compteur.
+
+---
+
 # État courant — maintien du saut de Yoshi, après2281d8f
 
 Le saut tactile/souris et Espace suivent maintenant un vrai appui maintenu jusqu’au relâchement. Le timer de750ms ne sert plus qu’au click d’accessibilité sans pointerdown/keyup. Les sources clavier/pointeurs sont suivies séparément ; Stop, blur, annulation et visée les libèrent. Un tap très court garde80ms de signal pour ne pas être perdu entre deux frames natives.

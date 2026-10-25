@@ -104,3 +104,21 @@ it('fournit un nouveau front après un long maintien suivi d’un réappui très
  const c=new Controls();c.holdJump('keyboard',1000);c.releaseJump('keyboard',4000);c.holdJump('keyboard',4001);
  expect(c.jumpPressed(4001)).toBe(false);expect(c.jumpPressed(4059)).toBe(false);expect(c.jumpPressed(4060)).toBe(true);
 });
+
+describe('visée de la langue vers le haut à un doigt',()=>{
+ it('libère la direction au relâchement mais permet Haut puis Langue',()=>{
+  const c=new Controls();c.setStick(0,-1,1000);c.releaseStick();expect(c.verticalAxis(1100)).toBe(0);expect(c.movement(1100)).toBe(0);
+  expect(c.tongueAimingUp(1100)).toBe(true);c.activate('tongue',1200);expect(c.tongueUpPressed(1200)).toBe(true);
+  expect(c.verticalAxis(1200)).toBe(0);expect(c.tongueUpPressed(1340)).toBe(false);expect(c.tongueAimingUp(1340)).toBe(false);
+ });
+ it('expire la visée après deux secondes et permet un tir horizontal normal',()=>{
+  const c=new Controls();c.setStick(0,-1,1000);c.releaseStick();expect(c.tongueAimingUp(3000)).toBe(false);
+  c.activate('tongue',3100);expect(c.tongueUpPressed(3100)).toBe(false);
+ });
+ it('annule la visée avec un nouveau geste vers le bas, le côté ou le centre',()=>{
+  for(const [x,y] of [[0,1],[1,0],[0,0]]){const c=new Controls();c.setStick(0,-1,1000);c.releaseStick();c.setStick(x,y,1100);c.releaseStick();c.activate('tongue',1200);expect(c.tongueUpPressed(1200)).toBe(false);}
+ });
+ it('ne laisse pas la visée polluer un œuf, une pause ou une nouvelle action après Stop',()=>{
+  for(const action of ['egg','stop'] as const){const c=new Controls();c.setStick(0,-1,1000);c.releaseStick();c.activate(action,1100);c.activate('tongue',1200);expect(c.tongueUpPressed(1200)).toBe(false);}
+ });
+});

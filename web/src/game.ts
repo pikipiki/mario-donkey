@@ -8,6 +8,7 @@ import { PROFILE as P, KONG_JUMP_HOLD_MS, NativeJumpBoost, NativeFlutterInput, c
 import { storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
+import { configureOverlay } from './overlay';
 import { readCampaign,writeCampaign } from './campaign';
 export type { Character } from './adventure';
 const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
@@ -17,6 +18,7 @@ export class LiveGame {
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
  private skipUntil=0;private lastSave=0;private saving=false;private jumpSequence=0;private lastStage='';private wasFinishing=false;
  private jumpBoost=new NativeJumpBoost();private flutterInput=new NativeFlutterInput();
+ private videoHeight=239;
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
  get eggCount():number{return Math.min(6,word(this.gsu,0x1df6)>>>1);}
@@ -63,7 +65,8 @@ export class LiveGame {
  }
 
  private finishBoot():void{
-  const h=this.emulator.gameManager.functions.getVideoDimensions('height');if(h>=224&&h<=256){this.overlay.height=h;this.topPadding=(h-224)>>1;}
+  const h=this.emulator.gameManager.functions.getVideoDimensions('height');if(h>=224&&h<=256){this.videoHeight=h;this.topPadding=(h-224)>>1;}
+  configureOverlay(this.overlay,this.videoHeight);
   this.ready=true;this.previousX=word(this.gsu,P.x);this.previousBabyLost=babyIsLost(this.gsu);this.previousLives=this.wram[0x379];this.lastSave=performance.now();
   this.updateVisibility();this.onStatus(this.stageLabel+' · Your turn');this.changed();
  }
@@ -149,13 +152,13 @@ export class LiveGame {
   if(now-this.lastSave>20000&&!this.saving)void this.save();
  }
  private draw(now:number,rolling:boolean):void{
-  const c=this.overlay.getContext('2d')!;c.clearRect(0,0,256,this.overlay.height);if(this.wram[P.mode]!==P.gameplay||inGoal(this.gsu)||this.messageOpen)return;
+  const c=this.overlay.getContext('2d')!;c.clearRect(0,0,256,this.videoHeight);if(this.wram[P.mode]!==P.gameplay||inGoal(this.gsu)||this.messageOpen)return;
   const brightness=this.wram[0x200];if(brightness&0x80)return;c.globalAlpha=(brightness&15)/15;
   const g=this.gsu,x=word(g,P.x),y=word(g,P.y),cx=word(this.wram,P.cameraX),cy=word(this.wram,P.cameraY);
   const sx=signed16(x-cx)+12,sy=signed16(y-cy)+32+this.topPadding;
   for(const item of this.adventure.nearby(this.room)){
    const px=signed16(item.x-cx)+12,py=signed16(item.y-cy)+32+this.topPadding;
-   if(px>=-64&&px<=320&&py>=-64&&py<=this.overlay.height+64)this.atlas.draw(c,item.kind==='barrel'?'barrel':'crate-'+item.kind,'idle',px,py,now);
+   if(px>=-64&&px<=320&&py>=-64&&py<=this.videoHeight+64)this.atlas.draw(c,item.kind==='barrel'?'barrel':'crate-'+item.kind,'idle',px,py,now);
   }
   if(word(g,0xae)===0){
    const moving=Math.abs(signed16(word(g,P.vx)))>8||x!==this.previousX,jumping=word(g,0xc0)!==0||Math.abs(signed16(word(g,P.vy)))>80;
@@ -171,5 +174,5 @@ export class LiveGame {
  }
  /** DEV fixture: real map16 wall in empty space ahead; no campaign fixture is shipped. */
  testWall():number{const g=this.gsu,x=(word(g,P.x)+48)&~15,y=word(g,P.y)&~15;let count=0;for(const dy of [0,16]){const address=tileAddress(g,x,y+dy);if(address!==undefined&&replaceTile(this.wram,g,x,y+dy,0x7b00,0xa022))count++;}return count;}
- diagnostics():Record<string,unknown>{return {mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),rescueStars:word(this.wram,0x3b6),playerState:word(this.gsu,0xac),playerLock:word(this.gsu,0x1ae),spriteLock:word(this.gsu,0x1b0),goal:inGoal(this.gsu),contacts:word(this.gsu,0xfc),nativeVx:signed16(word(this.gsu,0xa8)),vx:signed16(word(this.gsu,P.vx)),vy:signed16(word(this.gsu,P.vy)),airborne:word(this.gsu,0xc0),flutter:word(this.gsu,0xd2),inputs:{axis:this.controls.runAxis(),jump:this.controls.jumpUntil,jumpHeld:this.controls.jumpHeld,roll:this.controls.rollUntil},kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.overlay.height,frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),tongueRelative:{x:signed16(word(this.gsu,0x152)),y:signed16(word(this.gsu,0x154))},sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
+ diagnostics():Record<string,unknown>{return {mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),rescueStars:word(this.wram,0x3b6),playerState:word(this.gsu,0xac),playerLock:word(this.gsu,0x1ae),spriteLock:word(this.gsu,0x1b0),goal:inGoal(this.gsu),contacts:word(this.gsu,0xfc),nativeVx:signed16(word(this.gsu,0xa8)),vx:signed16(word(this.gsu,P.vx)),vy:signed16(word(this.gsu,P.vy)),airborne:word(this.gsu,0xc0),flutter:word(this.gsu,0xd2),inputs:{axis:this.controls.runAxis(),jump:this.controls.jumpUntil,jumpHeld:this.controls.jumpHeld,roll:this.controls.rollUntil},kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.videoHeight,overlaySize:[this.overlay.width,this.overlay.height],frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),tongueRelative:{x:signed16(word(this.gsu,0x152)),y:signed16(word(this.gsu,0x154))},sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
 }

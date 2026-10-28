@@ -1,3 +1,12 @@
+## 28 octobre 2026 — netteté des Goonks sur mobile
+
+- Le calque des acteurs suit la taille CSS et la densité de l’écran via ResizeObserver, plafonné à 2× (512×478 pour la sortie native 239 lignes ; maximum 512×512). Ce plafond conserve les texels utiles des poses sources ~50–70 px, dessinées à .64–.72×. Un buffer plus grand ne crée pas de détails supplémentaires dans ces assets.
+- Les coordonnées du jeu restent 256×hauteur native grâce à setTransform ; caméra, collisions, positions et physique inchangées. Hauteur logique séparée de la hauteur physique du canvas dans LiveGame.
+- Interpolation douce du calque à l’affichage et qualité haute pour les Goonks ; sprites DK et décor natif conservent leur pixel art. Aucune image plus lourde ni moteur 3D ajouté.
+- Aucun calcul de layout par frame ni réallocation du canvas si la résolution cible reste identique. Budget du buffer RGBA : ~0.93 Mio à 512×478, maximum 1 Mio ; ce chiffre ne couvre pas les autres allocations du navigateur.
+- Validation : 170 tests passent, TypeScript/Vite valides ; tests du plafond, densité portrait/paysage, transform logique et absence de réallocation sur changement de taille à résolution identique.
+- Limite de validation : navigateur indisponible (Mac verrouillé). Pas de vérification visuelle ni de mesure de FPS sur téléphone pour cette modification. Vérifier iPhone/Android portrait et paysage, marche/roulade/monture, et absence de décalage après rotation.
+
 # État courant — secours original et langue verticale à un doigt, 25 octobre2026
 
 Comparaison demandée avec le jeu original : le manuel Nintendo, page11, recommande explicitement la langue vers le haut ou un œuf lorsque bébéMario flotte trop haut. Source primaire : https://www.nintendo.co.jp/clvs/manuals/common/pdf/CLV-P-SADJE.pdf . Le compteur commence à10, monte avec les étoiles jusqu’à30, se recharge progressivement vers10 après sauvetage ; il peut être inférieur à10 au choc suivant. Ces règles et les coordonnées de la bulle ne sont pas modifiées par ce correctif.

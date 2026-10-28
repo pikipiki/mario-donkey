@@ -68,8 +68,9 @@ describe('jump bridge integration',()=>{
   airborne(game.gsu,6,0);controls.activate('jump',1300);game.tick(1300);expect(word(game.gsu,P.vy)).toBe(0);
  });
  it('keeps Squawks flight available in midair while respecting native locks and transformations',()=>{
-  const {game,controls}=fixture();game.adventure.mount='squawks';airborne(game.gsu,8,0x180);controls.activate('jump',1000);game.tick(1000);
+  const {game,controls,simulateInput}=fixture();game.adventure.mount='squawks';airborne(game.gsu,8,0x180);controls.activate('jump',1000);game.tick(1000);
   expect(signed16(word(game.gsu,P.vy))).toBe(-0x180);
+  expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,0);
   for(const address of [0xac,0xae,0x1ae,0x1b0]){writeWord(game.gsu,address,2);writeWord(game.gsu,P.vy,0x180);game.tick(1100);expect(word(game.gsu,P.vy)).toBe(0x180);writeWord(game.gsu,address,0);}
  });
  it('does not replay a map confirmation jump when the next stage appears',()=>{
@@ -79,6 +80,34 @@ describe('jump bridge integration',()=>{
  it('cancels an armed boost when movement is stopped',()=>{
   const {game,controls}=fixture();game.adventure.mount='foot';controls.activate('jump',1000);game.tick(1000);game.stop();
   airborne(game.gsu,6,-0x480);game.tick(1016);expect(signed16(word(game.gsu,P.vy))).toBe(-0x480);
+ });
+});
+
+describe('Squawks sustained flight',()=>{
+ it('launches with native B on the ground without overwriting the takeoff impulse',()=>{
+  const {game,controls,simulateInput}=fixture();game.adventure.mount='squawks';controls.holdJump('keyboard',1000);game.tick(1000);
+  expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,1);expect(word(game.gsu,P.vy)).toBe(0);
+  airborne(game.gsu,6,-0x600);simulateInput.mockClear();game.tick(1016);
+  expect(signed16(word(game.gsu,P.vy))).toBe(-0x600);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,0);
+ });
+ it('keeps flight available after a long hold without injecting a native flutter',()=>{
+  const {game,controls,simulateInput}=fixture();game.adventure.mount='squawks';controls.holdJump('pointer:1',1000);
+  airborne(game.gsu,8,0x100);game.tick(3000);
+  expect(signed16(word(game.gsu,P.vy))).toBe(-0x180);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,0);
+  controls.releaseJump('pointer:1',3000);airborne(game.gsu,8,0x80);simulateInput.mockClear();game.tick(3016);
+  expect(word(game.gsu,P.vy)).toBe(0x80);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,0);
+ });
+ it('does not start Yoshi flutter on repeated midair taps or push through a ceiling',()=>{
+  const {game,controls,simulateInput}=fixture();game.adventure.mount='squawks';airborne(game.gsu,8,0x180);
+  controls.activate('jump',1000);game.tick(1000);controls.activate('jump',1100);simulateInput.mockClear();game.tick(1160);
+  expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,0);
+  writeWord(game.gsu,0xfc,0x18);writeWord(game.gsu,P.vy,0);game.tick(1176);expect(word(game.gsu,P.vy)).toBe(0);
+ });
+ it('keeps map confirmation and baby rescue using their normal native controls',()=>{
+  const {game,controls,simulateInput}=fixture();game.adventure.mount='squawks';airborne(game.gsu,8,0x180);
+  game.wram[P.mode]=0x26;controls.holdJump('keyboard',1000);game.tick(1000);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,1);expect(word(game.gsu,P.vy)).toBe(0x180);
+  game.wram[P.mode]=P.gameplay;writeWord(game.gsu,P.baby,0);simulateInput.mockClear();game.tick(1016);
+  expect(game.adventure.mount).toBe('yoshi');expect(word(game.gsu,P.vy)).toBe(0x180);
  });
 });
 

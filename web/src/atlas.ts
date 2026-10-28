@@ -15,7 +15,7 @@ export class SpriteAtlas {
    ctx.drawImage(this.plush.image,frame.x,frame.y,frame.w,frame.h,frame.ox*scale,frame.oy*scale,frame.w*scale,frame.h*scale);ctx.restore();return;
   }
   const states=this.manifest.groups[group];if(!states)return;const a=states[state]??states.idle;if(!a)return;
-  const {cell,origin}=this.manifest;const step=Math.floor(time*a.fps/1000);const frame=a.start+(state==='jump'?Math.min(a.frames-1,step):step%a.frames);
+  const {cell,origin}=this.manifest;const step=Math.floor(time*a.fps/1000);const frame=a.start+(state==='jump'&&group!=='squawks'?Math.min(a.frames-1,step):step%a.frames);
   ctx.save();ctx.translate(Math.round(x),Math.round(y));if(facing<0)ctx.scale(-1,1);ctx.imageSmoothingEnabled=false;
   ctx.drawImage(this.image,(frame%this.manifest.columns)*cell,Math.floor(frame/this.manifest.columns)*cell,cell,cell,-origin[0],-origin[1],cell,cell);ctx.restore();
  }

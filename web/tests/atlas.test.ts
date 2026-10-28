@@ -16,3 +16,11 @@ describe('PlushGoonk model renders',()=>{
  const {a,c}=fixture();a.plush={image:{} as HTMLImageElement,manifest:{frames:[{x:0,y:0,w:40,h:40,ox:-20,oy:-36}],groups:{pink_ride:[0]}}};a.draw(c,'pink','ride',100,120,0);expect(c.translate).toHaveBeenCalledWith(100,98);
  });
 });
+
+it('loops Squawks wingbeats throughout a long flight instead of freezing the last jump pose',()=>{
+ const {a,c}=fixture();a.manifest.groups.squawks={jump:{start:0,frames:14,fps:12}};
+ a.draw(c,'squawks','jump',100,120,1250);
+ expect(c.drawImage).toHaveBeenLastCalledWith(a.image,96,0,96,96,-48,-80,96,96);
+ a.draw(c,'squawks','jump',100,120,2500);
+ expect(c.drawImage).toHaveBeenLastCalledWith(a.image,192,0,96,96,-48,-80,96,96);
+});

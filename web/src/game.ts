@@ -112,7 +112,10 @@ export class LiveGame {
   const yoshi=this.adventure.mount==='yoshi',jumpFrom=this.controls.jumpStartedAt,hop=this.controls.jumpPressed(now)&&now<jumpFrom+KONG_JUMP_HOLD_MS&&(!gameplay||this.adventure.mount!=='foot'||this.jumpBoost.inputPressed(now));
   if(direction)next.add(direction<0?INPUT.left:INPUT.right);
   const flutter=this.flutterInput.pressed(g,now,this.controls.jumpSequence,this.controls.jumpHeld,this.controls.jumpPressed(now),yoshi&&gameplay&&!dialogue&&canModifyJump(g));
-  if(yoshi?flutter:hop)next.add(INPUT.b);
+  // Squawks uses native B only to leave the ground. Midair B would start
+  // Yoshi's flutter as well as our flight, giving two competing movements.
+  const squawks=this.adventure.mount==='squawks';
+  if((yoshi?flutter:hop)&&!(squawks&&gameplay&&!dialogue&&word(g,0xc0)!==0))next.add(INPUT.b);
   if(now<this.controls.tongueUntil)next.add(INPUT.y);
   // Patient scheme supports two separate taps on touch, mouse and keyboard.
   if(this.wram[P.mode]===P.gameplay)writeWord(g,0x82,0);
@@ -139,7 +142,9 @@ export class LiveGame {
     const hits=applyRoll(g,this.controls.facing);this.kills+=hits.length;for(const hit of hits)this.particles.push({...hit,until:now+420});
    }
    if(jumpVelocity!==undefined&&canWriteVelocity(g,'y',jumpVelocity))writeWord(g,P.vy,jumpVelocity);
-   if(interactive&&this.adventure.mount==='squawks'&&this.controls.jumpPressed(now)&&canWriteVelocity(g,'y',-0x180))writeWord(g,P.vy,-0x180);
+   // Keep the native takeoff (including stronger spring/enemy impulses).
+   // Once airborne, holding Jump sustains ascent; release restores gravity.
+   if(interactive&&squawks&&word(g,0xc0)!==0&&this.controls.jumpPressed(now)&&canWriteVelocity(g,'y',-0x180))writeWord(g,P.vy,Math.min(signed16(word(g,P.vy)),-0x180));
    const walls=breakTerrain(this.wram,g,this.controls.facing,rolling&&interactive&&!lost);this.walls+=walls.length;
    for(const hit of walls)this.particles.push({...hit,until:now+500});
    const x=word(g,P.x),y=word(g,P.y),grounded=signed16(word(g,P.vy))===0&&interactive&&!lost;

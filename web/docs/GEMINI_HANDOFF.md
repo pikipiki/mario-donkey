@@ -1,3 +1,12 @@
+## 28 octobre 2026 — vol de Squawks
+
+- Corrigé deux défauts identifiés dans le code : le bouton Jump envoyait B natif en plein vol (flutter Yoshi concurrent à la vitesse de vol), et la pose jump de Squawks était figée à sa dernière frame comme un saut de Kong.
+- B natif sert au décollage au sol seulement pour Squawks pendant le gameplay. En l’air, Jump maintenu soutient la montée ; relâcher rend la gravité native. Les confirmations carte/dialogue gardent leurs entrées natives.
+- L’assistance de vol n’écrase plus le décollage au sol ni une impulsion native plus forte que -0x180. Elle reste bloquée par les plafonds, scripts, transformations et verrous. Perdre Baby Mario repasse toujours sur Yoshi.
+- Les 14 poses de battement d’ailes bouclent durant le vol. Les poses de saut des autres personnages restent à leur dernière frame.
+- Validation : 175 tests passent, build TypeScript/Vite valide. Cas ajoutés : décollage, maintien long, relâchement, retaps en l’air, plafond, carte/secours et animation prolongée.
+- Limite : navigateur indisponible car Mac verrouillé ; ressenti et rendu à confirmer dans une partie sur téléphone.
+
 ## 28 octobre 2026 — netteté des Goonks sur mobile
 
 - Le calque des acteurs suit la taille CSS et la densité de l’écran via ResizeObserver, plafonné à 2× (512×478 pour la sortie native 239 lignes ; maximum 512×512). Ce plafond conserve les texels utiles des poses sources ~50–70 px, dessinées à .64–.72×. Un buffer plus grand ne crée pas de détails supplémentaires dans ces assets.

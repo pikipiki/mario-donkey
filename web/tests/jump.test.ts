@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import {NativeJumpBoost,NativeFlutterInput,KONG_JUMP_VELOCITY,PROFILE as P,writeWord,word,signed16} from '../src/profile';
+import {NativeJumpBoost,NativeFlutterInput,KONG_JUMP_VELOCITY,SQUAWKS_FLIGHT_VELOCITY,squawksFlightVelocity,PROFILE as P,writeWord,word,signed16} from '../src/profile';
 import {LiveGame} from '../src/game';
 import {Controls} from '../src/controls';
 import {INPUT,type Emulator} from '../src/engine';
@@ -57,7 +57,7 @@ function fixture(){
  const emulator={Module:{HEAPU8:new Uint8Array(0x28000)},gameManager:{simulateInput,toggleMainLoop:vi.fn()},setVolume:vi.fn()} as unknown as Emulator;
  const canvas={height:224,getContext:()=>({clearRect:vi.fn()})} as unknown as HTMLCanvasElement;
  const game=new LiveGame(emulator,controls,canvas,{draw:vi.fn()} as unknown as SpriteAtlas,vi.fn());
- game.gsuBase=0x20000;game.ready=true;game.wram[P.mode]=P.gameplay;writeWord(game.gsu,P.baby,0x8000);writeWord(game.wram,0x3b6,10);
+ game.gsuBase=0x20000;game.ready=true;game.wram[P.mode]=P.gameplay;writeWord(game.gsu,P.y,180);writeWord(game.gsu,P.baby,0x8000);writeWord(game.wram,0x3b6,10);
  return {game,controls,simulateInput};
 }
 describe('jump bridge integration',()=>{
@@ -69,7 +69,7 @@ describe('jump bridge integration',()=>{
  });
  it('keeps Squawks flight available in midair while respecting native locks and transformations',()=>{
   const {game,controls,simulateInput}=fixture();game.adventure.mount='squawks';airborne(game.gsu,8,0x180);controls.activate('jump',1000);game.tick(1000);
-  expect(signed16(word(game.gsu,P.vy))).toBe(-0x180);
+  expect(signed16(word(game.gsu,P.vy))).toBe(SQUAWKS_FLIGHT_VELOCITY);
   expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,0);
   for(const address of [0xac,0xae,0x1ae,0x1b0]){writeWord(game.gsu,address,2);writeWord(game.gsu,P.vy,0x180);game.tick(1100);expect(word(game.gsu,P.vy)).toBe(0x180);writeWord(game.gsu,address,0);}
  });
@@ -93,7 +93,7 @@ describe('Squawks sustained flight',()=>{
  it('keeps flight available after a long hold without injecting a native flutter',()=>{
   const {game,controls,simulateInput}=fixture();game.adventure.mount='squawks';controls.holdJump('pointer:1',1000);
   airborne(game.gsu,8,0x100);game.tick(3000);
-  expect(signed16(word(game.gsu,P.vy))).toBe(-0x180);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,0);
+  expect(signed16(word(game.gsu,P.vy))).toBe(SQUAWKS_FLIGHT_VELOCITY);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,0);
   controls.releaseJump('pointer:1',3000);airborne(game.gsu,8,0x80);simulateInput.mockClear();game.tick(3016);
   expect(word(game.gsu,P.vy)).toBe(0x80);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.b,0);
  });
@@ -168,5 +168,18 @@ describe('native flutter edge for a continuous Yoshi hold',()=>{
   expect(input.pressed(g,1000,1,true,true,true)).toBe(false);expect(input.pressed(g,1100,2,true,true,true)).toBe(false);
   expect(input.pressed(g,1160,2,true,true,true)).toBe(true);airborne(g,0,0);input.pressed(g,2000,2,true,true,true);
   airborne(g,8,0x180);expect(input.pressed(g,2100,2,true,true,true)).toBe(false);
+ });
+});
+
+
+describe('Squawks ascent near the visible top',()=>{
+ it('uses a faster sustained rise and preserves stronger launches when there is headroom',()=>{
+  expect(squawksFlightVelocity(0x100,180)).toBe(-0x400);
+  expect(squawksFlightVelocity(-0x600,180)).toBe(-0x600);
+ });
+ it('brakes before the rider leaves the viewport without moving the player directly',()=>{
+  expect(squawksFlightVelocity(-0x400,34)).toBe(-0x2a0);
+  expect(squawksFlightVelocity(-0x400,32)).toBe(-0xa0);
+  expect(squawksFlightVelocity(-0x400,20)).toBe(-0xa0);
  });
 });

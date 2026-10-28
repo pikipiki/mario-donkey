@@ -1,3 +1,14 @@
+## 28 octobre 2026 — vol rapide et reprise à la position sauvegardée
+
+- Vitesse soutenue de Squawks portée de -0x180 à -0x400. La physique native ajoute 0xA0 de gravité avec B relâché avant de déplacer Y (bank0B.asm CE24–CE57) : l’ancienne consigne produisait seulement ~0.875 pixel/image. Consigne actuelle ~3.375 px/image avant variations de cadence.
+- Test réel EmulatorJS/Snes9x dans onglet/origine isolés port5185 : maintien Space 1.6 s au départ x120/y1904 ; ancien code y1836 (68 px gagnés), nouvelle consigne sans borne y1646 (258 px). Ce test a révélé la sortie par le haut, corrigée en limitant la vitesse près de cameraY+32, avec compensation de gravité. Le personnage et son cavalier restent visibles lors du maintien prolongé. La caméra et la position ne sont pas écrites directement.
+- Vol diagonal puis maintien vertical, relâchement/atterrissage et bouton pointeur testés dans le vrai jeu. Paysage 844×390 vérifié, image outputs/verification-vol-squawks-mobile.png. Le test utilise un navigateur desktop redimensionné ; aucun téléphone physique testé.
+- Suppression du goToMap automatique au chargement d’une campagne. Attention : loadState JS est synchrone mais RetroArch met la restauration en file. Il faut activer la boucle et attendre waitForNativeFrames AVANT de lire le mode restauré. Sans cette attente, le test natif lit encore 0x55 (titre) et rejetait la sauvegarde. Le test unitaire simule désormais ce chargement différé.
+- En cas de mode invalide après restauration, erreur de reprise, sans bootstrap de nouvelle partie ni écrasement de la sauvegarde. Les erreurs IndexedDB de readCampaign conservent le comportement antérieur : log puis absence de sauvegarde (limite à revoir si stockage indisponible).
+- Entrées vidées à la reprise. Sauvegarde sur pagehide et visibilité cachée ; capture immédiate et file des écritures qui conserve la dernière position même si une écriture précédente est en cours. Autosave périodique inchangé, 20 s. Une fermeture forcée de l’application sans événement peut revenir au dernier autosave.
+- Validation native : fermeture/réouverture retrouve le niveau 1-1 ; rechargement contrôlé avec pause immédiate retrouve EXACTEMENT mode13, salle 0:0:81c7:21, x679/y1872, violet, Squawks et dialogue9. Preuve outputs/verification-reprise-coordonnees.json. Un premier essai laissé tourner plusieurs secondes après reprise a subi un choc ennemi normal ; ne pas confondre cette évolution avec une mauvaise restauration.
+- Validation finale : 184 tests + build TypeScript/Vite. Préserver la vérification native, car le premier mock de loadState synchrone passait sans reproduire la restauration différée réelle.
+
 ## 28 octobre 2026 — vol de Squawks
 
 - Corrigé deux défauts identifiés dans le code : le bouton Jump envoyait B natif en plein vol (flutter Yoshi concurrent à la vitesse de vol), et la pose jump de Squawks était figée à sa dernière frame comme un saut de Kong.

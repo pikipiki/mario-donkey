@@ -135,7 +135,11 @@ window.addEventListener('keydown',e=>{
  if(e.repeat)return;keys.add(e.code);controls.keyboardDirection=keys.has('ArrowLeft')?-1:keys.has('ArrowRight')?1:0;if(controls.keyboardDirection)controls.facing=controls.keyboardDirection;if(e.code==='Space')controls.holdJump('keyboard',performance.now());else if(keyActions[e.code])controls.activate(keyActions[e.code],performance.now());
 });
 window.addEventListener('keyup',e=>{if(e.code==='Space')controls.releaseJump('keyboard',performance.now());keys.delete(e.code);controls.keyboardDirection=keys.has('ArrowLeft')?-1:keys.has('ArrowRight')?1:0;});
-window.addEventListener('blur',()=>{keys.clear();game?.stop();controls.stop();refreshButtons();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&game?.ready)pause(true);});
+window.addEventListener('blur',()=>{keys.clear();game?.stop();controls.stop();refreshButtons();});
+function suspendGame():void{keys.clear();releaseStick();if(game?.ready)pause(true);else controls.stop();}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)suspendGame();});
+// Covers navigation/reload and the browser back-forward cache as well as hiding.
+window.addEventListener('pagehide',suspendGame);
 $('test-wall').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();if(game.paused)pause(false);game.stop();setStatus(`${game.testWall()} test blocks placed. Roll to break them.`);});
 $('test-reset').addEventListener('click',async()=>{if(!debug||!game)return;const state=await loadFile('campaign-eu-map-v3-snes9x-2.0.2');if(!state)return;closeSettings();game.stop();game.emulator.gameManager.loadState(state);});
 $('test-egg').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-40);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);write(0xc4,0);write(0x1d6,0x3f);controls.facing=1;controls.activate('tongue',performance.now());setTimeout(()=>controls.activate('down',performance.now()),700);break;}}});

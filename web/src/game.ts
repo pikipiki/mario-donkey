@@ -4,19 +4,19 @@ import { readBeforeDeadline } from './startup';
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
 import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing, waitForNativeFrames } from './engine';
-import { PROFILE as P, KONG_JUMP_HOLD_MS, NativeJumpBoost, NativeFlutterInput, canModifyJump, canWriteVelocity, hideNativePlayer, absorbHit, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
+import { PROFILE as P, KONG_JUMP_HOLD_MS, SQUAWKS_FLIGHT_VELOCITY, squawksFlightVelocity, NativeJumpBoost, NativeFlutterInput, canModifyJump, canWriteVelocity, hideNativePlayer, absorbHit, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
 import { storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
 import { configureOverlay } from './overlay';
-import { readCampaign,writeCampaign } from './campaign';
+import { type Campaign,readCampaign,writeCampaign } from './campaign';
 export type { Character } from './adventure';
 const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
 const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
 export class LiveGame {
  wramBase=0;gsuBase=0;ready=false;paused=false;kills=0;walls=0;adventure=new Adventure();autoSkip=false;
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
- private skipUntil=0;private lastSave=0;private saving=false;private jumpSequence=0;private lastStage='';private wasFinishing=false;
+ private skipUntil=0;private lastSave=0;private saving?:Promise<void>;private queuedSave?:Campaign;private jumpSequence=0;private lastStage='';private wasFinishing=false;
  private jumpBoost=new NativeJumpBoost();private flutterInput=new NativeFlutterInput();
  private videoHeight=239;
  private particles:Array<{x:number;y:number;until:number}>=[];
@@ -43,17 +43,23 @@ export class LiveGame {
   m.toggleMainLoop(0);
   try{this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000);this.gsuBase=await resolveMemory(m,0x7007e0,0x7e0,0x8000);this.drawSite=await resolveDrawing(m);}finally{m.toggleMainLoop(1);}
   const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
-  const campaign=fresh?undefined:await readBeforeDeadline(readCampaign().catch(()=>undefined),4000);
+  const campaign=fresh?undefined:await readBeforeDeadline(readCampaign().catch(e=>{console.warn('KONG_READ_ERROR',e);return undefined;}),4000);
   if(campaign){
-   m.loadState(campaign.state);await waitForNativeFrames(m);
-   if(this.wram[P.mode]<=0x50){
-    this.adventure=new Adventure(campaign.adventure);
-    if(this.wram[P.mode]!==0x26){
-     this.onStatus('Opening the stage selection…');this.goToMap();const began=performance.now();
-     while(this.wram[P.mode]!==0x26){if(performance.now()-began>10000)throw new Error('The stage selection did not open. Reload the page to retry.');await waitForNativeFrames(m);}
+   this.onStatus('Resuming your saved game…');m.toggleMainLoop(0);
+   try{
+    m.loadState(campaign.state);
+    this.stop();m.toggleMainLoop(1);
+    // RetroArch queues load_state: the core must run before WRAM reflects it.
+    await waitForNativeFrames(m);m.toggleMainLoop(0);
+    if(this.wram[P.mode]<=0x50){
+     this.adventure=new Adventure(campaign.adventure);
+     // Start the saved native scene only after the bridge and partners are ready.
+     // A held touch/key from the previous session must not survive the restore.
+     this.stop();this.jumpSequence=this.controls.jumpSequence;
+     this.finishBoot();return;
     }
-    this.finishBoot();return;
-   }
+    throw new Error('Your saved game could not be restored. Reload the page to retry.');
+   }finally{m.toggleMainLoop(1);}
   }
   this.onStatus('Opening the stage selection…');
   m.functions.toggleFastForward(0);
@@ -85,10 +91,26 @@ export class LiveGame {
   this.stop();this.wram[P.mode]=0x23;writeWord(this.wram,0x200,0x010f);
  }
  skipDialogue():void{this.skipUntil=performance.now()+5000;}
- async save():Promise<void>{
-  if(!this.ready||this.saving)return;this.saving=true;const m=this.emulator.gameManager;
-  try{m.toggleMainLoop(0);let state:Uint8Array;try{state=new Uint8Array(m.getState());}finally{if(!this.paused)m.toggleMainLoop(1);}await writeCampaign(state,this.adventure.serialize());this.lastSave=performance.now();}
-  catch(e){console.warn('KONG_SAVE_ERROR',e);}finally{this.saving=false;}
+ save():Promise<void>{
+  if(!this.ready)return Promise.resolve();const m=this.emulator.gameManager;
+  try{
+   // Capture immediately, including pagehide while an older autosave is writing.
+   // Queue only the latest snapshot, so a delayed write cannot lose that position.
+   m.toggleMainLoop(0);
+   try{this.queuedSave={state:new Uint8Array(m.getState()),adventure:structuredClone(this.adventure.serialize())};}
+   finally{if(!this.paused)m.toggleMainLoop(1);}
+  }catch(e){console.warn('KONG_SAVE_ERROR',e);return this.saving??Promise.resolve();}
+  return this.saving??(this.saving=this.flushSaves());
+ }
+ private async flushSaves():Promise<void>{
+  try{
+   while(this.queuedSave){
+    const snapshot=this.queuedSave;this.queuedSave=undefined;
+    try{await writeCampaign(snapshot.state,snapshot.adventure);this.lastSave=performance.now();}
+    catch(e){console.warn('KONG_SAVE_ERROR',e);}
+   }
+  }
+  finally{this.saving=undefined;}
  }
  tick(now:number):void{
   if(!this.ready||this.paused)return;
@@ -144,7 +166,7 @@ export class LiveGame {
    if(jumpVelocity!==undefined&&canWriteVelocity(g,'y',jumpVelocity))writeWord(g,P.vy,jumpVelocity);
    // Keep the native takeoff (including stronger spring/enemy impulses).
    // Once airborne, holding Jump sustains ascent; release restores gravity.
-   if(interactive&&squawks&&word(g,0xc0)!==0&&this.controls.jumpPressed(now)&&canWriteVelocity(g,'y',-0x180))writeWord(g,P.vy,Math.min(signed16(word(g,P.vy)),-0x180));
+   if(interactive&&squawks&&word(g,0xc0)!==0&&this.controls.jumpPressed(now)&&canWriteVelocity(g,'y',SQUAWKS_FLIGHT_VELOCITY))writeWord(g,P.vy,squawksFlightVelocity(signed16(word(g,P.vy)),signed16(word(g,P.y)-word(this.wram,P.cameraY))));
    const walls=breakTerrain(this.wram,g,this.controls.facing,rolling&&interactive&&!lost);this.walls+=walls.length;
    for(const hit of walls)this.particles.push({...hit,until:now+500});
    const x=word(g,P.x),y=word(g,P.y),grounded=signed16(word(g,P.vy))===0&&interactive&&!lost;

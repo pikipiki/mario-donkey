@@ -75,6 +75,17 @@ export function freeSpriteGraphics(gsu:Uint8Array,slot:number):void{
 export function hideNativePlayer(mode:number,mount:string,form:number,goal=false,dialogue=false):boolean{return mode===PROFILE.gameplay&&!goal&&!dialogue&&mount!=='yoshi'&&form===0;}
 export const KONG_JUMP_VELOCITY=-0x640;
 export const KONG_JUMP_HOLD_MS=260;
+// Native airborne physics adds $A0 gravity with B released before moving Y.
+// $400 upward leaves ~$360 movement per frame, instead of the old $E0 crawl.
+export const SQUAWKS_FLIGHT_VELOCITY=-0x400;
+/** Keep Squawks and his rider below the visible top even in rooms whose native
+ * camera cannot scroll upward. Compensate native released-B gravity ($A0).
+ * This changes velocity only; native terrain collision still moves the player.
+ */
+export function squawksFlightVelocity(vy:number,yFromCamera:number):number{
+ const roomAbove=Math.max(0,yFromCamera-32);
+ return Math.max(Math.min(vy,SQUAWKS_FLIGHT_VELOCITY),-roomAbove*0x100-0xa0);
+}
 /** Locks, morphs and scripted player states own their vertical movement. */
 export function canModifyJump(gsu:Uint8Array):boolean{
  return word(gsu,0xac)===0&&word(gsu,0xae)===0&&word(gsu,0x1ae)===0&&word(gsu,0x1b0)===0;

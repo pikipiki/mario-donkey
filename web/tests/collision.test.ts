@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import {canWriteVelocity,PROFILE as P,word,writeWord,signed16} from '../src/profile';
+import {canWriteVelocity,SQUAWKS_FLIGHT_VELOCITY,PROFILE as P,word,writeWord,signed16} from '../src/profile';
 import {LiveGame} from '../src/game';
 import {Controls} from '../src/controls';
 import {tileAddress} from '../src/terrain';
@@ -48,8 +48,8 @@ describe('collision bridge integration',()=>{
   controls.activate('left',1100);game.tick(1100);expect(signed16(word(game.gsu,P.vx))).toBe(-0x1c);
  });
  it('does not push Squawks through a ceiling and resumes flight once it is clear',()=>{
-  const {game,controls}=fixture();game.adventure.mount='squawks';writeWord(game.gsu,0xc0,6);writeWord(game.gsu,0xfc,0x18);controls.activate('jump',1000);game.tick(1000);expect(word(game.gsu,P.vy)).toBe(0);
-  writeWord(game.gsu,0xfc,0);game.tick(1016);expect(signed16(word(game.gsu,P.vy))).toBe(-0x180);
+  const {game,controls}=fixture();game.adventure.mount='squawks';writeWord(game.gsu,P.y,180);writeWord(game.gsu,0xc0,6);writeWord(game.gsu,0xfc,0x18);controls.activate('jump',1000);game.tick(1000);expect(word(game.gsu,P.vy)).toBe(0);
+  writeWord(game.gsu,0xfc,0);game.tick(1016);expect(signed16(word(game.gsu,P.vy))).toBe(SQUAWKS_FLIGHT_VELOCITY);
  });
  it('does not move or attack while a native instruction window is open',()=>{
   for(const mount of ['foot','yoshi','squawks'] as const){

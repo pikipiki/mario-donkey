@@ -9,6 +9,7 @@ import { storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
 import { configureOverlay } from './overlay';
+import {campaignStageLabel,isWorldMap,needsLevelReturn,MapConfirmInput} from './menu';
 import { type Campaign,readCampaign,writeCampaign } from './campaign';
 export type { Character } from './adventure';
 const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
@@ -18,7 +19,7 @@ export class LiveGame {
  wramBase=0;gsuBase=0;ready=false;paused=false;kills=0;walls=0;adventure=new Adventure();autoSkip=false;
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
  private skipUntil=0;private lastSave=0;private saving?:Promise<void>;private queuedSave?:Campaign;private jumpSequence=0;private lastStage='';private wasFinishing=false;
- private jumpBoost=new NativeJumpBoost();private flutterInput=new NativeFlutterInput();
+ private mapConfirm=new MapConfirmInput();private jumpBoost=new NativeJumpBoost();private flutterInput=new NativeFlutterInput();
  private videoHeight=239;
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
@@ -30,7 +31,7 @@ export class LiveGame {
  get wram():Uint8Array{return this.emulator.Module.HEAPU8.subarray(this.wramBase,this.wramBase+0x20000);}
  get gsu():Uint8Array{return this.emulator.Module.HEAPU8.subarray(this.gsuBase,this.gsuBase+0x8000);}
  get audio():AudioContext|undefined{return this.emulator.Module.AL?.currentCtx?.audioCtx??nativeAudioContexts(this.emulator.Module)[0];}
- get stageLabel():string{return this.wram[P.mode]===0x26?`World ${this.wram[0x218]+1} · Choose a level`:`World ${this.wram[0x218]+1} · ${this.wram[P.stage]<8?'Level '+(this.wram[P.stage]+1):'Extra / bonus'}`;}
+ get stageLabel():string{return campaignStageLabel(this.wram); }
  get room():string{return `${this.wram[0x218]}:${this.wram[P.stage]}:${word(this.wram,0x32).toString(16)}:${this.wram[0x34]}`;}
  async unlockAudio():Promise<void>{
   primeAudio();
@@ -85,7 +86,7 @@ export class LiveGame {
   setNativeDrawing(this.emulator.Module.HEAPU8,this.drawSite,hide);this.hidden=hide;
  }
  mount(mount:Mount):void{if(this.adventure.ride(mount)){this.updateVisibility();this.changed();}}
- stop():void{this.controls.stop();this.jumpBoost.reset();this.flutterInput.reset();this.setInputs(new Set());}
+ stop():void{this.controls.stop();this.mapConfirm.reset();this.jumpBoost.reset();this.flutterInput.reset();this.setInputs(new Set());}
  setPaused(value:boolean):void{this.stop();this.paused=value;this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
  /** Native fade-out and overworld initialization; keeps completed-level progress. */
  goToMap():void{
@@ -132,6 +133,7 @@ export class LiveGame {
   const jumpRequested=this.controls.jumpSequence!==this.jumpSequence;this.jumpSequence=this.controls.jumpSequence;
   const jumpVelocity=this.jumpBoost.update(g,this.adventure.mount,now,jumpRequested,gameplay&&!dialogue);
   const next=new Set<number>(),direction=this.controls.movement(now),rolling=now<this.controls.rollUntil;
+  const menuPressed=this.controls.jumpPressed(now)||this.controls.eggPressed(now),mapAction=this.mapConfirm.update(this.wram,menuPressed);
   const yoshi=this.adventure.mount==='yoshi',jumpFrom=this.controls.jumpStartedAt,hop=this.controls.jumpPressed(now)&&now<jumpFrom+KONG_JUMP_HOLD_MS&&(!gameplay||this.adventure.mount!=='foot'||this.jumpBoost.inputPressed(now));
   if(direction)next.add(direction<0?INPUT.left:INPUT.right);
   const flutter=this.flutterInput.pressed(g,now,this.controls.jumpSequence,this.controls.jumpHeld,this.controls.jumpPressed(now),yoshi&&gameplay&&!dialogue&&canModifyJump(g));
@@ -146,6 +148,10 @@ export class LiveGame {
   if(confirming)this.skipUntil=now+5000;else if(this.controls.eggPressed(now))next.add(this.wram[P.mode]===0x26?INPUT.b:INPUT.a);
   const vertical=this.controls.tongueUpPressed(now)?-1:this.controls.verticalAxis(now);if(vertical)next.add(vertical<0?INPUT.up:INPUT.down);
   for(const [button,until]of this.controls.extra)if(now<until)next.add(button);
+  // A held confirmation must keep the same menu action after the tab closes.
+  if(isWorldMap(this.wram)&&menuPressed){
+   next.clear();if(mapAction==='enter')next.add(INPUT.b);else if(mapAction==='levels'&&needsLevelReturn(this.wram))next.add(INPUT.down);
+  }
   this.setInputs(next);
   if((this.autoSkip||now<this.skipUntil)&&skipOpenDialogue(this.wram,g))this.skipUntil=now+1000;
   this.updateVisibility();
@@ -203,5 +209,5 @@ export class LiveGame {
  }
  /** DEV fixture: real map16 wall in empty space ahead; no campaign fixture is shipped. */
  testWall():number{const g=this.gsu,x=(word(g,P.x)+48)&~15,y=word(g,P.y)&~15;let count=0;for(const dy of [0,16]){const address=tileAddress(g,x,y+dy);if(address!==undefined&&replaceTile(this.wram,g,x,y+dy,0x7b00,0xa022))count++;}return count;}
- diagnostics():Record<string,unknown>{return {babyDetails:{mode:word(this.gsu,0x19d6),returning:word(this.wram,0xd9c),targetY:word(this.wram,0xdb4),x:word(this.gsu,0x10e2),y:word(this.gsu,0x1182),screenY:signed16(word(this.gsu,0x1182)-word(this.wram,P.cameraY)),vy:signed16(word(this.gsu,0x1222)),cameraY:word(this.wram,P.cameraY)},mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),rescueStars:word(this.wram,0x3b6),playerState:word(this.gsu,0xac),playerLock:word(this.gsu,0x1ae),spriteLock:word(this.gsu,0x1b0),goal:inGoal(this.gsu),contacts:word(this.gsu,0xfc),nativeVx:signed16(word(this.gsu,0xa8)),vx:signed16(word(this.gsu,P.vx)),vy:signed16(word(this.gsu,P.vy)),airborne:word(this.gsu,0xc0),flutter:word(this.gsu,0xd2),inputs:{axis:this.controls.runAxis(),jump:this.controls.jumpUntil,jumpHeld:this.controls.jumpHeld,roll:this.controls.rollUntil},kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.videoHeight,overlaySize:[this.overlay.width,this.overlay.height],frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),tongueRelative:{x:signed16(word(this.gsu,0x152)),y:signed16(word(this.gsu,0x154))},sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
+ diagnostics():Record<string,unknown>{return {mapMenu:{tab:this.wram[0x1119],state:this.wram[0x111a],tile:this.wram[0x1114],worldRaw:this.wram[0x218],stageRaw:this.wram[P.stage]},babyDetails:{mode:word(this.gsu,0x19d6),returning:word(this.wram,0xd9c),targetY:word(this.wram,0xdb4),x:word(this.gsu,0x10e2),y:word(this.gsu,0x1182),screenY:signed16(word(this.gsu,0x1182)-word(this.wram,P.cameraY)),vy:signed16(word(this.gsu,0x1222)),cameraY:word(this.wram,P.cameraY)},mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),rescueStars:word(this.wram,0x3b6),playerState:word(this.gsu,0xac),playerLock:word(this.gsu,0x1ae),spriteLock:word(this.gsu,0x1b0),goal:inGoal(this.gsu),contacts:word(this.gsu,0xfc),nativeVx:signed16(word(this.gsu,0xa8)),vx:signed16(word(this.gsu,P.vx)),vy:signed16(word(this.gsu,P.vy)),airborne:word(this.gsu,0xc0),flutter:word(this.gsu,0xd2),inputs:{axis:this.controls.runAxis(),jump:this.controls.jumpUntil,jumpHeld:this.controls.jumpHeld,roll:this.controls.rollUntil},kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.videoHeight,overlaySize:[this.overlay.width,this.overlay.height],frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),tongueRelative:{x:signed16(word(this.gsu,0x152)),y:signed16(word(this.gsu,0x154))},sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
 }

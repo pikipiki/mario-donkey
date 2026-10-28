@@ -1,3 +1,15 @@
+## 28 octobre 2026 — main bloquée sur l’onglet du monde
+
+- État reproduit dans la ROM : la main passe sur l’onglet via Haut. Dans cet état, confirmer le monde courant ne fait nativement rien et les directions latérales sautent les mondes verrouillés. Bas revient à la grille ; ce n’était pas un gel du moteur.
+- Boutons Jump et Egg deviennent « Levels ↓ » sur l’onglet courant. Un appui tactile, souris, Espace ou V envoie Bas ; après retour à la grille ils deviennent « Enter ». L’action est mémorisée jusqu’au relâchement : un maintien ne doit jamais se convertir en confirmation et lancer involontairement un stage, ni continuer à envoyer Bas dans la grille. Les directions concurrentes sont neutralisées pendant cette confirmation.
+- Les confirmations sur un autre monde gardent leur comportement natif. Aucun monde/niveau déverrouillé artificiellement. Clavier/joystick Bas conserve le comportement original. Sur la carte, un appui commencé en gameplay ne devient pas automatiquement une confirmation.
+- Adresses EU vérifiées directement dans la ROM : carte interactive mode26 ; onglet1119, sous-état111A, case1114. Les modes27/29/2B sont des fondus,28 progression après niveau,2A score,2C animation de monde : ne pas les traiter comme une seconde grille interactive.
+- RoutineEU17E859 : Bas revient aux niveaux ;17E87E : confirmation de l’onglet courant sans effet ;17E3F1 : confirmation grille ;17E80B : mondes verrouillés ignorés. Le désassemblage US a des adresses inférieures de2 pour ces champs. La compétence reverse-engineer-anything a été consultée ; REA ne reconnaît pas .sfc, donc comparaison statique avec les octets de la ROM existante, sans installer d’outil.
+- Correction distincte du libellé : monde brut218 vaut0,2,4… ; division par2 avant affichage. Stage21A est global, avec12 cases par monde : calcul du niveau local, Extra/Bonus. Tests jusqu’au monde6.
+- Recette dans onglet/base de test port5187 : Haut place la main sur onglet2 (monde1), joystick Bas revient à la grille. Avec cœur legacy utilisé sur iOS et viewport390×844 : appui souris1000ms sur Levels↓ donne mode26/tab0, aucun lancement ; second clic Enter ouvre réellement mode13/stage0. Captures et JSON dans outputs/verification-retour-niveaux*. Aucun téléphone physique testé.
+- 243 tests et build TypeScript/Vite réussis. Nouveaux fichiers menu.ts, menu.test.ts, menu-bridge.test.ts. Les contrôles tactiles et la physique des niveaux restent inchangés.
+- Audit sauvegarde demandé juste avant : nos instantanés contiennent bien le bloc SRAM complet (SRA:524288). La persistance indépendante EmulatorJS/IDBFS reste active même avec EJS_disableDatabases sur iOS (ce flag neutralise les caches ROM/core). **Reste à sécuriser** : sans notre campagne, le bootstrap initial peut écraser la SRAM restaurée ; cette autonomie de secours n’est pas corrigée ici. Conservation de progression via campagne testée ; ne pas promettre une reprise par SRAM seule.
+
 ## 28 octobre 2026 — commandes mobiles, Goonks nets et secours de Bébé Mario
 
 ### Changements courants

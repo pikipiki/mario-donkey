@@ -1,3 +1,33 @@
+## 28 octobre 2026 — commandes mobiles, Goonks nets et secours de Bébé Mario
+
+### Changements courants
+- Joystick portrait : grille 45/55, diamètre 127–144 px selon écran ; actions 80–99 × 53.5 px sur formats vérifiés. Paysage : plus de place à gauche, actions compactes à droite, sélecteurs de personnage/monture empilés. Taille du stick déduite des safe-area verticales sur les écrans bas. Aucun bouton d’action sous 44 px.
+- Goonks : interpolation désactivée dans SpriteAtlas.draw ET CSS `#actor { image-rendering:pixelated }`. Le calque plafonné à 2× reste inchangé. Pas de nouveaux assets, allocation ou calcul par frame. Les poses sources restent petites (40–68 × 40–72 px) : suppression du flou ajouté, pas création de nouveaux détails 3D. L’ancien lissage décrit plus bas est désormais remplacé.
+- Récupération : absorbHit(gsu,wram) laisse les verrous natifs actifs quand Mario revient vers Yoshi. Avant, le pont les effaçait à chaque frame pendant la trajectoire de retour, laissant Yoshi s’éloigner.
+- Aide de visibilité activée par défaut, désactivable via « Keep Baby Mario on screen » dans les options. Préférence locale `kong-baby-visibility`, accès stockage protégé par try/catch. Lorsqu’une bulle standard monte à moins de 24 px du bord haut : vitesse verticale mise à 0, plafond orienté vers le bas ; la gravité native la fait redescendre. Ne change ni coordonnées, ni compteur, ni cible native, ni mouvement horizontal. Cette aide est une adaptation d’accessibilité, pas une règle du jeu original.
+- Gardes : vrai gameplay, Bébé perdu et sprite0 actif ID61, mode flottement11, aucune capture en cours, réserve non nulle, aucun dialogue/verrou/transformation/script. Retour, mort, victoire et autres formes restent natifs. L’aide ne borne pas la position X, ne téléporte pas une bulle déjà hors écran et ne garantit pas une récupération automatique après un déplacement de caméra.
+
+### ROM européenne : attention aux adresses
+Le désassemblage de référence est NTSC-US1.0, mais le projet utilise la ROM Europe SHA256 91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90. Vérification binaire effectuée :
+- Mode du bébé : **word GSU19D6**, et non WRAM76. La direct page sprites est7960, donc `$76` signifie CPU79D6.
+- Capture/retour : **WRAM0D9C** ; trajectoire calculée0D9E ; cibleY0DB4. Ces trois variables ont +2 par rapport au désassemblage US.
+- VitesseY GSU1222 ; plafond15E2 ; mode11 flottement, mode1 retour. Montée PAL native plafonnée à−320.
+- Preuves fichier ROM : 197D3 établit DP7960 ; table33CE2 associe mode1 à06:C399 et11 à06:C701 ; 34095 initialise le retour/verrous ; 34450 rattache et libère les verrous. Le premier brouillon de patch utilisait de mauvaises adresses ; il n’a jamais été publié. Les tests de régression utilisent uniquement les adresses EU corrigées.
+
+### Recette réelle
+- Navigateur isolé port5186, base IndexedDB de test, vraie émulation Snes9x ; aucun accès à la sauvegarde de production. ROM originale comparée en désactivant le pont (sans modifier bébé), à partir d’un même état natif. Au premier choc, original ET mod : bébé x433/y1877, screenY89, vy478, compteur102. La ROM originale monte elle aussi près du bord haut (screenY18 ensuite). Les séquences ultérieures ne sont pas synchrones car le dialogue original est passé manuellement.
+- Avec aide : bulle mode11 observée screenY29, vy+104 (redescend), compteur66. Saut gauche puis langue verticale : mode1, capture9, verrous joueur1/sprites9. Direction maintenue pendant le retour : joueur reste à x390/y1852, compteur56 ; après rattachement mode0/capture0, verrous0, babyLost=false, compteur56. Sauvetage complet réellement vérifié, pas forcé par écriture de mémoire.
+- Preuve `outputs/verification-secours-corrige.json`. `verification-bebe-rom-originale.json` contient les relevés initiaux ; ignorer ses champs mode/returning/targetY erronés, signalés dans le JSON (coordonnées/vitesse/compteur valides).
+- Formats contrôlés : 320×568,390×670,390×844,844×390,667×375,568×320 ; aucun débordement horizontal ni chevauchement toolbar/joystick. Captures `outputs/verification-commandes-goonk-portrait.png` et `verification-commandes-goonk-paysage.png` (rose). Préférence d’aide désactivée puis rechargée : mémorisation confirmée, réactivée ensuite. Ce sont des tailles mobiles sur navigateur desktop, pas des téléphones physiques.
+- Outils temporaires de comparaison retirés du build final ; copies conservées dans le workspace `work/original-rom-comparison/` si besoin. Diagnostic développeur conserve les coordonnées et états EU corrects du bébé.
+- Validation automatisée : 227 tests, TypeScript et Vite. Tests ajoutés pour les deux atlas Goonks, les retours contact/langue, seuil/descente/états protégés de l’aide et activation/désactivation dans le tick.
+
+### Reste à vérifier pour Gemini
+- iPhone et Android réels : netteté, fluidité, son, tactile, rotation avec barre navigateur et safe-area. Pas de mesure FPS ni de garantie de performances sur matériel mobile réel dans cette recette.
+- Autres niveaux, autoscroll, boss, transformations, séquences spéciales : tests unitaires des gardes, mais pas de parcours complet de la campagne. Garder le compteur natif ; ne pas réintroduire de recharge forcée.
+- Si des Goonks encore plus détaillés sont souhaités, il faudra des rendus sources de résolution supérieure, avec budget atlas/mémoire mesuré. Agrandir seulement le canvas ne crée pas ces détails.
+- Les limitations de sauvegarde, audio et campagne des sections précédentes restent valables. Le seuil demandé de 10% de quota restant n’est pas atteint (dernier relevé : 87% restants) ; ce document est actualisé malgré tout.
+
 ## 28 octobre 2026 — vol rapide et reprise à la position sauvegardée
 
 - Vitesse soutenue de Squawks portée de -0x180 à -0x400. La physique native ajoute 0xA0 de gravité avec B relâché avant de déplacer Y (bank0B.asm CE24–CE57) : l’ancienne consigne produisait seulement ~0.875 pixel/image. Consigne actuelle ~3.375 px/image avant variations de cadence.

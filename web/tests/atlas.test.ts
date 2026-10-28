@@ -8,6 +8,11 @@ describe('animations originales compactées',()=>{
 });
 
 describe('PlushGoonk model renders',()=>{
+ it.each(['violet','pink'])('draws %s without smoothing the atlas pixels',group=>{
+ const {a,c}=fixture();a.plush={image:{} as HTMLImageElement,manifest:{frames:[{x:0,y:0,w:50,h:51,ox:-24,oy:-47}],groups:{[`${group}_idle`]:[0]}}};
+ const smoothingAtDraw:boolean[]=[];vi.mocked(c.drawImage).mockImplementation(()=>{smoothingAtDraw.push(c.imageSmoothingEnabled);});
+ a.draw(c,group,'idle',100,120,0);expect(smoothingAtDraw).toEqual([false]);
+ });
  it('draws violet roll frames and mirrors the model without moving world coordinates',()=>{
  const {a,c}=fixture();const image={} as HTMLImageElement;a.plush={image,manifest:{frames:[{x:1,y:2,w:50,h:51,ox:-24,oy:-47},{x:60,y:2,w:50,h:51,ox:-24,oy:-47}],groups:{violet_roll:[0,1]}}};
  a.draw(c,'violet','roll',100,120,70,-1);expect(c.drawImage).toHaveBeenCalledWith(image,60,2,50,51,-24*.72,-47*.72,50*.72,51*.72);expect(c.scale).toHaveBeenCalledWith(-1,1);

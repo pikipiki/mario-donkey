@@ -11,7 +11,7 @@ export class SpriteAtlas {
    const step=Math.floor(time*(state==='walk'?12:state==='roll'?16:5)/1000);
    const frame=this.plush.manifest.frames[indices[state==='jump'?Math.min(indices.length-1,step):step%indices.length]];if(!frame)return;
    const scale=state==='ride'?.64:.72;
-   ctx.save();ctx.translate(Math.round(x),Math.round(y)-(state==='ride'?22:0));if(facing<0)ctx.scale(-1,1);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+   ctx.save();ctx.translate(Math.round(x),Math.round(y)-(state==='ride'?22:0));if(facing<0)ctx.scale(-1,1);ctx.imageSmoothingEnabled=false;
    ctx.drawImage(this.plush.image,frame.x,frame.y,frame.w,frame.h,frame.ox*scale,frame.oy*scale,frame.w*scale,frame.h*scale);ctx.restore();return;
   }
   const states=this.manifest.groups[group];if(!states)return;const a=states[state]??states.idle;if(!a)return;

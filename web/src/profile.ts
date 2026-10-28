@@ -31,8 +31,11 @@ export function inGoal(gsu:Uint8Array):boolean{
 }
 /** A touch knocks Baby Mario off ($0000) and locks Yoshi ($1AE) plus sprites
  * ($1B0). Release those locks and the native grounded stun (invincibility >=
- * $40, GSU $0B:C7E5), preserving the countdown and native non-playable states. */
-export function absorbHit(gsu:Uint8Array):boolean{
+ * $40, GSU $0B:C7E5). Contact/tongue recovery also owns these locks: Baby's
+ * return mode (GSU $19D6=1) and EU capture flag (WRAM $0D9C) must keep Yoshi still until
+ * the native return trajectory finishes. Never change the star countdown. */
+export function absorbHit(gsu:Uint8Array,wram:Uint8Array):boolean{
+ if(word(gsu,0x19d6)===1||word(wram,0xd9c)!==0)return false;
  if(word(gsu,0xac)!==0||word(gsu,0xae)!==0)return false;
  const baby=word(gsu,PROFILE.baby),inv=word(gsu,PROFILE.invincible);
  const locked=word(gsu,0x1ae)!==0||word(gsu,0x1b0)!==0;
@@ -41,6 +44,20 @@ export function absorbHit(gsu:Uint8Array):boolean{
  else if(!(riding&&locked&&inv>=0x40))return false;
  writeWord(gsu,0x1ae,0);writeWord(gsu,0x1b0,0);
  writeWord(gsu,PROFILE.invincible,Math.min(0x3f,Math.max(inv,24)));
+ return true;
+}
+/** Optional rescue aid for the verified EU ROM. Sprite DP $7960+$76 is GSU
+ * $19D6: mode 11 is free floating; mode 1 and WRAM $0D9C own recovery.
+ * CPU $7222/$75E2 map to GSU $1222/$15E2 (vertical speed/ceiling).
+ * Stop an upward bubble near the screen top, then let native acceleration
+ * bring it down. Position, horizontal motion, target and stars stay native. */
+export function keepBabyVisible(gsu:Uint8Array,wram:Uint8Array):boolean{
+ if(wram[PROFILE.mode]!==PROFILE.gameplay||wram[0xd11]!==0||!canModifyJump(gsu))return false;
+ if(word(gsu,PROFILE.baby)!==0||word(gsu,PROFILE.spriteState)!==0x10||word(gsu,PROFILE.spriteId)!==0x61)return false;
+ if(word(gsu,0x19d6)!==11||word(wram,0xd9c)!==0||word(wram,0x3b6)===0)return false;
+ if(signed16(word(gsu,PROFILE.spriteY)-word(wram,PROFILE.cameraY))>=24||signed16(word(gsu,0x1222))>=0)return false;
+ const ceiling=Math.max(1,Math.min(0x7fff,Math.abs(signed16(word(gsu,0x15e2)))));
+ writeWord(gsu,0x1222,0);writeWord(gsu,0x15e2,ceiling);
  return true;
 }
 /** Approach a target run speed. Reversing takes a longer skid than releasing the stick. */

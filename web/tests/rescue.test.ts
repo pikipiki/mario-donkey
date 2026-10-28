@@ -15,6 +15,30 @@ function fixture(){
  return {game,controls,simulateInput};
 }
 describe('native Baby Mario rescue bridge',()=>{
+ it.each([
+  ['contact',1,0,1,1],
+  ['tongue',11,8,0x8000,8],
+ ] as const)('keeps native %s recovery locked until Mario is back on Yoshi',(_name,mode,captured,playerLock,spriteLock)=>{
+  const {game,controls}=fixture();controls.setStick(1,0,1000);
+  writeWord(game.gsu,P.baby,0);writeWord(game.gsu,P.invincible,24);
+  writeWord(game.gsu,0x1ae,playerLock);writeWord(game.gsu,0x1b0,spriteLock);
+  writeWord(game.gsu,0x19d6,mode);writeWord(game.wram,0xd9c,captured);
+  writeWord(game.wram,0xd9e,1);writeWord(game.wram,0x3b6,50);
+  for(const now of [1000,1016,1032]){
+   game.tick(now);
+   expect(word(game.gsu,0x1ae)).toBe(playerLock);expect(word(game.gsu,0x1b0)).toBe(spriteLock);
+   expect(word(game.gsu,P.baby)).toBe(0);expect(word(game.gsu,P.invincible)).toBe(24);
+   expect(word(game.gsu,0x19d6)).toBe(mode);expect(word(game.wram,0xd9c)).toBe(captured);
+   expect(word(game.wram,0xd9e)).toBe(1);expect(word(game.wram,0x3b6)).toBe(50);
+  }
+  // The core finishes the return and releases its own locks.
+  writeWord(game.gsu,P.baby,0x8000);writeWord(game.gsu,0x1ae,0);writeWord(game.gsu,0x1b0,0);
+  writeWord(game.gsu,0x19d6,0);writeWord(game.wram,0xd9c,0);writeWord(game.wram,0xd9e,0);
+  writeWord(game.gsu,P.invincible,23);game.tick(1048);
+  expect(word(game.gsu,P.baby)).toBe(0x8000);expect(word(game.gsu,P.invincible)).toBe(23);
+  expect(word(game.gsu,0x1ae)).toBe(0);expect(word(game.gsu,0x1b0)).toBe(0);
+  expect(word(game.wram,0x3b6)).toBe(50);
+ });
  it('switches before the current frame inputs, restores Yoshi and cancels the roll',()=>{
  const {game,controls,simulateInput}=fixture();game.adventure.mount='foot';controls.rollUntil=1600;controls.jumpUntil=1300;controls.jumpSequence=1;
  writeWord(game.gsu,P.baby,0);writeWord(game.gsu,0x1ae,1);game.tick(1000);

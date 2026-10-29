@@ -12,7 +12,7 @@ export const STAGE_BOSSES=[
 export type BossId=typeof STAGE_BOSSES[number]['id'];
 export type BossPhase='intro'|'fight'|'dying'|'exit'|'released';
 export interface Shot{x:number;y:number;vx:number;vy:number;age:number;kind:'egg'|'nut'|'crown'|'shock'}
-export interface GuardianSave {version:1;stage:number;room:string;id:BossId;kind:BossExitKind;slot:number;phase:BossPhase;hp:number;maxHp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;nextAttack:number;hitUntil:number;facing:number;music?:number;ring?:{x:number;y:number};nativeGoal?:{x:number;y:number};shots:Shot[];arena?:{x:number;y:number;height:number}}
+export interface GuardianSave {version:1;stage:number;room:string;id:BossId;kind:BossExitKind;slot:number;phase:BossPhase;hp:number;maxHp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;nextAttack:number;hitUntil:number;facing:number;music?:number;ring?:{x:number;y:number};nativeGoal?:{x:number;y:number};shots:Shot[];jumpEpoch?:number;arena?:{x:number;y:number;height:number}}
 export function bossForStage(stage:number){return STAGE_BOSSES[Math.max(0,stage)%STAGE_BOSSES.length];}
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
@@ -23,6 +23,7 @@ export function validateGuardian(value:unknown):GuardianSave|undefined{
  if(s.version!==1||!Number.isInteger(s.stage)||s.stage<0||s.stage>=72||s.stage%12>8||typeof s.room!=='string'||s.room.length>100||!STAGE_BOSSES.some(b=>b.id===s.id)||!['goal','key','mini','final'].includes(s.kind)||!['intro','fight','dying','exit','released'].includes(s.phase))return;
  if(!Number.isInteger(s.slot)||s.slot<6||s.slot>=24||!Number.isInteger(s.hp)||!Number.isInteger(s.maxHp)||s.maxHp<1||s.maxHp>12||s.hp<0||s.hp>s.maxHp)return;
  if(![s.x,s.y,s.floor,s.elapsed,s.phaseTime,s.nextAttack,s.hitUntil,s.facing].every(finite)||s.x<0||s.x>4096||s.y<0||s.y>2304||s.floor<0||s.floor>2304||s.elapsed<0||s.elapsed>36000||s.phaseTime<0||s.phaseTime>36000)return;
+ if(s.jumpEpoch!==undefined&&(!finite(s.jumpEpoch)||s.jumpEpoch<0||s.jumpEpoch>s.elapsed))return;
  if(s.arena&&(![s.arena.x,s.arena.y,s.arena.height].every(finite)||s.arena.x<0||s.arena.x>4096||s.arena.y<0||s.arena.y>2304||s.arena.height<224||s.arena.height>256))return;
  if(s.music!==undefined&&(!Number.isInteger(s.music)||s.music<0||s.music>255))return;
  if(s.nativeGoal&&(!finite(s.nativeGoal.x)||!finite(s.nativeGoal.y)||s.nativeGoal.x<0||s.nativeGoal.x>4096||s.nativeGoal.y<0||s.nativeGoal.y>2304))return;
@@ -68,7 +69,16 @@ export class StageBosses {
   if(this.state&&(oldMode===0x26||this.state.phase!=='released'&&(this.state.stage!==stage||this.state.room!==room||this.lastLives!==undefined&&w[0x379]<this.lastLives)))this.clear();
   if(this.state&&this.state.phase!=='released'){
    const expected=this.state.kind==='goal'?0x0d:this.state.kind==='key'?0x14:this.state.kind==='mini'?0x13:0x134;
-   if(word(g,P.spriteId+this.state.slot*4)!==expected||word(g,P.spriteState+this.state.slot*4)!==0x10)this.clear();
+   if(word(g,P.spriteId+this.state.slot*4)!==expected||word(g,P.spriteState+this.state.slot*4)!==0x10){
+    if(this.state.kind==='goal'){
+     // Native sprite streaming unloads/reuses slots outside the camera. Keep
+     // the same encounter, HP and ground until its actual goal returns.
+     const s=this.state,goal=s.nativeGoal;let rebound:number|undefined;
+     for(let slot=6;slot<24;slot++)if(word(g,P.spriteState+slot*4)===0x10&&word(g,P.spriteId+slot*4)===expected&&(!goal||Math.abs(word(g,P.spriteX+slot*4)-goal.x)<32&&Math.abs(word(g,P.spriteY+slot*4)-goal.y)<32)){rebound=slot;break;}
+     if(rebound!==undefined)s.slot=rebound;
+     else{if(s.id==='gnawty'||s.id==='really-gnawty'){s.y=s.floor;s.jumpEpoch=s.elapsed;}s.shots=[];this.pause();this.lastLives=w[0x379];return{};}
+    }else this.clear();
+   }
   }
   this.lastLives=w[0x379];
   let notice:string|undefined,sound:'hit'|'victory'|'throw'|'hurt'|'attack'|'land'|undefined;
@@ -86,7 +96,7 @@ export class StageBosses {
      const spec=bossForStage(stage),floor=kind==='goal'?word(g,P.spriteY+slot*4):playerY+32;
      const maxHp=3+Math.floor(stage/12);
      const spawnX=playerX-cx<128?playerX-cx+100:playerX-cx-100;
-     this.state={version:1,stage,room,id:spec.id,kind,slot,phase:'intro',hp:maxHp,maxHp,x:cx+clamp(spawnX,48,208),y:clamp(floor,cy+90,cy+videoHeight-8),floor:clamp(floor,cy+90,cy+videoHeight-8),elapsed:0,phaseTime:0,nextAttack:1.8,hitUntil:0,facing:-1,shots:[],arena:{x:cx,y:cy,height:videoHeight}};
+     this.state={version:1,stage,room,id:spec.id,kind,slot,phase:'intro',hp:maxHp,maxHp,x:cx+clamp(spawnX,48,208),y:clamp(floor,0,2304),floor:clamp(floor,0,2304),elapsed:0,phaseTime:0,nextAttack:1.8,hitUntil:0,facing:-1,shots:[],arena:{x:cx,y:cy,height:videoHeight}};
      if(kind==='goal')this.state.nativeGoal={x:word(g,P.spriteX+slot*4),y:word(g,P.spriteY+slot*4)};
      if(kind!=='goal'){
       // This is the held post-boss key / Bowser exit, after the original fight.
@@ -107,6 +117,7 @@ export class StageBosses {
   const s=this.state;
   if(!s){this.frame=nativeFrame;return{};}
   s.arena??={x:cx,y:cy,height:videoHeight};const arena=s.arena;
+  if(s.kind==='goal'&&s.nativeGoal){s.floor=s.nativeGoal.y;if((s.id==='gnawty'||s.id==='really-gnawty')&&s.y>s.floor)s.y=s.floor;}
   const dt=this.frame===undefined?0:clamp((nativeFrame-this.frame)/50,0,.06);this.frame=nativeFrame;
   const spec=STAGE_BOSSES.find(b=>b.id===s.id)!;
   if(s.phase==='released')return{};
@@ -134,7 +145,14 @@ export class StageBosses {
    }
    return{notice};
   }
-  if(babyIsLost(g)||!canModifyJump(g)||w[0xd11]){s.shots=[];return{notice};}
+  if(babyIsLost(g)||!canModifyJump(g)||w[0xd11]){
+   s.shots=[];
+   // A rescue can last several seconds. Ground bosses settle instead of
+   // remaining suspended at the height of their interrupted jump.
+   if((s.id==='gnawty'||s.id==='really-gnawty')&&!w[0xd11])s.y=Math.min(s.floor,s.y+200*dt);
+   if(s.y===s.floor&&(s.id==='gnawty'||s.id==='really-gnawty'))s.jumpEpoch=s.elapsed;
+   return{notice};
+  }
   s.elapsed+=dt;s.phaseTime+=dt;
   if(s.phase==='intro'){if(s.phaseTime>=.8){s.phase='fight';s.phaseTime=0;}else return{notice};}
   if(s.phase==='dying'){
@@ -152,19 +170,19 @@ export class StageBosses {
    if(s.hp===0){s.phase='dying';s.phaseTime=0;s.shots=[];return{sound,notice:`${spec.name} defeated`};}
   }
   const left=arena.x+spec.width/2+8,right=arena.x+256-spec.width/2-8;
-  s.floor=clamp(s.floor,arena.y+90,arena.y+arena.height-8);
+  // Native ground is independent of the current or saved viewport.
   s.facing=s.x>playerX?-1:1;
-  const t=s.elapsed;
+  const t=s.elapsed,groundTime=Math.max(0,t-(s.jumpEpoch??0));
   switch(s.id){
    case 'gnawty':case 'really-gnawty':{
-    const fast=s.id==='really-gnawty';s.x=clamp(s.x+s.facing*(fast?48:32)*dt,left,right);s.y=s.floor-Math.abs(Math.sin(t*(fast?4.5:3)))*(fast?55:33);break;
+    const fast=s.id==='really-gnawty';s.x=clamp(s.x+s.facing*(fast?48:32)*dt,left,right);s.y=s.floor-Math.abs(Math.sin(groundTime*(fast?4.5:3)))*(fast?55:33);break;
    }
    case 'necky':case 'necky-snr':s.x=arena.x+222+Math.sin(t*1.3)*4;s.facing=-1;s.y=arena.y+104+Math.sin(t*2.1)*24;break;
    case 'queen-b':s.x=clamp(arena.x+145+Math.cos(t*1.8)*55,left,right);s.y=arena.y+110+Math.sin(t*2.4)*35;break;
    case 'dumb-drum':s.x=clamp(arena.x+150+Math.sin(t*.9)*45,left,right);s.y=s.floor-(Math.sin(t*2.4)>.4?62:8);break;
    case 'k-rool':s.x=clamp(s.x+s.facing*(Math.sin(t*2)>0?65:15)*dt,left,right);s.y=s.floor-Math.max(0,Math.sin(t*2))*52;break;
   }
-  s.y=clamp(s.y,arena.y+spec.height+36,arena.y+arena.height-8);
+  s.y=clamp(s.y,0,s.floor);
   if(s.phase==='fight'&&t>=s.nextAttack){
    const flying=['necky','necky-snr','queen-b'].includes(s.id),kind:Shot['kind']=s.id==='k-rool'?'crown':flying?'nut':'shock';
    const x=s.x,y=s.y-spec.height*.45,dx=playerX+12-x,dy=playerY+15-y,length=Math.hypot(dx,dy)||1;
@@ -173,7 +191,7 @@ export class StageBosses {
    if(s.id==='necky-snr')s.shots.push({x,y:y-18,vx:dx/length*speed,vy:dy/length*speed+12,age:0,kind});
    sound='attack';s.nextAttack=t+(['gnawty','really-gnawty'].includes(s.id)?2.6:s.id==='necky-snr'?1.5:2.1);
   }
-  if(!sound&&['gnawty','really-gnawty'].includes(s.id)&&Math.floor(t*(s.id==='gnawty'?3:4.5)/Math.PI)!==Math.floor((t-dt)*(s.id==='gnawty'?3:4.5)/Math.PI))sound='land';
+  if(!sound&&['gnawty','really-gnawty'].includes(s.id)&&Math.floor(groundTime*(s.id==='gnawty'?3:4.5)/Math.PI)!==Math.floor(Math.max(0,groundTime-dt)*(s.id==='gnawty'?3:4.5)/Math.PI))sound='land';
   const remaining:Shot[]=[];let playerHit=false;
   for(const shot of s.shots){
    const ox=shot.x,oy=shot.y;shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;shot.age+=dt;

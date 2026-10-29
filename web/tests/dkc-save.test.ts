@@ -13,3 +13,5 @@ describe('separate cartridge saves',()=>{
 
 it('round trips direct Drum HP and a pending native defeat without changing the native state',()=>{for(const hp of[3,0]){const drum={level:0xe3,slot:16,hp,maxHp:5,cooldown:30,defeatRequested:hp===0};const saved=decodeDkcSave(encodeDkcSave({state,adventure:new Adventure().serialize(),combat:{eggs:6,shots:[]},drum}));expect(saved.drum).toEqual(drum);expect(saved.state).toEqual(state);}});
 it('ignores invalid supplementary Drum metadata while retaining the campaign save',()=>{const drum={level:0xe3,slot:16,hp:99,maxHp:5,cooldown:0,defeatRequested:false};const saved=decodeDkcSave(encodeDkcSave({state,adventure:new Adventure().serialize(),combat:{eggs:2,shots:[]},drum}));expect(saved.drum).toBeUndefined();expect(saved.combat.eggs).toBe(2);});
+
+it('persists the one-time native duo initialization so loading cannot refill lost partners',()=>{const saved=decodeDkcSave(encodeDkcSave({state,adventure:new Adventure().serialize(),combat:{eggs:0,shots:[]},teamInitialized:true}));expect(saved.teamInitialized).toBe(true);});

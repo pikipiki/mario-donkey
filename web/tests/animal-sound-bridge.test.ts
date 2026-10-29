@@ -9,7 +9,7 @@ vi.mock('../src/engine',async original=>({...await original<typeof import('../sr
 function fixture(){
  const heap=new Uint8Array(0x28000),controls=new Controls();
  const emulator={Module:{HEAPU8:heap},setVolume:vi.fn(),gameManager:{simulateInput:vi.fn(),toggleMainLoop:vi.fn()}} as unknown as Emulator;
- const ctx={clearRect:vi.fn()} as unknown as CanvasRenderingContext2D;
+ const ctx={clearRect:vi.fn(),save:vi.fn(),restore:vi.fn(),fillRect:vi.fn()} as unknown as CanvasRenderingContext2D;
  const game=new LiveGame(emulator,controls,{height:224,getContext:()=>ctx} as unknown as HTMLCanvasElement,{draw:vi.fn()} as unknown as SpriteAtlas,vi.fn());
  game.gsuBase=0x20000;game.ready=true;game.wram[P.mode]=P.gameplay;
  game.wram[0x200]=15;writeWord(game.gsu,P.baby,0x8000);writeWord(game.wram,0x3b6,100);
@@ -37,4 +37,9 @@ describe('animal sound bridge in native gameplay',()=>{
   const {game,play}=fixture();game.mount('squawks');game.tick(1000);play.mockClear();
   writeWord(game.gsu,P.baby,0);game.tick(1016);expect(game.adventure.mount).toBe('yoshi');expect(play).not.toHaveBeenCalled();
  });
+});
+
+it('plays the tag impact once at hand contact, never on the initial button or duplicate frames',()=>{
+ const{game,controls,play}=fixture();let frame=0;(game.emulator.gameManager as unknown as{functions:unknown}).functions={getFrameNum:()=>frame};game.tick(1000);play.mockClear();expect(game.requestTeamSwap()).toBe(true);expect(play).not.toHaveBeenCalled();
+ for(frame=1;frame<=12;frame++)game.tick(1000+frame*16);expect(play).not.toHaveBeenCalled();frame=13;game.tick(1210);expect(play).toHaveBeenCalledExactlyOnceWith('animal-hit');for(let i=0;i<10;i++)game.tick(1211+i);expect(play).toHaveBeenCalledTimes(1);for(frame=14;frame<40;frame++)game.tick(1000+frame*16);expect(play).toHaveBeenCalledTimes(1);
 });

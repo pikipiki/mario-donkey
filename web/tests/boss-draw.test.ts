@@ -32,3 +32,5 @@ describe('bounded boss impact and defeat effects',()=>{
 });
 
 it('keeps Necky scenery in the saved arena when the camera scrolls',()=>{const f=drawing();drawStageBoss(f.ctx,f.atlas,encounter({x:722,y:804,floor:890,arena:{x:500,y:700,height:224}}),600,750,8);expect(f.ctx.translate).toHaveBeenCalledWith(156,0);expect(f.drawBoss).toHaveBeenCalledWith(f.ctx,'necky','attack',122,62,2000,-1);});
+
+it('blinks the donor boss during the hit grace without hiding its HUD or changing its hitbox',()=>{const visible=drawing(),blink=drawing();drawStageBoss(visible.ctx,visible.atlas,encounter({elapsed:2.01,hitUntil:2.3}),0,0,0);drawStageBoss(blink.ctx,blink.atlas,encounter({elapsed:2.08,hitUntil:2.3}),0,0,0);expect(visible.drawBoss).toHaveBeenCalledOnce();expect(blink.drawBoss).not.toHaveBeenCalled();expect(blink.ctx.fillText).toHaveBeenCalled();});

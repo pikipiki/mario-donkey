@@ -18,6 +18,7 @@ export class BossAudio {
  private effectBanks=new Map<BossAudioWorld,{buffer:AudioBuffer;cues:Record<string,Cue>}>();private effectsPending=new Map<BossAudioWorld,Promise<void>>();
  private source?:AudioBufferSourceNode;private gain?:GainNode;private key?:string;private track?:string;private offset=0;private began=0;
  private voices=new Set<AudioBufferSourceNode>();private recent=new Map<string,number>();
+ private effectsEnabled=false;
  played=0;lastEffect?:string;
  prepare(context:AudioContext|undefined,world:BossAudioWorld='dkc',id=''):Promise<void>{
   if(!context||context.state==='closed')return Promise.resolve();
@@ -55,6 +56,7 @@ export class BossAudio {
   const key=`${encounter.world}:${encounter.id}`,track=bossTrack(encounter);
   if(this.key!==key){this.stop();this.key=key;this.track=track;}
   if(encounter.paused||context?.state!=='running'){this.pause();return false;}
+  this.effectsEnabled=true;
   if(this.source)return true;
   const buffer=this.music.get(track),cue=this.manifest?.tracks[track];if(!context||!buffer||!cue)return false;
   try{
@@ -67,11 +69,12 @@ export class BossAudio {
  effect(kind:BossEffect,id=''):boolean{
   const world=this.key?.startsWith('yoshi:')?'yoshi':'dkc';
   const name=world==='yoshi'?(kind==='attack'?'yoshi-jump':kind==='hit'?'yoshi-hit':kind==='land'?'yoshi-land':'yoshi-defeat'):kind==='attack'?'boss-throw':kind==='hit'?'boss-hit':kind==='land'?'boss-land':kind==='laugh'?'boss-laugh':id==='necky'||id==='necky-snr'?'necky-defeat':'boss-stomp';
-  const bank=this.effectBanks.get(world),context=this.context,buffer=bank?.buffer,cue=bank?.cues[name];if(!this.source||!context||context.state!=='running'||!buffer||!cue||this.voices.size>=4)return false;
+  const bank=this.effectBanks.get(world),context=this.context,buffer=bank?.buffer,cue=bank?.cues[name];if(!this.effectsEnabled||!context||context.state!=='running'||!buffer||!cue||this.voices.size>=4)return false;
   if(context.currentTime-(this.recent.get(name)??-Infinity)<.09)return false;
   try{const source=context.createBufferSource(),gain=context.createGain();source.buffer=buffer;gain.gain.value=.85;source.connect(gain);gain.connect(context.destination);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();gain.disconnect();};source.start(0,cue.offset,cue.duration);this.recent.set(name,context.currentTime);this.lastEffect=name;this.played++;return true;}catch{return false;}
  }
  pause():void{
+  this.effectsEnabled=false;
   if(this.source){this.offset+=Math.max(0,(this.context?.currentTime??this.began)-this.began);try{this.source.stop();}catch{}this.source.disconnect();this.gain?.disconnect();this.source=undefined;this.gain=undefined;}
   for(const source of this.voices){try{source.stop();}catch{}source.disconnect();}this.voices.clear();this.recent.clear();
  }

@@ -233,7 +233,7 @@ export class LiveGame {
     this.nativeBossSongHeld=false;
    }
    if(result.sound==='hurt')queueNativeSound(this.wram,0x17);
-   else if(result.sound==='hit')this.bossAudio.effect(guardian?.phase==='dying'?'defeat':'hit',guardian?.id);
+   else if(result.sound==='hit'){this.bossAudio.effect('hit',guardian?.id);if(guardian?.phase==='dying')this.bossAudio.effect('defeat',guardian.id);}
    else if(result.sound==='attack'||result.sound==='land')this.bossAudio.effect(result.sound,guardian?.id);
    if(result.notice)this.onStatus(result.notice);
   }
@@ -250,7 +250,7 @@ export class LiveGame {
    if(lost&&!this.previousBabyLost){this.adventure.hit();this.controls.rollUntil=0;this.updateVisibility();this.changed();}
    this.previousBabyLost=lost;
   }
-  if(gameplay&&!dialogue&&!lost&&canModifyJump(g)){if(this.teamTag.update(this.emulator.gameManager.functions?.getFrameNum?.()??Math.floor(now*.06),this.room,{x:word(g,P.x),y:word(g,P.y),facing:this.controls.facing,grounded:word(g,0xc0)===0},this.adventure))this.changed();}else this.teamTag.reset();
+  if(gameplay&&!dialogue&&!lost&&canModifyJump(g)){if(this.teamTag.update(this.emulator.gameManager.functions?.getFrameNum?.()??Math.floor(now*.06),this.room,{x:word(g,P.x),y:word(g,P.y),facing:this.controls.facing,grounded:word(g,0xc0)===0},this.adventure)){this.animalAudio.play('animal-hit');this.changed();}}else this.teamTag.reset();
   this.squawksCamera.update(g,this.wram,gameplay&&this.adventure.mount==='squawks'&&!dialogue&&!lost,this.room);
   const jumpRequested=this.controls.jumpSequence!==this.jumpSequence;this.jumpSequence=this.controls.jumpSequence;
   const jumpVelocity=this.jumpBoost.update(g,this.adventure.mount,now,jumpRequested,gameplay&&!dialogue);

@@ -51,8 +51,9 @@ export function drawStageBoss(ctx:CanvasRenderingContext2D,atlas:SpriteAtlas,s:G
  }
  if(s.id==='necky'||s.id==='necky-snr')drawNeckyArena(ctx,s,x,y,s.floor-cameraY+topPadding,topPadding,cameraX,cameraY);
  const dying=s.phase==='dying';ctx.globalAlpha=dying?Math.max(0,1-s.phaseTime/.8):1;
+ const blinking=s.phase==='fight'&&s.elapsed<s.hitUntil&&Math.floor(Math.max(0,s.elapsed-(s.hitUntil-.3))*50/3)%2===1;
  const pose=dying?'dead':s.elapsed<s.hitUntil?'hurt':s.phase==='intro'?'idle':'attack';
- atlas.drawBoss(ctx,s.id,pose,x,y,s.elapsed*1000,s.facing);
+ if(!blinking)atlas.drawBoss(ctx,s.id,pose,x,y,s.elapsed*1000,s.facing);
  for(const p of s.shots){
   const px=Math.round(p.x-cameraX),py=Math.round(p.y-cameraY+topPadding);
   if(p.kind==='egg'){

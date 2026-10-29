@@ -40,3 +40,5 @@ describe('original boss audio',()=>{
   expect(audio.effect('attack','burt')).toBe(true);expect(audio.lastEffect).toBe('yoshi-jump');expect(audio.effect('land','burt')).toBe(true);expect(audio.lastEffect).toBe('yoshi-land');expect(audio.effect('hit','burt')).toBe(true);expect(audio.lastEffect).toBe('yoshi-hit');
  });
 });
+
+it('plays loaded hit FX even when the music loop has not loaded yet, while respecting pause',async()=>{const f=fixture(),audio=new BossAudio();await audio.prepare(f.context);f.context.createBufferSource=(()=>{const source={connect:()=>{},disconnect:()=>{},start:()=>{throw Error('music unavailable')},stop:()=>{}};return source;}) as unknown as AudioContext['createBufferSource'];expect(audio.sync(f.context,dkc)).toBe(false);Object.assign(f.context,{createBufferSource:()=>({connect:()=>{},disconnect:()=>{},start:()=>{},stop:()=>{}})});expect(audio.effect('hit','gnawty')).toBe(true);audio.pause();expect(audio.effect('hit','gnawty')).toBe(false);});

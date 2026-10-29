@@ -122,3 +122,20 @@ describe('DKC guardians in Yoshi: melee and fixed world arenas',()=>{
 });
 
 it('aligns guardian feet with the actual native goal ground without the former 16px sink',()=>{const f=fixture();f.tick();expect(f.boss.state!.floor).toBe(word(f.g,P.spriteY+f.slot*4));});
+
+
+describe('returning to Gnawty after native sprite streaming',()=>{
+ it('keeps damage and ground when the goal slot unloads, is reused, and returns in another slot',()=>{
+  const f=fixture();for(let i=0;i<45;i++)f.tick();f.tick(true);const before=structuredClone(f.boss.state!),slot=f.slot*4;writeWord(f.g,P.spriteState+slot,0);writeWord(f.w,P.cameraX,700);writeWord(f.w,P.cameraY,800);for(let i=0;i<50;i++)f.tick();expect(f.boss.state!.hp).toBe(before.hp);expect(f.boss.state!.y).toBe(before.floor);
+  writeWord(f.g,P.spriteState+slot,0x10);writeWord(f.g,P.spriteId+slot,0x1e);const newSlot=12,o=newSlot*4;writeWord(f.g,P.spriteState+o,0x10);writeWord(f.g,P.spriteId+o,0x0d);writeWord(f.g,P.spriteX+o,before.nativeGoal!.x);writeWord(f.g,P.spriteY+o,before.nativeGoal!.y);f.tick();expect(f.boss.state!.slot).toBe(newSlot);expect(f.boss.state!.hp).toBe(before.hp);expect(f.boss.state!.floor).toBe(before.floor);expect(f.boss.state!.y).toBe(before.floor);expect(f.boss.state!.arena).toEqual(before.arena);
+ });
+ it('does not rebind to a different goal, but still resets on real room changes or death',()=>{
+  const f=fixture();f.tick();const initial=f.boss.state!;writeWord(f.g,P.spriteState+f.slot*4,0);writeWord(f.g,P.spriteState+48,0x10);writeWord(f.g,P.spriteId+48,0x0d);writeWord(f.g,P.spriteX+48,1000);f.tick();expect(f.boss.state).toBe(initial);expect(f.boss.state!.slot).toBe(f.slot);writeWord(f.w,0x32,1);f.tick();expect(f.boss.state?.room).not.toBe(initial.room);
+ });
+ it('lands during Baby Mario rescue and resumes hopping from the ground instead of snapping into midair',()=>{
+  const f=fixture();for(let i=0;i<45;i++)f.tick();const s=f.boss.state!;s.y=s.floor-30;writeWord(f.g,P.baby,0);for(let i=0;i<30;i++)f.tick();expect(s.y).toBe(s.floor);const saved=validateGuardian(s)!;expect(saved.jumpEpoch).toBe(s.elapsed);writeWord(f.g,P.baby,0x8000);f.boss.restore(saved);f.tick();expect(f.boss.state!.y).toBe(f.boss.state!.floor);
+ });
+ it('never lifts a goal guardian floor to fit a moved viewport, including a restored old save',()=>{
+  const f=fixture();f.tick();const saved=structuredClone(f.boss.state!);delete saved.arena;saved.floor=216;saved.y=216;writeWord(f.w,P.cameraY,1000);f.boss.restore(saved);f.tick();expect(f.boss.state!.floor).toBe(saved.nativeGoal!.y);expect(f.boss.state!.y).toBeLessThanOrEqual(saved.nativeGoal!.y);
+ });
+});

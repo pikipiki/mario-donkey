@@ -1,0 +1,14 @@
+import{it,expect}from'vitest';
+import{DkcTeamDamage,initializeDkcTeam}from'../src/dkc-team-damage';
+import{Adventure,CHARACTERS}from'../src/adventure';
+import{DKC}from'../src/dkc-profile';
+import{writeWord}from'../src/profile';
+function fixture(){const w=new Uint8Array(0x20000),a=new Adventure(),d=new DkcTeamDamage(),p=(at:number,v:number)=>writeWord(w,at,v);p(DKC.loadedScene,22);p(DKC.height,512);p(DKC.id+2,1);p(DKC.id+4,2);p(DKC.currentKong,1);p(DKC.x+2,100);p(DKC.x+4,70);p(DKC.y+2,200);p(DKC.y+4,200);d.update(w,a);return{w,a,d,p};}
+for(const first of CHARACTERS)for(const second of CHARACTERS)if(first!==second)it(`${first} flees and yields to ${second} only when the native takeover completes`,()=>{
+ const{w,a,d,p}=fixture();a.setTeam(first,second);p(DKC.state+2,0xd);p(DKC.state+4,0xe);let before=w.slice();expect(d.update(w,a)).toBe(false);expect(a.active).toBe(first);expect(d.transitioning).toBe(true);expect(d.nativePartner(w,a)).toMatchObject({character:second,x:70,y:312});expect(w).toEqual(before);
+ p(DKC.currentKong,2);p(DKC.state+4,1);p(DKC.state+2,9);before=w.slice();expect(d.update(w,a)).toBe(true);expect(a.active).toBe(second);expect(d.update(w,a)).toBe(false);expect(d.nativePartner(w,a)).toMatchObject({character:first,x:100,y:312,animation:'walk'});expect(w).toEqual(before);expect(d.canTag(w)).toBe(false);p(DKC.state+2,0xc);d.update(w,a);expect(d.hasPartner(w)).toBe(false);p(DKC.state+2,5);expect(d.hasPartner(w)).toBe(true);expect(d.canTag(w)).toBe(true);
+});
+it('never interprets an ordinary native Select swap, swimming handoff, map, or single-Kong death as another lost companion',()=>{const{w,a,d,p}=fixture();p(DKC.state+2,0x11);p(DKC.state+4,0x11);p(DKC.currentKong,2);expect(d.update(w,a)).toBe(false);expect(a.active).toBe('violet');p(DKC.state+4,0xd);p(DKC.state+2,0xc);expect(d.update(w,a)).toBe(false);expect(d.hasPartner(w)).toBe(false);p(DKC.height,0);expect(d.update(w,a)).toBe(false);expect(d.transitioning).toBe(false);});
+
+it('seeds a new duo only on the map, preserves other native flags, and never revives a lost partner in play',()=>{const{w,p}=fixture();expect(initializeDkcTeam(w,false)).toBe(false);p(DKC.height,0);p(DKC.id,0x10);p(0x579,0x120);expect(initializeDkcTeam(w,false)).toBe(true);expect(w[0x579]).toBe(0x21);p(0x579,0x120);expect(initializeDkcTeam(w,true)).toBe(true);expect(w[0x579]).toBe(0x20);});
+it('passes the same relay after the native underwater hurt and swimming takeover',()=>{const{w,p,a,d}=fixture();p(DKC.state+2,0x3a);p(DKC.state+4,0xe);d.update(w,a);p(DKC.currentKong,2);p(DKC.state+4,0x2b);p(DKC.state+2,0x39);expect(d.update(w,a)).toBe(true);expect(a.active).toBe('pink');expect(d.nativePartner(w,a)).toMatchObject({character:'violet',animation:'walk'});});

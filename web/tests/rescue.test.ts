@@ -82,11 +82,11 @@ describe('original SNES rescue counter',()=>{
  });
 });
 
-it('transmet Haut + Langue après un geste mobile relâché, sans changer bébé ou son compteur',()=>{
+it.each([true,false])('transmet seulement la direction encore tenue pendant la langue (held=%s), sans changer bébé ou son compteur',held=>{
  const {game,controls,simulateInput}=fixture();writeWord(game.gsu,P.baby,0);writeWord(game.wram,0x3b6,50);game.tick(1000);
- controls.setStick(0,-1,1100);controls.releaseStick();controls.activate('tongue',1200);simulateInput.mockClear();game.tick(1200);
- expect(simulateInput).toHaveBeenCalledWith(0,INPUT.up,1);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.y,1);
+ controls.setStick(0,-1,1100);if(!held)controls.releaseStick();controls.activate('tongue',1200);simulateInput.mockClear();game.tick(1200);
+ expect(simulateInput).toHaveBeenCalledWith(0,INPUT.up,held?1:0);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.y,1);
  expect(simulateInput).toHaveBeenCalledWith(0,INPUT.left,0);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.right,0);
  expect(word(game.gsu,P.baby)).toBe(0);expect(word(game.wram,0x3b6)).toBe(50);
- simulateInput.mockClear();game.tick(1400);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.up,0);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.y,0);
+ controls.releaseStick();simulateInput.mockClear();game.tick(1400);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.up,0);expect(simulateInput).toHaveBeenCalledWith(0,INPUT.y,0);
 });

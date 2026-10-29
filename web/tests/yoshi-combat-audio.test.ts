@@ -11,7 +11,7 @@ describe('native Yoshi combat FX in DKC',()=>{
  it('uses the existing running audio context and drops paused or unavailable effects',async()=>{
  const oldFetch=globalThis.fetch;const sources:any[]=[];const context={state:'running',currentTime:0,destination:{},decodeAudioData:vi.fn(async()=>({duration:10})),createGain:()=>({gain:{value:1},connect:vi.fn(),disconnect:vi.fn()}),createBufferSource:()=>{const s={connect:vi.fn(),disconnect:vi.fn(),start:vi.fn(),stop:vi.fn(),onended:undefined};sources.push(s);return s;}};
  globalThis.fetch=vi.fn(async(url:any)=>({ok:true,json:async()=>meta,arrayBuffer:async()=>new ArrayBuffer(20)})) as any;
- try{const audio=new YoshiCombatAudio();expect(audio.play('throw')).toBe(false);await audio.prepare(context as any);for(const name of YOSHI_COMBAT_EFFECTS){context.currentTime++;expect(audio.play(name)).toBe(true);sources.at(-1).onended?.();}expect(audio.lastEffect).toBe('impact');context.state='suspended';expect(audio.play('throw')).toBe(false);audio.stop();expect(audio.played).toBe(6);}finally{globalThis.fetch=oldFetch;}
+ try{const audio=new YoshiCombatAudio();expect(audio.play('throw')).toBe(false);await audio.prepare(context as any);for(const name of YOSHI_COMBAT_EFFECTS){context.currentTime++;expect(audio.play(name)).toBe(true);sources.at(-1).onended?.();}expect(audio.lastEffect).toBe('flutter');context.state='suspended';expect(audio.play('throw')).toBe(false);audio.stop();expect(audio.played).toBe(7);}finally{globalThis.fetch=oldFetch;}
  });
 });
 it('ships native damage and defeat cues for the new Yoshi guardians',()=>{

@@ -1,5 +1,5 @@
 // Native EU SPC commands: bank0B E5CA/E648/E871/EA28 and bank20 sound names.
-export const YOSHI_COMBAT_EFFECTS=['aim','throw','tongue','swallow','make','impact'] as const;
+export const YOSHI_COMBAT_EFFECTS=['aim','throw','tongue','swallow','make','impact','flutter'] as const;
 export type YoshiCombatEffect=typeof YOSHI_COMBAT_EFFECTS[number];
 interface Cue {offset:number;duration:number}
 interface Bank {version:number;effects:Record<YoshiCombatEffect,Cue>}

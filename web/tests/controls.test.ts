@@ -105,22 +105,9 @@ it('fournit un nouveau front après un long maintien suivi d’un réappui très
  expect(c.jumpPressed(4001)).toBe(false);expect(c.jumpPressed(4059)).toBe(false);expect(c.jumpPressed(4060)).toBe(true);
 });
 
-describe('visée de la langue vers le haut à un doigt',()=>{
- it('libère la direction au relâchement mais permet Haut puis Langue',()=>{
-  const c=new Controls();c.setStick(0,-1,1000);c.releaseStick();expect(c.verticalAxis(1100)).toBe(0);expect(c.movement(1100)).toBe(0);
-  expect(c.tongueAimingUp(1100)).toBe(true);c.activate('tongue',1200);expect(c.tongueUpPressed(1200)).toBe(true);
-  expect(c.verticalAxis(1200)).toBe(0);expect(c.tongueUpPressed(1340)).toBe(false);expect(c.tongueAimingUp(1340)).toBe(false);
- });
- it('expire la visée après deux secondes et permet un tir horizontal normal',()=>{
-  const c=new Controls();c.setStick(0,-1,1000);c.releaseStick();expect(c.tongueAimingUp(3000)).toBe(false);
-  c.activate('tongue',3100);expect(c.tongueUpPressed(3100)).toBe(false);
- });
- it('annule la visée avec un nouveau geste vers le bas, le côté ou le centre',()=>{
-  for(const [x,y] of [[0,1],[1,0],[0,0]]){const c=new Controls();c.setStick(0,-1,1000);c.releaseStick();c.setStick(x,y,1100);c.releaseStick();c.activate('tongue',1200);expect(c.tongueUpPressed(1200)).toBe(false);}
- });
- it('ne laisse pas la visée polluer un œuf, une pause ou une nouvelle action après Stop',()=>{
-  for(const action of ['egg','stop'] as const){const c=new Controls();c.setStick(0,-1,1000);c.releaseStick();c.activate(action,1100);c.activate('tongue',1200);expect(c.tongueUpPressed(1200)).toBe(false);}
- });
+describe('langue : direction tenue, sinon droit devant',()=>{
+ it.each([[0,-1],[0,1],[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1]])('suit la croix tenue %s,%s', (x,y)=>{const c=new Controls();c.setStick(x,y,100);c.activate('tongue',200);expect(c.tongueDirection(210)).toEqual({x,y});expect(c.tongueUpPressed(210)).toBe(y<0);});
+ it('ne garde aucune visée verticale ou diagonale après relâchement',()=>{for(const [x,y]of[[0,-1],[0,1],[-1,-1],[1,1]]){const c=new Controls();c.setStick(x,y,100);c.releaseStick();expect(c.tongueAimingUp(110)).toBe(false);c.activate('tongue',120);expect(c.tongueDirection(130)).toEqual({x:x<0?-1:1,y:0});}});
+ it('respecte aussi les diagonales clavier et la libération de Haut',()=>{const c=new Controls();c.keyboardDirection=-1;c.facing=-1;c.keyboardVertical=-1;c.activate('tongue',100);expect(c.tongueDirection(110)).toEqual({x:-1,y:-1});c.keyboardDirection=0;c.keyboardVertical=0;c.release('up');c.activate('tongue',300);expect(c.tongueDirection(310)).toEqual({x:-1,y:0});});
+ it('ne change pas la direction d’une extension déjà lancée, mais recalcule la suivante',()=>{const c=new Controls();c.setStick(0,-1);c.activate('tongue',100);c.releaseStick();expect(c.tongueDirection(110)).toEqual({x:0,y:-1});c.activate('tongue',300);expect(c.tongueDirection(310)).toEqual({x:1,y:0});});
 });
-
-it('remembers diagonal tongue aim for one-finger play without keeping movement held',()=>{const c=new Controls();c.setStick(-1,-1,100);c.releaseStick();expect(c.runAxis()).toBe(0);c.activate('tongue',400);expect(c.tongueDirection(410)).toEqual({x:-1,y:-1});c.stop();c.activate('tongue',500);expect(c.tongueDirection(510)).toEqual({x:-1,y:0});});

@@ -85,7 +85,7 @@ def effects(core,out):
   dest=Path(temp);fx.run(ROOT/'public/rom/dkc-usa-rev2.sfc',core,dest)
   meta=json.loads((dest/'dkc-animals.json').read_text());(out/'boss-effects.wav').write_bytes((dest/'dkc-animals.wav').read_bytes());(out/'boss-effects.json').write_text(json.dumps(meta,indent=2)+'\n')
 def yoshi_effects(core,out,combat=False):
- rp=ROOT/'public/rom/yoshi-eu.sfc';r=rp.read_bytes();effects=({'aim':0x1a,'throw':0x20,'tongue':0x3e,'swallow':0x14,'make':0x04,'impact':0x1f} if combat else {'yoshi-jump':0x13,'yoshi-land':0x23,'yoshi-hit':0x20,'yoshi-defeat':0x78,'salvo-hit':0x3b,'boo-hit':0x79,'boss-hurt':0x78,'boss-explode':0x74})
+ rp=ROOT/'public/rom/yoshi-eu.sfc';r=rp.read_bytes();effects=({'aim':0x1a,'throw':0x20,'tongue':0x3e,'swallow':0x14,'make':0x04,'impact':0x1f,'flutter':0x37} if combat else {'yoshi-jump':0x13,'yoshi-land':0x23,'yoshi-hit':0x20,'yoshi-defeat':0x78,'salvo-hit':0x3b,'boo-hit':0x79,'boss-hurt':0x78,'boss-explode':0x74})
  if hashlib.sha256(r).hexdigest()!='91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90':raise ValueError('Verified EU ROM required')
  out.mkdir(parents=True,exist_ok=True)
  with tempfile.TemporaryDirectory(prefix='yoshi-boss-fx-') as temp:

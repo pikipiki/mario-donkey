@@ -20,7 +20,11 @@ export class DkcWater{
    writeWord(w,DKC.vy+s.playerSlot,(velocity+0x70)&0xffff);
   }else this.depth=undefined;
   const fresh=attack&&!this.pressed;this.pressed=attack;
-  if(effective!=='enguarde'){this.stabUntil=0;return{swimming:true,stabbed:false,killed:0};}
+  if(effective!=='enguarde'){
+   this.stabUntil=0;let killed=0;
+   if(attack)for(const e of dkcEnemies(w))if(Math.abs(e.x-s.x)<=e.width/2+26&&s.y>e.y-e.height-6&&s.y-32<e.y+6&&killDkcEnemy(w,e.slot))killed++;
+   return{swimming:true,stabbed:false,killed};
+  }
   let stabbed=fresh;if(fresh)this.stabUntil=now+390;
   const x=native?.x??s.x,y=native?.y??s.y,dir=facing<0?-1:1;
   let killed=0;

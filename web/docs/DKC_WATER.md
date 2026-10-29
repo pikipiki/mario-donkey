@@ -28,3 +28,11 @@ remained y10612 across672 native frames. Selected Enguarde killed a native
 Bitesize (kills0→1), with Enguarde-attack sound played and unchanged player
 state2B. No user save or active user tab was used. This is not a physical
 mobile-device test or a full underwater campaign playthrough.
+
+Underwater roll damage is separate from forced land roll movement. With any
+hero or selected mount other than Enguarde, Roll/X requests native damage20
+for live, killable nearby enemies on either side. No attack at rest; no hit on
+scenery or native invulnerable actors. Selected Enguarde retains its directional
+nose attack. Carrying a barrel suppresses roll damage. The leader/mount roll
+animation returns underwater, while joystick movement and buoyancy remain
+unchanged. Successful roll kills now count even without an Enguarde stab cue.

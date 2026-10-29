@@ -1,4 +1,4 @@
-export interface DkcTarget {slot:number;id:number;x:number;y:number;width:number;height:number}
+export interface DkcTarget {slot:number;id:number;x:number;y:number;width:number;height:number;nativeBoss?:boolean}
 export interface DkcEgg {x:number;y:number;vx:number;vy:number;age:number}
 export interface DkcAim{x:number;y:number;endX:number;endY:number}
 export interface DkcCombatSave {eggs:number;shots:DkcEgg[];aimPhase?:number;mouth?:number}
@@ -43,11 +43,11 @@ export class DkcCombat {
   this.shots=Array.isArray(s?.shots)?s.shots.filter(p=>p&&[p.x,p.y,p.vx,p.vy,p.age].every(Number.isFinite)&&p.age>=0&&p.age<=4&&Math.abs(p.vx)<=400&&Math.abs(p.vy)<=400).slice(0,6).map(p=>({...p})):[];this.resetClock();
  }
  serialize():DkcCombatSave{return{eggs:this.eggs,...(this.mouth===undefined?{}:{mouth:this.mouth}),shots:this.shots.map(p=>({...p})),...(this.aimPhase===undefined?{}:{aimPhase:this.aimPhase})};}
- update(frame:number,now:number,player:{x:number;y:number;facing:number},targets:DkcTarget[],egg:boolean,tongue:boolean,up:boolean,hit:(target:DkcTarget)=>boolean,guardian?:DkcTarget,input:{down?:boolean;direction?:{x:number;y:number}}={}):{madeEgg:boolean;ate:boolean;killed:number;threw:boolean}{
+ update(frame:number,now:number,player:{x:number;y:number;facing:number},targets:DkcTarget[],egg:boolean,tongue:boolean,up:boolean,hit:(target:DkcTarget)=>boolean,guardian?:DkcTarget,input:{unlimited?:boolean;down?:boolean;direction?:{x:number;y:number}}={}):{madeEgg:boolean;ate:boolean;killed:number;threw:boolean}{
   const dt=this.frame===undefined?0:clamp((frame-this.frame)/60,0,.06);this.frame=frame;
   const freshEgg=egg&&!this.eggHeld,freshTongue=tongue&&!this.tongueHeld;this.eggHeld=egg;this.tongueHeld=tongue;
   const facing=player.facing<0?-1:1,x=player.x+facing*12,y=player.y-17;
-  if(guardian)this.eggs=6;
+  if(guardian||input.unlimited)this.eggs=6;
   if(this.aimPhase!==undefined)this.aimPhase=(this.aimPhase+dt)%2;
   this.updateAim(x,y,facing);
   let ate=false,killed=0,threw=false,madeEgg=false;
@@ -56,7 +56,7 @@ export class DkcCombat {
    const direction=input.direction??{x:up?0:facing,y:up?-1:0},length=Math.hypot(direction.x,direction.y)||1;
    const endX=x+direction.x/length*78,endY=y+direction.y/length*78;
    this.tongue={x,y,endX,endY,until:now+150};
-   const target=targets.filter(t=>t.slot>=0&&sweptHit(x,y,endX,endY,t)).sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y))[0];
+   const target=targets.filter(t=>t.slot>=0&&!t.nativeBoss&&sweptHit(x,y,endX,endY,t)).sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y))[0];
    if(target&&hit(target)){this.mouth=target.id;ate=true;targets=targets.filter(t=>t.slot!==target.slot);}
   }
   if(freshEgg&&this.eggs>0&&this.shots.length<6){
@@ -71,10 +71,11 @@ export class DkcCombat {
    const t=[...targets,...(guardian?[guardian]:[])].find(t=>sweptHit(p.x,p.y,nx,ny,t));
    p.x=nx;p.y=ny;
    if(t&&guardian&&t.slot===guardian.slot){hit(t);return false;}
+   if(t?.nativeBoss){hit(t);return false;}
    if(t&&hit(t)){killed++;targets=targets.filter(e=>e.slot!==t.slot);return false;}
    return p.age<3&&Math.hypot(p.x-player.x,p.y-player.y)<360;
   });
-  if(guardian)this.eggs=6;
+  if(guardian||input.unlimited)this.eggs=6;
   this.followEggs(player);
   if(this.tongue&&now>=this.tongue.until)this.tongue=undefined;
   return{madeEgg,ate,killed,threw};

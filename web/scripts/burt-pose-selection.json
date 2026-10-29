@@ -1,0 +1,65 @@
+{
+  "frames": [
+    163,
+    164,
+    165,
+    166,
+    167,
+    178,
+    179,
+    180,
+    181,
+    182,
+    187,
+    208,
+    440,
+    445,
+    452,
+    460,
+    467
+  ],
+  "groups": {
+    "idle": {
+      "start": 0,
+      "frames": 1,
+      "fps": 1
+    },
+    "windup": {
+      "start": 1,
+      "frames": 3,
+      "fps": 8
+    },
+    "rise": {
+      "start": 4,
+      "frames": 1,
+      "fps": 1
+    },
+    "fall": {
+      "start": 5,
+      "frames": 2,
+      "fps": 8
+    },
+    "land": {
+      "start": 7,
+      "frames": 2,
+      "fps": 8
+    },
+    "attack": {
+      "start": 1,
+      "frames": 8,
+      "fps": 8
+    },
+    "hurt": {
+      "start": 9,
+      "frames": 3,
+      "fps": 6
+    },
+    "dead": {
+      "start": 12,
+      "frames": 5,
+      "fps": 6
+    }
+  },
+  "fixture": "capture-burt-poses.py loads native EU room63 via application test-castle fixture; hurt stimulus reproduces source06A897..A8C0 post-collision fields, alternating recoil direction to keep actor in view; observer invulnerability prevents hero death. All body pixels, native deformation, palettes andOBJ parts decoded from resulting native snapshots. Six hit indices and defeat observed in Mesen.",
+  "limitations": "Uses intact native captured poses for windup, launch, landing, hit deformation and red/shrinking defeat. Out-of-screen clipped captures excluded. Playback timing and world locomotion adapt the source behavior; native full SuperFX AI and long pants-removal cutscene are not executed in DKC. No procedural squash or invented defeat pose."
+}

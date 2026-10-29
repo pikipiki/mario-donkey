@@ -95,13 +95,14 @@ export const KONG_JUMP_HOLD_MS=260;
 // Native airborne physics adds $A0 gravity with B released before moving Y.
 // $400 upward leaves ~$360 movement per frame, instead of the old $E0 crawl.
 export const SQUAWKS_FLIGHT_VELOCITY=-0x400;
-/** Keep Squawks and his rider below the visible top even in rooms whose native
- * camera cannot scroll upward. Compensate native released-B gravity ($A0).
- * This changes velocity only; native terrain collision still moves the player.
+/** Sustain flight independently of the viewport. The native camera follows the
+ * bird through SquawksCamera, preserving its real room/empty-screen bounds.
+ * Optional worldY only prevents crossing coordinate zero and wrapping to FFFF;
+ * native terrain collision still owns movement and solid ceilings.
  */
-export function squawksFlightVelocity(vy:number,yFromCamera:number):number{
- const roomAbove=Math.max(0,yFromCamera-32);
- return Math.max(Math.min(vy,SQUAWKS_FLIGHT_VELOCITY),-roomAbove*0x100-0xa0);
+export function squawksFlightVelocity(vy:number,_yFromCamera:number,worldY?:number):number{
+ const ascent=Math.min(vy,SQUAWKS_FLIGHT_VELOCITY);
+ return worldY===undefined?ascent:Math.max(ascent,-Math.max(0,signed16(worldY))*0x100-0xa0);
 }
 /** Locks, morphs and scripted player states own their vertical movement. */
 export function canModifyJump(gsu:Uint8Array):boolean{

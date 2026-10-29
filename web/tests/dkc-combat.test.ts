@@ -52,3 +52,9 @@ describe('directional tongue and finite Yoshi-style inventory',()=>{
  it('captures above, below and diagonally without eating an enemy in another direction',()=>{for(const direction of[{x:0,y:-1},{x:0,y:1},{x:1,y:-1},{x:-1,y:1}]){const c=new DkcCombat(),start={x:hero.x+12,y:hero.y-17},enemy={...target,x:start.x+direction.x*42,y:start.y+direction.y*42+6,width:12,height:12};expect(c.update(1,0,hero,[enemy],false,true,false,()=>true,undefined,{direction}).ate).toBe(true);expect(c.eggs).toBe(0);expect(c.mouth).toBe(enemy.id);}});
  it('saves the enemy in the mouth, converts only once on Down and never exceeds six eggs',()=>{const c=new DkcCombat();c.restore({eggs:5,mouth:10,shots:[]});const r=new DkcCombat();r.restore(c.serialize());expect(r.update(1,0,hero,[],false,false,false,()=>true,undefined,{down:true}).madeEgg).toBe(true);expect(r.eggs).toBe(6);expect(r.update(2,16,hero,[],false,false,false,()=>true,undefined,{down:true}).madeEgg).toBe(false);expect(r.eggs).toBe(6);});
 });
+
+describe('original DKC bosses use eggs without becoming swallowable enemies',()=>{
+ const boss={...target,nativeBoss:true};
+ it('never swallows a native boss or turns it into ammunition',()=>{const c=new DkcCombat();let hits=0;expect(c.update(1,0,hero,[boss],false,true,false,()=>{hits++;return true;}).ate).toBe(false);expect(hits).toBe(0);expect(c.mouth).toBeUndefined();});
+ it('refills during native invulnerability and consumes a real boss collision without an enemy kill',()=>{const c=new DkcCombat();c.update(1,0,hero,[],false,false,false,()=>true,undefined,{unlimited:true});expect(c.eggs).toBe(6);c.shots=[{x:60,y:100,vx:300,vy:0,age:0}];let hits=0;const r=c.update(2,16,hero,[boss],false,false,false,()=>{hits++;return true;},undefined,{unlimited:true});expect(hits).toBe(1);expect(r.killed).toBe(0);expect(c.shots).toEqual([]);expect(c.eggTrail).toHaveLength(6);});
+});

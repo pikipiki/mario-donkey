@@ -1,15 +1,21 @@
+import {advanceBurt,hydrateBurtMotion,type BurtMotion}from'./burt-motion';
+import {sweptHit}from'./dkc-combat';
 import {DKC,readDkcScene,dkcEnemies,killDkcEnemy} from './dkc-profile';
 import {word,writeWord} from './profile';
 import type{DkcBossVictory}from'./dkc-boss-finish';
 import type{DkcTarget}from'./dkc-combat';
-export interface DkcGuardianSave{version:1;level:number;slot:number;id:'burt';phase:'intro'|'fight'|'dying'|'released';hp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;hitUntil:number;cameraX:number;cameraY:number;music?:number;exitKind?:'banana'|'krool'}
+export interface DkcGuardianSave extends BurtMotion{version:1;level:number;slot:number;id:'burt';phase:'intro'|'fight'|'dying'|'released';hp:number;maxHp?:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;hitUntil:number;cameraX:number;cameraY:number;music?:number;exitKind?:'banana'|'krool'}
 export function validateDkcGuardian(value:unknown):DkcGuardianSave|undefined{
  const s=value as DkcGuardianSave|undefined;
- if(!s||s.version!==1||s.id!=='burt'||!['intro','fight','dying','released'].includes(s.phase)||!Number.isInteger(s.level)||s.level<1||(s.level>0xe5&&s.level!==0xea)||!Number.isInteger(s.slot)||s.slot<6||s.slot>=0x34||s.slot%2||!Number.isInteger(s.hp)||s.hp<0||s.hp>3)return;
+ if(!s||s.version!==1||s.id!=='burt'||!['intro','fight','dying','released'].includes(s.phase)||!Number.isInteger(s.level)||s.level<1||(s.level>0xe5&&s.level!==0xea)||!Number.isInteger(s.slot)||s.slot<6||s.slot>=0x34||s.slot%2||!Number.isInteger(s.hp)||s.hp<0||s.hp>6)return;
+ if(s.maxHp!==undefined&&s.maxHp!==3&&s.maxHp!==6)return;
+ if(s.hp>(s.maxHp??3))return;
  if(s.exitKind!==undefined&&!['banana','krool'].includes(s.exitKind))return;
  if(s.music!==undefined&&(!Number.isInteger(s.music)||s.music<0||s.music>255))return;
  if(![s.x,s.y,s.floor,s.elapsed,s.phaseTime,s.hitUntil,s.cameraX,s.cameraY].every(Number.isFinite)||s.x<0||s.x>65535||Math.abs(s.y)>65535||s.elapsed<0||s.elapsed>36000||s.phaseTime<0||s.phaseTime>36000)return;
- return{...s};
+ if(s.motion!==undefined&&!['windup','jump','land'].includes(s.motion))return;
+ for(const v of[s.arenaLeft,s.arenaRight,s.direction,s.vx,s.vy,s.motionTime])if(v!==undefined&&(!Number.isFinite(v)||Math.abs(v)>65535))return;
+ const copy={...s};hydrateBurtMotion(copy);return copy;
 }
 /** Request native damage, never replace death/partner/dismount/progression states. */
 export function requestDkcGuardianHit(w:Uint8Array):boolean{
@@ -19,14 +25,14 @@ export function requestDkcGuardianHit(w:Uint8Array):boolean{
 }
 /** Burt guards the existing map exit; its coordinates and completion remain native. */
 export class DkcGuardian{
- state?:DkcGuardianSave;private frame?:number;private lastBounce=0;
+ state?:DkcGuardianSave;private frame?:number;private previousHero?:{x:number;y:number};private barrels=new Map<number,{id:number;x:number;y:number;used:boolean}>();
  restore(value:unknown):void{this.state=validateDkcGuardian(value);this.pause();}
- pause():void{this.frame=undefined;}
+ pause():void{this.frame=undefined;this.previousHero=undefined;this.barrels.clear();}
  clear():void{this.state=undefined;this.pause();}
  get active():boolean{return this.state?.phase==='intro'||this.state?.phase==='fight';}
  target():DkcTarget|undefined{const s=this.state;return s?.phase==='fight'?{slot:-1,id:0x146,x:s.x,y:s.y,width:88,height:112}:undefined;}
- hit():boolean{const s=this.state;if(!s||s.phase!=='fight'||s.elapsed<s.hitUntil)return false;s.hp--;s.hitUntil=s.elapsed+.5;if(!s.hp){s.phase='dying';s.phaseTime=0;}return true;}
- update(w:Uint8Array,frame:number,isMapExit:(slot:number)=>boolean,victory?:DkcBossVictory):{notice?:string;effect?:'attack'|'land'|'defeat'|'hit'}{
+ hit(originX?:number):boolean{const s=this.state;if(!s||s.phase!=='fight'||s.elapsed<s.hitUntil)return false;s.hp--;s.hitUntil=s.elapsed+.5;hydrateBurtMotion(s);s.motion='jump';s.motionTime=0;s.vy=-100;s.vx=(originX===undefined?-s.direction!:Math.sign(s.x-originX)||1)*100;if(!s.hp){s.phase='dying';s.phaseTime=0;}return true;}
+ update(w:Uint8Array,frame:number,isMapExit:(slot:number)=>boolean,victory?:DkcBossVictory,attack:{rolling?:boolean}={}):{notice?:string;effect?:'attack'|'land'|'defeat'|'hit'}{
   const scene=readDkcScene(w),previous=this.state;
   if(scene.isMap){this.clear();return{};}
   if(previous&&previous.level!==scene.level)this.clear();
@@ -36,8 +42,8 @@ export class DkcGuardian{
   if(this.state&&[0x1b,0x1d,0x3c,0x3d].includes(playerState)){this.state.phase='released';this.pause();return{};}
   if(!this.state&&victory&&scene.grounded){
    const floor=scene.y;
-   this.state={version:1,level:scene.level,slot:victory.slot,exitKind:victory.kind,id:'burt',phase:'intro',hp:3,x:scene.cameraX+184,y:floor,floor,elapsed:0,phaseTime:0,hitUntil:0,cameraX:scene.cameraX,cameraY:scene.cameraY};
-   this.frame=frame;this.lastBounce=0;
+   this.state={version:1,level:scene.level,slot:victory.slot,exitKind:victory.kind,id:'burt',phase:'intro',hp:6,maxHp:6,x:scene.cameraX+184,y:floor,floor,elapsed:0,phaseTime:0,hitUntil:0,cameraX:scene.cameraX,cameraY:scene.cameraY,arenaLeft:scene.cameraX+40,arenaRight:scene.cameraX+216,direction:-1,vx:0,vy:0,motion:'windup',motionTime:0};
+   this.frame=frame;this.previousHero=undefined;
    return{notice:'DKC boss defeated · Burt the Bashful · Eggs ∞'};
   }
   if(!this.state){
@@ -47,15 +53,15 @@ export class DkcGuardian{
     const id=word(w,DKC.id+slot),x=word(w,DKC.x+slot),y=word(w,DKC.height)-word(w,DKC.y+slot);
     if((id!==0x6a&&id!==0x6b)||!isMapExit(slot)||word(w,DKC.state+slot)!==0||Math.abs(x-scene.x)>260||Math.abs(y-scene.y)>190||x-scene.cameraX< -32||x-scene.cameraX>288||scene.x-scene.cameraX< -32||scene.x-scene.cameraX>288)continue;
     const floor=y;
-    this.state={version:1,level:scene.level,slot,id:'burt',phase:'intro',hp:3,x:scene.cameraX+184,y:floor,floor,elapsed:0,phaseTime:0,hitUntil:0,cameraX:scene.cameraX,cameraY:scene.cameraY};
-    this.frame=frame;this.lastBounce=0;
+    this.state={version:1,level:scene.level,slot,id:'burt',phase:'intro',hp:6,maxHp:6,x:Math.max(24,x-96),y:floor,floor,elapsed:0,phaseTime:0,hitUntil:0,cameraX:scene.cameraX,cameraY:scene.cameraY,arenaLeft:Math.max(24,x-240),arenaRight:Math.max(96,x-48),direction:-1,vx:0,vy:0,motion:'windup',motionTime:0};
+    this.frame=frame;this.previousHero=undefined;
     for(const e of dkcEnemies(w))if(Math.abs(e.x-scene.x)<260&&Math.abs(e.y-scene.y)<180)killDkcEnemy(w,e.slot);
     return{notice:'Burt the Bashful · Aim, then throw · Eggs ∞'};
    }
    this.frame=frame;return{};
   }
   const s=this.state;
-  s.cameraX=scene.cameraX;s.x=Math.max(scene.cameraX+48,Math.min(scene.cameraX+208,s.x));
+  s.cameraX=scene.cameraX;s.cameraY=scene.cameraY;hydrateBurtMotion(s);
   const dt=this.frame===undefined?0:Math.max(0,Math.min(.06,(frame-this.frame)/60));this.frame=frame;
   if(s.phase==='released')return{};
   // Native damage/cutscenes must finish without an advancing encounter clock.
@@ -63,13 +69,29 @@ export class DkcGuardian{
   s.elapsed+=dt;s.phaseTime+=dt;
   if(s.phase==='intro'){if(s.phaseTime<.8)return{};s.phase='fight';s.phaseTime=0;}
   if(s.phase==='dying'){if(s.phaseTime>=.8){s.phase='released';return{notice:s.exitKind==='banana'?'Burt defeated · Collect the giant banana':s.exitKind==='krool'?'Burt defeated · Adventure complete':'Burt defeated · Take the original stage exit',effect:'defeat'};}return{};}
-  const bounce=Math.floor(s.phaseTime/1.65),cycle=s.phaseTime/1.65-bounce;
-  s.x=Math.max(s.cameraX+48,Math.min(s.cameraX+208,s.x+Math.sign(scene.x-s.x)*28*dt));
-  s.y=s.floor-Math.sin(cycle*Math.PI)*64;
-  let effect:'attack'|'land'|undefined;
-  if(bounce!==this.lastBounce){this.lastBounce=bounce;effect='land';}
-  else if(cycle<.04)effect='attack';
-  if(Math.abs(scene.x-s.x)<56&&scene.y>s.y-112&&scene.y-30<s.y)requestDkcGuardianHit(w);
+  const effect=advanceBurt(s,dt,scene.x);
+  const target=this.target()!,playerX=scene.x,playerY=scene.y,top=s.y-target.height,prior=this.previousHero;
+  this.previousHero={x:playerX,y:playerY};
+  const nativeState=word(w,DKC.state+scene.playerSlot),canAttack=nativeState<=0x0b&&word(w,DKC.hit+scene.playerSlot)===0;
+  const overlap=Math.abs(playerX-s.x)<target.width/2+14&&playerY>s.y-target.height&&playerY-30<s.y;
+  const stomp=canAttack&&prior&&!scene.grounded&&scene.vy>0&&Math.abs(playerX-s.x)<target.width/2+12&&prior.y<=top+12&&playerY>=top-8&&playerY<=top+24;
+  if((stomp||canAttack&&attack.rolling&&overlap)&&this.hit(playerX)){
+   if(stomp)writeWord(w,DKC.vy+scene.playerSlot,0x500); // Native upward recoil; no state/progression rewrite.
+   return{effect:'hit',notice:stomp?'Burt hit · Jump':'Burt hit · Roll'};
+  }
+  const live=new Set<number>();
+  for(let slot=6;slot<0x34;slot+=2){
+   const id=word(w,DKC.id+slot);if(![0x23,0x27].includes(id)||word(w,DKC.state+slot)!==2)continue;
+   live.add(slot);const x=word(w,DKC.x+slot),y=word(w,DKC.height)-word(w,DKC.y+slot),old=this.barrels.get(slot);
+   const record=old&&old.id===id?old:{id,x,y,used:false};
+   if(!record.used&&sweptHit(record.x,record.y,x,y,target)&&this.hit(x)){
+    record.used=true;writeWord(w,DKC.hit+slot,0x20); // BFCD16→CD29 native thrown-barrel cleanup.
+    record.x=x;record.y=y;this.barrels.set(slot,record);return{effect:'hit',notice:'Burt hit · Barrel'};
+   }
+   record.x=x;record.y=y;this.barrels.set(slot,record);
+  }
+  for(const slot of this.barrels.keys())if(!live.has(slot))this.barrels.delete(slot);
+  if(overlap)requestDkcGuardianHit(w);
   return{effect};
  }
 }

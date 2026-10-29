@@ -76,3 +76,21 @@ html,body,#app{touch-action:none;-webkit-text-size-adjust:100%;text-size-adjust:
 
 /* Preserve accessible character targets when Mario + Yoshi adds a fifth choice. */
 .character-picker{overflow-x:auto;scrollbar-width:none;touch-action:pan-x}.character{flex:1 0 44px}.character[data-character="mario"] img{image-rendering:pixelated}
+
+/* Two members and two explicit actions never overflow the controller column. */
+.party-row{display:grid!important;grid-template-columns:minmax(0,1fr) 44px 44px;gap:5px;align-items:stretch;min-width:0;max-width:100%}
+.character-picker{display:grid!important;grid-template-columns:repeat(2,minmax(44px,1fr));width:100%;overflow:visible;gap:4px;min-width:0}
+.character-select{display:none!important}.character{width:100%;min-width:44px;font-size:9px;overflow:hidden}.character-name{font-size:9px;overflow-wrap:anywhere}.character img{width:25px;height:26px}
+.team-button{min-width:44px;min-height:44px;border:1px solid #617a70;border-radius:10px;background:#30483c;color:#e5f1d8;font-size:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px}.team-button span{font-size:10px;font-weight:650}
+.team-field{display:grid;grid-template-columns:1fr;gap:6px;margin:14px 0}.team-field select{width:100%;min-height:48px;border:1px solid #617a70;border-radius:9px;background:#233b32;color:#fff;padding:8px;font-size:16px}#team-dialog .mount-picker{width:100%;margin:12px 0}#team-error{color:#ffd6b2;font-size:13px}
+@media(orientation:landscape){
+ .game-layout{grid-template-columns:clamp(116px,14vw,180px) minmax(0,1fr) clamp(192px,20vw,240px);gap:8px}
+ .hud-side{min-width:0;grid-template-rows:auto minmax(0,1fr);gap:8px}.party-row{grid-template-columns:minmax(0,1fr) 44px 44px}.character-picker{min-width:92px}.stick{max-width:min(100%,166px)}
+ .action-pad{align-self:end;height:clamp(112px,34vh,220px);grid-template-rows:repeat(2,minmax(44px,1fr));max-height:100%;width:100%}.action-pad button{min-height:44px}.action-pad small{font-size:8px}
+}
+@media(orientation:landscape) and (max-height:600px){
+ .game-layout{grid-template-columns:124px minmax(0,1fr) 192px}.topbar{width:124px}.stick-wrap{padding-top:160px}.stick{max-width:120px}.party-row{gap:3px}.character img{height:24px;width:24px}.character-picker{gap:3px}.hud-side{gap:4px}.action-pad{height:min(144px,100%)}
+}
+
+@media(orientation:landscape) and (max-height:600px){.stick{max-width:clamp(64px,calc(100dvh - 190px),120px)}}
+@media(orientation:landscape) and (max-width:650px){.game-layout{grid-template-columns:100px minmax(0,1fr) 144px;gap:4px}.party-row{grid-template-columns:repeat(2,minmax(44px,1fr))}.character-picker{grid-column:1/-1}.topbar{width:100px}.action-pad{height:min(128px,100%)}}

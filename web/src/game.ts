@@ -1,3 +1,5 @@
+import {SquawksCamera}from'./squawks-camera';
+import {TeamTag,drawTagContact}from'./team-tag';
 import {WORLD_PARTY_KEY,decodeWorldParty} from './world';
 import {BossRomHooks} from './boss-rom';
 import {StageBosses,guardianHitbox} from './boss';
@@ -24,7 +26,9 @@ export type { Character } from './adventure';
 const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
 const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
 export class LiveGame {
+ private squawksCamera=new SquawksCamera();
  private bosses=new StageBosses();private bossHooks?:BossRomHooks;private nativeBossEggs?:NativeBossEggs;private eggFlights=new NativeEggFlights();
+ protected teamTag=new TeamTag();
  protected bossAudio=new BossAudio();private nativeBossSongHeld=false;
  protected animalAudio=new AnimalAudio();private animalSounds=new AnimalSoundTracker();
  keepBabyOnScreen=true;
@@ -35,6 +39,9 @@ export class LiveGame {
  private videoHeight=239;
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
+ configureTeam(first:Character,second:Character):boolean{this.stop();const ok=this.adventure.setTeam(first,second);if(ok){this.changed();if(this.ready)void this.save();}return ok;}
+ requestTeamSwap():boolean{if(!this.ready||this.paused||this.teamTag.swapping)return false;if(this.isMap){this.adventure.swapTeam();this.changed();return true;}const g=this.gsu;if(this.messageOpen||babyIsLost(g)||!canModifyJump(g)||word(g,0xc0)!==0||inGoal(g))return false;this.controls.stop();this.setInputs(new Set());return this.teamTag.begin(this.adventure,{x:word(g,P.x),y:word(g,P.y),facing:this.controls.facing,grounded:true});}
+ get teamSwapping():boolean{return this.teamTag.swapping;}
  get world():'yoshi'|'dkc'{return 'yoshi';}
  get isMap():boolean{return this.ready&&isWorldMap(this.wram);}
  get canRepairDisplay():boolean{return (this.ready||this.loadedCampaign)&&[0,P.gameplay,0x26].includes(this.wram[P.mode]);}
@@ -118,7 +125,7 @@ export class LiveGame {
   setNativeDrawing(this.emulator.Module.HEAPU8,this.drawSite,hide);this.hidden=hide;
  }
  mount(mount:Mount):void{const previous=this.adventure.mount;if(this.adventure.ride(mount)){if(previous!==mount&&isAnimalMount(mount)&&this.ready&&!this.paused&&this.wram[P.mode]===P.gameplay)this.animalAudio.play('animal-mount');this.animalSounds.reset();this.updateVisibility();this.changed();}}
- stop():void{this.bossAudio.pause();this.bosses.pause();this.eggFlights.reset();this.nativeBossEggs?.sync(false);this.animalAudio.stop();this.animalSounds.reset();this.controls.stop();this.mapConfirm.reset();this.jumpBoost.reset();this.flutterInput.reset();this.setInputs(new Set());}
+ stop():void{this.teamTag.cancel();if(this.ready)this.squawksCamera.restore(this.gsu,this.room);this.bossAudio.pause();this.bosses.pause();this.eggFlights.reset();this.nativeBossEggs?.sync(false);this.animalAudio.stop();this.animalSounds.reset();this.controls.stop();this.mapConfirm.reset();this.jumpBoost.reset();this.flutterInput.reset();this.setInputs(new Set());}
  setPaused(value:boolean):void{if(this.recovering||(!this.ready&&!value))return;this.stop();this.paused=value;if(!this.capturing)this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
  /** Native fade-out and overworld initialization; keeps completed-level progress. */
  goToMap():void{
@@ -240,6 +247,8 @@ export class LiveGame {
    if(lost&&!this.previousBabyLost){this.adventure.hit();this.controls.rollUntil=0;this.updateVisibility();this.changed();}
    this.previousBabyLost=lost;
   }
+  if(gameplay&&!dialogue&&!lost&&canModifyJump(g)){if(this.teamTag.update(this.emulator.gameManager.functions?.getFrameNum?.()??Math.floor(now*.06),this.room,{x:word(g,P.x),y:word(g,P.y),facing:this.controls.facing,grounded:word(g,0xc0)===0},this.adventure))this.changed();}else this.teamTag.reset();
+  this.squawksCamera.update(g,this.wram,gameplay&&this.adventure.mount==='squawks'&&!dialogue&&!lost,this.room);
   const jumpRequested=this.controls.jumpSequence!==this.jumpSequence;this.jumpSequence=this.controls.jumpSequence;
   const jumpVelocity=this.jumpBoost.update(g,this.adventure.mount,now,jumpRequested,gameplay&&!dialogue);
   const next=new Set<number>(),direction=this.controls.movement(now),rolling=now<this.controls.rollUntil;
@@ -262,6 +271,7 @@ export class LiveGame {
   if(isWorldMap(this.wram)&&menuPressed){
    next.clear();if(mapAction==='enter')next.add(INPUT.b);else if(mapAction==='levels'&&needsLevelReturn(this.wram))next.add(INPUT.down);
   }
+  if(this.teamTag.swapping)next.clear();
   this.setInputs(next);
   if((this.autoSkip||now<this.skipUntil)&&skipOpenDialogue(this.wram,g))this.skipUntil=now+1000;
   this.updateVisibility();
@@ -272,7 +282,7 @@ export class LiveGame {
    if(!dialogue&&!(lost&&stars<=0)&&!this.bosses.nativeHitPending)absorbHit(g,this.wram);
    if(this.keepBabyOnScreen)keepBabyVisible(g,this.wram);
    const lives=this.wram[0x379];if(lives<this.previousLives)this.adventure.resetRoom(this.room);this.previousLives=lives;
-   const interactive=canModifyJump(g)&&!dialogue,onFoot=this.adventure.mount==='foot';
+   const interactive=canModifyJump(g)&&!dialogue&&!this.teamTag.swapping,onFoot=this.adventure.mount==='foot';
    if(onFoot&&interactive){
     const axis=rolling?this.controls.facing:this.controls.runAxis();
     const velocity=rolling?this.controls.facing*0x360:dkcRun(signed16(word(g,P.vx)),axis);
@@ -286,7 +296,7 @@ export class LiveGame {
    if(jumpVelocity!==undefined&&canWriteVelocity(g,'y',jumpVelocity))writeWord(g,P.vy,jumpVelocity);
    // Keep the native takeoff (including stronger spring/enemy impulses).
    // Once airborne, holding Jump sustains ascent; release restores gravity.
-   if(interactive&&squawks&&word(g,0xc0)!==0&&this.controls.jumpPressed(now)&&canWriteVelocity(g,'y',SQUAWKS_FLIGHT_VELOCITY))writeWord(g,P.vy,squawksFlightVelocity(signed16(word(g,P.vy)),signed16(word(g,P.y)-word(this.wram,P.cameraY))));
+   if(interactive&&squawks&&word(g,0xc0)!==0&&this.controls.jumpPressed(now)&&canWriteVelocity(g,'y',SQUAWKS_FLIGHT_VELOCITY))writeWord(g,P.vy,squawksFlightVelocity(signed16(word(g,P.vy)),signed16(word(g,P.y)-word(this.wram,P.cameraY)),word(g,P.y)));
    const walls=breakTerrain(this.wram,g,this.controls.facing,rolling&&interactive&&!lost);this.walls+=walls.length;animalHit=animalHit||walls.length>0;
    for(const hit of walls)this.particles.push({...hit,until:now+500});
    const x=word(g,P.x),y=word(g,P.y),grounded=signed16(word(g,P.vy))===0&&interactive&&!lost;
@@ -310,10 +320,15 @@ export class LiveGame {
   }
   if(word(g,0xae)===0){
    const moving=Math.abs(signed16(word(g,P.vx)))>8||x!==this.previousX,jumping=word(g,0xc0)!==0||Math.abs(signed16(word(g,P.vy)))>80;
-   const state=rolling?'roll':jumping?'jump':moving?'walk':'idle',mount=this.adventure.mount;
+   const state=this.teamTag.swapping?'jump':rolling?'roll':jumping?'jump':moving?'walk':'idle',mount=this.adventure.mount;
+   const poses=this.teamTag.poses({x,y,facing:this.controls.facing,grounded:!jumping},this.adventure),back=poses.partner;
+   const bx=signed16(back.x-cx)+12,by=signed16(back.y-cy)+32+this.topPadding;
    const key=`${this.character}:${mount}:${state}`;if(key!==this.animationKey){this.animationKey=key;this.animationStart=now;}const animationTime=now-this.animationStart;
+   if(back.character==='mario')this.atlas.drawMarioYoshi(c,state,bx,by,animationTime,back.facing);else this.atlas.draw(c,back.character,state,bx,by,animationTime,back.facing);
+   const leaderOffset=poses.leader.y-y;
+   drawTagContact(c,sx,sy-24,poses.contact);
    if(mount!=='foot'&&mount!=='yoshi')this.atlas.draw(c,mount,state,sx,sy,animationTime,this.controls.facing);
-   if(this.character!=='mario'&&!(mount==='yoshi'&&rolling))this.atlas.draw(c,this.character,mount==='foot'?state:'ride',sx,sy,animationTime,this.controls.facing);
+   if(this.character!=='mario'&&!(mount==='yoshi'&&rolling))this.atlas.draw(c,this.character,this.teamTag.swapping?'jump':mount==='foot'?state:'ride',sx,sy+leaderOffset,animationTime,this.controls.facing);
    // Keep the native tongue's reach visible when Yoshi's body is hidden.
    if(mount!=='yoshi'&&(Math.abs(signed16(word(g,0x152)))+Math.abs(signed16(word(g,0x154)))>12)){const tx=signed16(word(g,0x15a)-cx),ty=signed16(word(g,0x15c)-cy)+this.topPadding;c.strokeStyle='#e8788e';c.lineWidth=3;c.lineCap='round';c.beginPath();c.moveTo(sx+this.controls.facing*12,sy-23);c.lineTo(tx,ty);c.stroke();}
   }
@@ -323,5 +338,5 @@ export class LiveGame {
  }
  /** DEV fixture: real map16 wall in empty space ahead; no campaign fixture is shipped. */
  testWall():number{const g=this.gsu,x=(word(g,P.x)+48)&~15,y=word(g,P.y)&~15;let count=0;for(const dy of [0,16]){const address=tileAddress(g,x,y+dy);if(address!==undefined&&replaceTile(this.wram,g,x,y+dy,0x7b00,0xa022))count++;}return count;}
- diagnostics():Record<string,unknown>{return {nativeControls:{joy:word(this.wram,0x35),gsuJoy:word(this.gsu,0x70),cutscene:word(this.wram,0xb59),ending:word(this.wram,0xb5b),mosaic:word(this.wram,0xb57),hurt:word(this.wram,0xcce),scriptVx:word(this.gsu,0x17a),scriptVy:word(this.gsu,0x17c),frame:word(this.gsu,0xcc)},guardian:this.bosses.state,nativeMusic:{queued:this.wram[0x4d],previous:this.wram[0x4f]},bossAudio:{playing:this.bossAudio.playing,played:this.bossAudio.played,last:this.bossAudio.lastEffect},bossDamageRequests:this.bosses.damageEvents,eggsUnlimited:this.eggsUnlimited,animalAudio:{ready:this.animalAudio.ready,played:this.animalAudio.played,last:this.animalAudio.lastEffect},renderer:this.emulator.webgl2Enabled?'WebGL2':'legacy',mapMenu:{tab:this.wram[0x1119],state:this.wram[0x111a],tile:this.wram[0x1114],worldRaw:this.wram[0x218],stageRaw:this.wram[P.stage]},babyDetails:{mode:word(this.gsu,0x19d6),returning:word(this.wram,0xd9c),targetY:word(this.wram,0xdb4),x:word(this.gsu,0x10e2),y:word(this.gsu,0x1182),screenY:signed16(word(this.gsu,0x1182)-word(this.wram,P.cameraY)),vy:signed16(word(this.gsu,0x1222)),cameraY:word(this.wram,P.cameraY)},mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),rescueStars:word(this.wram,0x3b6),playerState:word(this.gsu,0xac),playerLock:word(this.gsu,0x1ae),spriteLock:word(this.gsu,0x1b0),goal:inGoal(this.gsu),contacts:word(this.gsu,0xfc),nativeVx:signed16(word(this.gsu,0xa8)),vx:signed16(word(this.gsu,P.vx)),vy:signed16(word(this.gsu,P.vy)),airborne:word(this.gsu,0xc0),flutter:word(this.gsu,0xd2),inputs:{axis:this.controls.runAxis(),jump:this.controls.jumpUntil,jumpHeld:this.controls.jumpHeld,roll:this.controls.rollUntil},kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.videoHeight,overlaySize:[this.overlay.width,this.overlay.height],frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),tongueRelative:{x:signed16(word(this.gsu,0x152)),y:signed16(word(this.gsu,0x154))},sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
+ diagnostics():Record<string,unknown>{return {nativeControls:{joy:word(this.wram,0x35),gsuJoy:word(this.gsu,0x70),cutscene:word(this.wram,0xb59),ending:word(this.wram,0xb5b),mosaic:word(this.wram,0xb57),hurt:word(this.wram,0xcce),scriptVx:word(this.gsu,0x17a),scriptVy:word(this.gsu,0x17c),frame:word(this.gsu,0xcc)},guardian:this.bosses.state,nativeMusic:{queued:this.wram[0x4d],previous:this.wram[0x4f]},bossAudio:{playing:this.bossAudio.playing,played:this.bossAudio.played,last:this.bossAudio.lastEffect},bossDamageRequests:this.bosses.damageEvents,eggsUnlimited:this.eggsUnlimited,animalAudio:{ready:this.animalAudio.ready,played:this.animalAudio.played,last:this.animalAudio.lastEffect},renderer:this.emulator.webgl2Enabled?'WebGL2':'legacy',mapMenu:{tab:this.wram[0x1119],state:this.wram[0x111a],tile:this.wram[0x1114],worldRaw:this.wram[0x218],stageRaw:this.wram[P.stage]},babyDetails:{mode:word(this.gsu,0x19d6),returning:word(this.wram,0xd9c),targetY:word(this.wram,0xdb4),x:word(this.gsu,0x10e2),y:word(this.gsu,0x1182),screenY:signed16(word(this.gsu,0x1182)-word(this.wram,P.cameraY)),vy:signed16(word(this.gsu,0x1222)),cameraY:word(this.wram,P.cameraY)},mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),rescueStars:word(this.wram,0x3b6),playerState:word(this.gsu,0xac),playerLock:word(this.gsu,0x1ae),spriteLock:word(this.gsu,0x1b0),goal:inGoal(this.gsu),contacts:word(this.gsu,0xfc),nativeVx:signed16(word(this.gsu,0xa8)),vx:signed16(word(this.gsu,P.vx)),vy:signed16(word(this.gsu,P.vy)),airborne:word(this.gsu,0xc0),flutter:word(this.gsu,0xd2),inputs:{axis:this.controls.runAxis(),jump:this.controls.jumpUntil,jumpHeld:this.controls.jumpHeld,roll:this.controls.rollUntil},kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},teamSwap:this.teamTag.swapping,party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.videoHeight,overlaySize:[this.overlay.width,this.overlay.height],frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),tongueRelative:{x:signed16(word(this.gsu,0x152)),y:signed16(word(this.gsu,0x154))},sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
 }

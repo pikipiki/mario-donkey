@@ -177,9 +177,10 @@ describe('Squawks ascent near the visible top',()=>{
   expect(squawksFlightVelocity(0x100,180)).toBe(-0x400);
   expect(squawksFlightVelocity(-0x600,180)).toBe(-0x600);
  });
- it('brakes before the rider leaves the viewport without moving the player directly',()=>{
-  expect(squawksFlightVelocity(-0x400,34)).toBe(-0x2a0);
-  expect(squawksFlightVelocity(-0x400,32)).toBe(-0xa0);
-  expect(squawksFlightVelocity(-0x400,20)).toBe(-0xa0);
+ it('does not brake at the viewport top, so existing scenery above can be revealed',()=>{
+  for(const screenY of [34,32,20,0,-40])expect(squawksFlightVelocity(-0x400,screenY)).toBe(-0x400);
+ });
+ it('prevents world coordinate wrap only at the real top while leaving screen position irrelevant',()=>{
+  expect(squawksFlightVelocity(-0x600,-40,80)).toBe(-0x600);expect(squawksFlightVelocity(-0x400,32,1)).toBe(-0x1a0);expect(squawksFlightVelocity(-0x400,400,0)).toBe(-0xa0);
  });
 });

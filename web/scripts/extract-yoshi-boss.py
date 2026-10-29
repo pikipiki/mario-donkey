@@ -8,8 +8,8 @@ No screenshot color-keying, background redraw or AI art is used.
 import argparse,ast,hashlib,json,struct
 from pathlib import Path
 from PIL import Image
-p=argparse.ArgumentParser();p.add_argument('captures',type=Path);p.add_argument('output',type=Path);args=p.parse_args()
-CELL=192;ORIGIN=(96,176);FRAMES=[18,19,20,21,23]
+p=argparse.ArgumentParser();p.add_argument('captures',type=Path);p.add_argument('output',type=Path);p.add_argument('--selection',type=Path,help='JSON frames and optional groups, using capture IDs');args=p.parse_args()
+CELL=192;ORIGIN=(96,176);selection=json.loads(args.selection.read_text())if args.selection else{};FRAMES=selection.get('frames',[18,19,20,21,23])
 PART_TILES={0x1c0,0x1c2,0x1e0,0x1e2,0x1c4,0x1c6,0x1e4,0x1e6,0x1c8,0x1e8,0x1cc,0x1ce,0x1ec,0x1ee,0x1ca,0x1ea}
 def decode(number):
  raw=(args.captures/f'raw-{number}.bin').read_bytes();state=ast.literal_eval((args.captures/f'state-{number}.txt').read_text());height=(len(raw)-0x20000-0x8000-0x10000-544-512)//1024
@@ -64,11 +64,11 @@ def decode(number):
  behind.alpha_composite(body);behind.alpha_composite(front)
  result=Image.new('RGBA',(CELL,CELL));result.alpha_composite(behind,(ORIGIN[0]-x,ORIGIN[1]-feet))
  if result.getbbox() is None:raise ValueError('Empty native boss')
- return result,{'capture':number,'rawSha256':hashlib.sha256(raw).hexdigest(),'actorSlot':slot,'nativeFeet':[x,feet],'bounds':result.getbbox()}
+ return result,{'capture':number,'rawSha256':hashlib.sha256(raw).hexdigest(),'actorSlot':slot,'nativeFeet':[x,feet],'bounds':result.getbbox(),'nativePhase':g[0x1a36+slot*4],'nativeHitIndex':g[0x1902+slot*4]}
 args.output.mkdir(parents=True,exist_ok=True);atlas=Image.new('RGBA',(CELL*len(FRAMES),CELL));evidence=[]
 for i,n in enumerate(FRAMES):
  image,source=decode(n);atlas.alpha_composite(image,(i*CELL,0));evidence.append(source)
 atlas.save(args.output/'yoshi-bosses.png',optimize=True)
 animation={'start':0,'frames':len(FRAMES),'fps':6}
-manifest={'cell':CELL,'columns':len(FRAMES),'origin':ORIGIN,'groups':{'burt':{'idle':animation,'attack':animation,'hurt':animation,'dead':{'start':len(FRAMES)-1,'frames':1,'fps':1}}},'provenance':{'source':'Yoshi Island Europe original Burt the Bashful; native BG2 4bpp + per-scanline HDMA + native 4bpp OBJ','romSha256':'91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90','captureHeight':239,'bodyTilemapWords':14336,'bodyChrWords':28672,'hdmaHorizontalTable':23576,'hdmaVerticalTable':23448,'frames':evidence,'limitations':'Attack/hurt use captured movement poses; dead uses last pose with runtime fade, not a separately captured original defeat animation.'}}
+manifest={'cell':CELL,'columns':len(FRAMES),'origin':ORIGIN,'groups':{'burt':selection.get('groups',{'idle':animation,'attack':animation,'hurt':animation,'dead':{'start':len(FRAMES)-1,'frames':1,'fps':1}})},'provenance':{'source':'Yoshi Island Europe original Burt the Bashful; native BG2 4bpp + per-scanline HDMA + native 4bpp OBJ','romSha256':'91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90','captureHeight':239,'bodyTilemapWords':14336,'bodyChrWords':28672,'hdmaHorizontalTable':23576,'hdmaVerticalTable':23448,'frames':evidence,'limitations':selection.get('limitations','Attack/hurt use captured movement poses; dead uses last pose with runtime fade, not a separately captured original defeat animation.'),'captureFixture':selection.get('fixture','Original native movement captures')}}
 (args.output/'yoshi-bosses.json').write_text(json.dumps(manifest,indent=2)+'\n');print('Wrote',args.output/'yoshi-bosses.png',atlas.size,hashlib.sha256((args.output/'yoshi-bosses.png').read_bytes()).hexdigest())

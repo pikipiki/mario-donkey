@@ -1,6 +1,6 @@
 {
   "cell": 192,
-  "columns": 5,
+  "columns": 17,
   "origin": [
     96,
     176
@@ -9,23 +9,43 @@
     "burt": {
       "idle": {
         "start": 0,
-        "frames": 5,
-        "fps": 6
+        "frames": 1,
+        "fps": 1
       },
-      "attack": {
-        "start": 0,
-        "frames": 5,
-        "fps": 6
+      "windup": {
+        "start": 1,
+        "frames": 3,
+        "fps": 8
       },
-      "hurt": {
-        "start": 0,
-        "frames": 5,
-        "fps": 6
-      },
-      "dead": {
+      "rise": {
         "start": 4,
         "frames": 1,
         "fps": 1
+      },
+      "fall": {
+        "start": 5,
+        "frames": 2,
+        "fps": 8
+      },
+      "land": {
+        "start": 7,
+        "frames": 2,
+        "fps": 8
+      },
+      "attack": {
+        "start": 1,
+        "frames": 8,
+        "fps": 8
+      },
+      "hurt": {
+        "start": 9,
+        "frames": 3,
+        "fps": 6
+      },
+      "dead": {
+        "start": 12,
+        "frames": 5,
+        "fps": 6
       }
     }
   },
@@ -39,38 +59,8 @@
     "hdmaVerticalTable": 23448,
     "frames": [
       {
-        "capture": 18,
-        "rawSha256": "21e8574c4c2d4d1b9b7aba7d261227e9e3096e45c84fa701bd7bcf8037c29ab7",
-        "actorSlot": 22,
-        "nativeFeet": [
-          164,
-          171
-        ],
-        "bounds": [
-          35,
-          43,
-          156,
-          186
-        ]
-      },
-      {
-        "capture": 19,
-        "rawSha256": "4c34560e0a42d875945cf51876327e012890e1f5ca82812ef49b5f7d897b0f6a",
-        "actorSlot": 22,
-        "nativeFeet": [
-          164,
-          171
-        ],
-        "bounds": [
-          37,
-          43,
-          156,
-          184
-        ]
-      },
-      {
-        "capture": 20,
-        "rawSha256": "89439c11b6e0a3384998fdfa7ca3a8f314629de6f44dafd10219bd21145af01c",
+        "capture": 163,
+        "rawSha256": "c64fa4d80b62303f32daca6886cb21e532276d027085402b2a5da1a41ceca485",
         "actorSlot": 22,
         "nativeFeet": [
           164,
@@ -81,39 +71,284 @@
           43,
           156,
           184
-        ]
+        ],
+        "nativePhase": 26,
+        "nativeHitIndex": 10
       },
       {
-        "capture": 21,
-        "rawSha256": "e0e55562426d8fb8641c3f913a71ffa5d2ca659c806e6951b12fcaf397ac86f1",
+        "capture": 164,
+        "rawSha256": "378130dc076ae36d356715cbd974187c19aea407c82008b31b982bc14bd25534",
         "actorSlot": 22,
         "nativeFeet": [
           164,
           171
         ],
         "bounds": [
-          32,
-          47,
-          157,
+          25,
+          63,
+          167,
           184
-        ]
+        ],
+        "nativePhase": 26,
+        "nativeHitIndex": 10
       },
       {
-        "capture": 23,
-        "rawSha256": "6e6b0437457562c46c60f2da8974e38211c9cfb79052df7f2320730989a56382",
+        "capture": 165,
+        "rawSha256": "90ce456eb81ecbc176065e98d331cfee452c52b28b815383b9cdf5ac80d83290",
+        "actorSlot": 22,
+        "nativeFeet": [
+          164,
+          171
+        ],
+        "bounds": [
+          25,
+          67,
+          167,
+          184
+        ],
+        "nativePhase": 26,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 166,
+        "rawSha256": "e1a0f415eb06dccf96c8be0dbfd6ed082100acf80e59ccafdfad9f4761b5c855",
+        "actorSlot": 22,
+        "nativeFeet": [
+          164,
+          171
+        ],
+        "bounds": [
+          33,
+          43,
+          156,
+          184
+        ],
+        "nativePhase": 26,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 167,
+        "rawSha256": "ae495275032fb54965a764ff2fe221fd3200d2d408cb94e6e1e696a37f83b51e",
+        "actorSlot": 22,
+        "nativeFeet": [
+          162,
+          153
+        ],
+        "bounds": [
+          40,
+          28,
+          146,
+          192
+        ],
+        "nativePhase": 28,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 178,
+        "rawSha256": "129689fdc1d0223a81b5b443c97cbcb3e5aa4f09c2424bb9ed9a2867c588d9d3",
+        "actorSlot": 22,
+        "nativeFeet": [
+          129,
+          145
+        ],
+        "bounds": [
+          36,
+          40,
+          156,
+          178
+        ],
+        "nativePhase": 30,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 179,
+        "rawSha256": "2027149ef67856729b196446271a087c1806b1d4ea305d59a3c9044be9be245a",
+        "actorSlot": 22,
+        "nativeFeet": [
+          126,
+          163
+        ],
+        "bounds": [
+          36,
+          40,
+          156,
+          178
+        ],
+        "nativePhase": 30,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 180,
+        "rawSha256": "aad056fcf1b8fe4ca9c2bc9263e9c18559bfee370eefbb0d540d6066b1300dcf",
         "actorSlot": 22,
         "nativeFeet": [
           124,
           171
         ],
         "bounds": [
+          35,
+          46,
+          157,
+          186
+        ],
+        "nativePhase": 26,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 181,
+        "rawSha256": "95a14bb64fa45405d960938c011df3f1dce28c12a55a167d3999c3448cf085e0",
+        "actorSlot": 22,
+        "nativeFeet": [
+          124,
+          171
+        ],
+        "bounds": [
+          23,
+          67,
+          169,
+          184
+        ],
+        "nativePhase": 26,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 182,
+        "rawSha256": "24b5ba0187003170e0e584606177a405da580373c1ac9bc7d173a6302a73679f",
+        "actorSlot": 22,
+        "nativeFeet": [
+          136,
+          161
+        ],
+        "bounds": [
           31,
-          51,
-          159,
+          38,
+          150,
+          187
+        ],
+        "nativePhase": 32,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 187,
+        "rawSha256": "de139d6ad4f15d8ce6aaf4dda3b51b1a4a636ebaeba408958378db682cf61457",
+        "actorSlot": 22,
+        "nativeFeet": [
+          188,
+          171
+        ],
+        "bounds": [
+          45,
+          11,
+          146,
           185
-        ]
+        ],
+        "nativePhase": 38,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 208,
+        "rawSha256": "6e1a6fae59c826f5bb564c4dee773ae0c132ff4ad8fbd23df4ffddbff3b4fc4b",
+        "actorSlot": 22,
+        "nativeFeet": [
+          188,
+          171
+        ],
+        "bounds": [
+          35,
+          43,
+          156,
+          184
+        ],
+        "nativePhase": 66,
+        "nativeHitIndex": 10
+      },
+      {
+        "capture": 440,
+        "rawSha256": "f067b30c4cf2622170d48eff08cfc5285317536b866c8a462275aa323e64a50b",
+        "actorSlot": 22,
+        "nativeFeet": [
+          124,
+          171
+        ],
+        "bounds": [
+          35,
+          43,
+          156,
+          184
+        ],
+        "nativePhase": 70,
+        "nativeHitIndex": 254
+      },
+      {
+        "capture": 445,
+        "rawSha256": "892ce3495070bff31cc9def8a9df7a8a099f66b2e52138fa8c80ef125ad586b5",
+        "actorSlot": 22,
+        "nativeFeet": [
+          124,
+          171
+        ],
+        "bounds": [
+          35,
+          43,
+          156,
+          184
+        ],
+        "nativePhase": 70,
+        "nativeHitIndex": 254
+      },
+      {
+        "capture": 452,
+        "rawSha256": "c423e2aec2a47c2cd00dacfe8a65fd5e7e3c4e4d38cc97e88e9826e48d0c01d7",
+        "actorSlot": 22,
+        "nativeFeet": [
+          88,
+          187
+        ],
+        "bounds": [
+          65,
+          97,
+          144,
+          183
+        ],
+        "nativePhase": 72,
+        "nativeHitIndex": 254
+      },
+      {
+        "capture": 460,
+        "rawSha256": "1bb22642529544c3a4a1e783cb8e7e8ec42ebac700fef50191cb7c7f98b95671",
+        "actorSlot": 22,
+        "nativeFeet": [
+          135,
+          146
+        ],
+        "bounds": [
+          95,
+          137,
+          140,
+          188
+        ],
+        "nativePhase": 72,
+        "nativeHitIndex": 254
+      },
+      {
+        "capture": 467,
+        "rawSha256": "894bd45d0269c53af1480238d3381bd07987378a55490f19191453fba3f93b8b",
+        "actorSlot": 22,
+        "nativeFeet": [
+          194,
+          192
+        ],
+        "bounds": [
+          108,
+          146,
+          130,
+          164
+        ],
+        "nativePhase": 72,
+        "nativeHitIndex": 254
       }
     ],
-    "limitations": "Attack/hurt use captured movement poses; dead uses last pose with runtime fade, not a separately captured original defeat animation."
+    "limitations": "Uses intact native captured poses for windup, launch, landing, hit deformation and red/shrinking defeat. Out-of-screen clipped captures excluded. Playback timing and world locomotion adapt the source behavior; native full SuperFX AI and long pants-removal cutscene are not executed in DKC. No procedural squash or invented defeat pose.",
+    "captureFixture": "capture-burt-poses.py loads native EU room63 via application test-castle fixture; hurt stimulus reproduces source06A897..A8C0 post-collision fields, alternating recoil direction to keep actor in view; observer invulnerability prevents hero death. All body pixels, native deformation, palettes andOBJ parts decoded from resulting native snapshots. Six hit indices and defeat observed in Mesen."
   }
 }

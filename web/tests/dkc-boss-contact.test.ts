@@ -1,0 +1,10 @@
+import{it,expect}from'vitest';
+import{DkcBossContact}from'../src/dkc-boss-contact';
+import{DKC}from'../src/dkc-profile';
+import{word,writeWord}from'../src/profile';
+const target={nativeBoss:true,slot:16,id:0x70,x:150,y:200,width:56,height:56};
+function fixture(){const w=new Uint8Array(0x20000),put=(a:number,n:number)=>writeWord(w,a,n);put(DKC.loadedScene,0xe0);put(DKC.height,512);put(DKC.id+2,1);put(DKC.x+2,120);put(DKC.y+2,512-190);return{w,put};}
+it('sends rolling contact only in range, never while the hero is hurt',()=>{const{w,put}=fixture(),c=new DkcBossContact();let hits=0;const hit=()=>{hits++;return true;};expect(c.update(w,false,[target],hit)).toBeUndefined();expect(c.update(w,true,[target],hit)).toBe('roll');put(DKC.hit+2,1);expect(c.update(w,true,[target],hit)).toBeUndefined();put(DKC.hit+2,0);put(DKC.x+2,30);expect(c.update(w,true,[target],hit)).toBeUndefined();expect(hits).toBe(1);});
+it('detects a descending top crossing and recoils only after an accepted stomp',()=>{const{w,put}=fixture(),c=new DkcBossContact();put(DKC.y+2,512-130);put(DKC.vy+2,0xfd00);c.update(w,false,[target],()=>true);put(DKC.y+2,512-143);expect(c.update(w,false,[target],()=>false)).toBeUndefined();expect(word(w,DKC.vy+2)).toBe(0xfd00);put(DKC.y+2,512-150);expect(c.update(w,false,[target],()=>true)).toBe('stomp');expect(word(w,DKC.vy+2)).toBe(0x500);});
+it('does not count an upward jump as a stomp',()=>{const{w,put}=fixture(),c=new DkcBossContact();put(DKC.y+2,512-140);put(DKC.vy+2,0x400);c.update(w,false,[target],()=>true);put(DKC.y+2,512-145);expect(c.update(w,false,[target],()=>true)).toBeUndefined();});
+it('accepts only thrown barrels and consumes each through native cleanup once',()=>{for(const id of[0x23,0x27]){const{w,put}=fixture(),c=new DkcBossContact();put(DKC.id+6,id);put(DKC.x+6,145);put(DKC.y+6,512-170);put(DKC.state+6,1);let hits=0;const hit=()=>{hits++;return true;};expect(c.update(w,false,[target],hit)).toBeUndefined();put(DKC.state+6,2);expect(c.update(w,false,[target],hit)).toBe('barrel');expect(word(w,DKC.hit+6)).toBe(0x20);expect(c.update(w,false,[target],hit)).toBeUndefined();expect(hits).toBe(1);}});

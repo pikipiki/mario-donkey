@@ -2,15 +2,21 @@ export interface Animation {start:number;frames:number;fps:number}
 export interface AtlasManifest {cell:number;columns:number;origin:[number,number];groups:Record<string,Record<string,Animation>>}
 export interface PlushManifest {frames:Array<{x:number;y:number;w:number;h:number;ox:number;oy:number}>;groups:Record<string,number[]>}
 export class SpriteAtlas {
- constructor(public image:HTMLImageElement,public manifest:AtlasManifest,public plush?:{image:HTMLImageElement;manifest:PlushManifest},public bosses?:{image:HTMLImageElement;manifest:AtlasManifest},public yoshiBosses?:{image:HTMLImageElement;manifest:AtlasManifest},public projectiles?:HTMLImageElement){}
+ constructor(public image:HTMLImageElement,public manifest:AtlasManifest,public plush?:{image:HTMLImageElement;manifest:PlushManifest},public bosses?:{image:HTMLImageElement;manifest:AtlasManifest},public yoshiBosses?:{image:HTMLImageElement;manifest:AtlasManifest},public projectiles?:HTMLImageElement,public marioYoshi?:{image:HTMLImageElement;manifest:AtlasManifest}){}
  static async load():Promise<SpriteAtlas>{
   const b=import.meta.env.BASE_URL;
+  const marioYoshiImage=new Image();marioYoshiImage.src=`${b}art/mario-yoshi.png`;
   const projectileImage=new Image();projectileImage.src=`${b}art/yoshi-projectiles.png`;
   const image=new Image(),plushImage=new Image(),bossImage=new Image(),yoshiBossImage=new Image();
   image.src=`${b}art/dkc-atlas.png`;plushImage.src=`${b}art/plush.png`;bossImage.src=`${b}art/dkc-bosses.png`;yoshiBossImage.src=`${b}art/yoshi-bosses.png`;
   async function json<T>(name:string):Promise<T>{const r=await fetch(`${b}art/${name}.json`);if(!r.ok)throw new Error('The original sprite atlas was not found.');return r.json() as Promise<T>;}
-  const [manifest,plushManifest,bossManifest,yoshiBossManifest]=await Promise.all([json<AtlasManifest>('dkc-atlas'),json<PlushManifest>('plush'),json<AtlasManifest>('dkc-bosses'),json<AtlasManifest>('yoshi-bosses'),yoshiBossImage.decode(),image.decode(),plushImage.decode(),bossImage.decode(),projectileImage.decode()]);
-  return new SpriteAtlas(image,manifest,{image:plushImage,manifest:plushManifest},{image:bossImage,manifest:bossManifest},{image:yoshiBossImage,manifest:yoshiBossManifest},projectileImage);
+  const [manifest,plushManifest,bossManifest,yoshiBossManifest,marioYoshiManifest]=await Promise.all([json<AtlasManifest>('dkc-atlas'),json<PlushManifest>('plush'),json<AtlasManifest>('dkc-bosses'),json<AtlasManifest>('yoshi-bosses'),json<AtlasManifest>('mario-yoshi'),marioYoshiImage.decode(),yoshiBossImage.decode(),image.decode(),plushImage.decode(),bossImage.decode(),projectileImage.decode()]);
+  return new SpriteAtlas(image,manifest,{image:plushImage,manifest:plushManifest},{image:bossImage,manifest:bossManifest},{image:yoshiBossImage,manifest:yoshiBossManifest},projectileImage,{image:marioYoshiImage,manifest:marioYoshiManifest});
+ }
+ drawMarioYoshi(ctx:CanvasRenderingContext2D,state:string,x:number,y:number,time:number,facing=1):void{
+  const a=this.marioYoshi,animation=a?.manifest.groups['mario-yoshi']?.[state]??a?.manifest.groups['mario-yoshi']?.idle;if(!a||!animation)return;
+  const {cell,columns,origin}=a.manifest,frame=animation.start+(state==='jump'?Math.min(animation.frames-1,Math.floor(time*animation.fps/1000)):Math.floor(time*animation.fps/1000)%animation.frames);
+  ctx.save();ctx.translate(Math.round(x),Math.round(y));if(facing<0)ctx.scale(-1,1);ctx.imageSmoothingEnabled=false;ctx.drawImage(a.image,frame%columns*cell,Math.floor(frame/columns)*cell,cell,cell,-origin[0],-origin[1],cell,cell);ctx.restore();
  }
  drawEgg(ctx:CanvasRenderingContext2D,x:number,y:number,time=0,spin=false):void{
   if(!this.projectiles)return;const phase=spin?Math.floor(time/70)%4:0,index=[0,1,2,1][phase];

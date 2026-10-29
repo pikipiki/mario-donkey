@@ -13,7 +13,7 @@ describe('compagnons et objets de campagne',()=>{
 });
 
 describe('PlushGoonk selection and migration',()=>{
- it('starts with violet and makes all four characters available',()=>{const a=new Adventure();expect(a.active).toBe('violet');for(const character of CHARACTERS)expect(a.select(character)).toBe(true);});
+ it('starts with violet and makes every character available',()=>{const a=new Adventure();expect(a.active).toBe('violet');for(const character of CHARACTERS)expect(a.select(character)).toBe(true);});
  it('preserves explicit choices after migrating an old campaign to violet',()=>{const a=new Adventure({version:2,active:'dk',animals:['rambi'],mount:'rambi'});expect(a.active).toBe('violet');expect(a.mount).toBe('rambi');a.select('pink');expect(new Adventure(a.serialize()).active).toBe('pink');});
 });
 
@@ -22,3 +22,7 @@ describe('Baby Mario rescue mount',()=>{
  const a=new Adventure();a.select(character);a.animals=['rambi'];a.ride('rambi');a.hit();expect(a.mount).toBe('yoshi');expect(a.active).toBe(character);expect(a.animals).toEqual(['rambi']);expect(a.available).toEqual([...CHARACTERS]);
  });
 });
+
+it('keeps Mario riding Yoshi through selection, save restoration and attempts to dismount',()=>{const a=new Adventure();expect(a.select('mario')).toBe(true);expect(a.mount).toBe('yoshi');expect(a.ride('foot')).toBe(false);const restored=new Adventure({...a.serialize(),mount:'foot'});expect(restored.active).toBe('mario');expect(restored.mount).toBe('yoshi');expect(restored.select('dk')).toBe(true);expect(restored.ride('foot')).toBe(true);});
+
+it('unlocks an animal crate without taking Mario off Yoshi',()=>{const a=new Adventure();a.select('mario');walk(a,'r');const crate=a.pickups[0];a.breakNearby('r',crate.x,crate.y,true);expect(a.animals).toContain(crate.kind);expect(a.mount).toBe('yoshi');expect(a.active).toBe('mario');});

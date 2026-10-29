@@ -64,7 +64,7 @@ function syncParty():void{
  document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>{const char=b.dataset.character as Character,active=(a?.active??'violet')===char;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active));b.disabled=a?!a.available.includes(char):false;});
  const character=$<HTMLSelectElement>('character');character.value=a?.active??'violet';character.querySelectorAll('option').forEach(o=>{o.disabled=a?!a.available.includes(o.value as Character):false;});
  $('partner-status').textContent=a?.available.includes('diddy')?'':'';
- const mounts:Mount[]=['foot','yoshi',...(a?.animals??[])];const select=$<HTMLSelectElement>('mount');select.innerHTML=mounts.map(m=>`<option value="${m}">${animalNames[m]}</option>`).join('');select.value=a?.mount??'foot';select.hidden=dkcWorld;
+ const mounts:Mount[]=['foot','yoshi',...(a?.animals??[])];const select=$<HTMLSelectElement>('mount');select.innerHTML=mounts.map(m=>`<option value="${m}">${animalNames[m]}</option>`).join('');select.value=a?.mount??'foot';select.hidden=dkcWorld||a?.active==='mario';
  $('jump-hint').textContent=dkcWorld?'native jump':a?.mount==='yoshi'?'hold to flutter':a?.mount==='squawks'?'hold to fly':'normal jump';
  if(game?.ready)$('stage-name').textContent=game.stageLabel;
 }

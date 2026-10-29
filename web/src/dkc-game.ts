@@ -113,7 +113,8 @@ export class DkcGame extends LiveGame{
   for(const p of this.combat.eggTrail)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,now);
   const moving=Math.abs(this.controls.runAxis())>.1,rolling=now<this.controls.rollUntil;
   const animation=rolling?'roll':!s.grounded?'jump':moving?'walk':'idle';if(this.dkAnimation!==animation){this.dkAnimation=animation;this.dkAnimationAt=now;}
-  this.dkAtlas.draw(c,this.adventure.active,animation,x,y+pad,now-this.dkAnimationAt,this.controls.facing);
+  if(this.adventure.active==='mario')this.dkAtlas.drawMarioYoshi(c,animation,x,y+pad,now-this.dkAnimationAt,this.controls.facing);
+  else this.dkAtlas.draw(c,this.adventure.active,animation,x,y+pad,now-this.dkAnimationAt,this.controls.facing);
   const t=this.combat.tongue;
   if(t)this.dkAtlas.drawTongue(c,t.x-s.cameraX,t.y-s.cameraY+pad,t.endX-s.cameraX,t.endY-s.cameraY+pad,1-(t.until-now)/150);
   for(const p of this.combat.shots)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,p.age*1000,true);

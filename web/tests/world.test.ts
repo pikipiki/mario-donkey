@@ -29,3 +29,5 @@ describe('companions cross worlds without transplanting native progression',()=>
 });
 
 it('pipe arrival auto-start marker is one-shot and never propagates a fresh-save override',()=>{const href=worldUrl('https://example.net/?fresh=1&test=1','dkc'),a=pipeArrival(href);expect(a.arrival).toBe(true);expect(new URL(a.cleanUrl).searchParams.get('world')).toBe('dkc');expect(new URL(a.cleanUrl).searchParams.has('fresh')).toBe(false);expect(pipeArrival(a.cleanUrl).arrival).toBe(false);});
+
+it('carries Mario on Yoshi through both world portals',()=>{const a=new Adventure();a.select('mario');const b=new Adventure(decodeWorldParty(encodeWorldParty(a.serialize())));expect(b.active).toBe('mario');expect(b.mount).toBe('yoshi');});

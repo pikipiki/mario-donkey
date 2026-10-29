@@ -1,3 +1,15 @@
+## 29 octobre 2026 — Bébé Mario sur Yoshi dans DKC (466 tests)
+
+Nouvelle sélection `mario` affichée « Mario + Yoshi ». Le défaut Bobope reste conservé. Adventure.select et la restauration placent ce duo sur mount=yoshi ; le duo ne descend pas à pied via ride. Les quatre héros précédents et leurs sauvegardes restent compatibles, sans changement de version. Les transferts par tuyau conservent ce choix.
+
+Dans DKC, SpriteAtlas.drawMarioYoshi affiche des sprites authentiques du duo extraits d’une exécution privée de la ROM EU dans Mesen. Images64px transparentes, origine[32,56],16poses retenues (repos3, marche5, saut4, flutter4), visage normalisé vers la droite et miroir à gauche, pieds ancrés aux coordonnées natives DKC. Pas de lissage. `art/mario-yoshi.png/json` et `art/portraits/mario.png` ; provenance ROM SHA91a4…a90 et empreintes des captures dans le manifeste. OBJ palette5, Yoshi tiles00..1F et Bébé Mario60..67, transparence index0 ; quatre captures traversant la mise à jour dynamique OBJ ont été exclues après inspection visuelle. Script `scripts/capture-mario-yoshi.py --work PATH` nécessite le bridge privé project/bridge et le Mesen déjà présents dans le workspace, aucun second cœur dans la page.
+
+Dans le monde Yoshi natif, choisir Mario conserve le vrai Yoshi/Bébé Mario : aucun rider Canvas supplémentaire n’est dessiné. Dans DKC, il s’agit d’un rendu du duo sur le moteur et les collisions DKC, avec la langue directionnelle et les œufs existants. Aucun système natif de bulle/Bébé perdu ou moteur physique SuperFX transplanté dans DKC ; ne pas affirmer que le duo copie toutes les règles de Yoshi dans ce monde. Le flutter capturé est une pose disponible, pas une nouvelle mécanique ajoutée ici.
+
+466 tests /42 fichiers et build TypeScript/Vite valides. Nouveaux tests sélection→Yoshi, restauration d’une sauvegarde incohérente, refus de descendre, transfert entre mondes. Recette navigateur5198 isolée : choix Mario+Yoshi, entrée Jungle Hijinxs, déplacement/saut avec duo visible, sauvegarde/retour carte puis tuyau→carte Yoshi ; active=mario et mount=yoshi conservés, nativeDrawHidden=false. Preuves outputs/verification-mario-yoshi-dkc.png/json. Une caisse animale débloque toujours son animal mais ne fait pas descendre Mario de Yoshi. Les boutons ont une largeur minimale44px et défilent horizontalement si nécessaire pour conserver les cibles tactiles accessibles.
+
+---
+
 ## 29 octobre 2026 — langue directionnelle et œufs Yoshi dans DKC, tuyaux automatiques (462 tests)
 
 `Controls.tongueDirection` mémorise le dernier angle du joystick pendant2s, y compris diagonales, sans conserver le déplacement après relâchement. DKC transmet ce vecteur à DkcCombat. Les contrôles Yoshi natifs continuent d’utiliser leur propre entrée haut/langue. Un ennemi normal accepté par killDkcEnemy occupe maintenant la bouche (champ mouth optionnel de sauvegarde) : Bas transforme cet ennemi en un œuf, une fois, six maximum. Le refus d’un hit natif n’accorde rien. Les gardiens restent non avalables. L’inventaire normal est fini ; seuls les gardiens conservent le refill∞.

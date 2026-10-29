@@ -1,10 +1,10 @@
 import {validateGuardian,type GuardianSave} from './boss';
 export const ANIMALS=['rambi','winky','expresso','enguarde','squawks'] as const;
 export type Animal=typeof ANIMALS[number];
-export const CHARACTERS=['violet','pink','dk','diddy'] as const;
+export const CHARACTERS=['violet','pink','dk','diddy','mario'] as const;
 export type Character=typeof CHARACTERS[number];
 /** Display names only: stable IDs keep existing saves and sprite assets valid. */
-export const CHARACTER_NAMES:Readonly<Record<Character,string>>={violet:'Bobope',pink:'Paingpaing',dk:'Donkey',diddy:'Diddy'};
+export const CHARACTER_NAMES:Readonly<Record<Character,string>>={violet:'Bobope',pink:'Paingpaing',dk:'Donkey',diddy:'Diddy',mario:'Mario + Yoshi'};
 export type Mount='foot'|'yoshi'|Animal;
 export interface Pickup {id:string;room:string;kind:'barrel'|Animal;x:number;y:number;collected:boolean}
 interface Room {distance:number;crates:number;nextCrate:number;samples:Array<{x:number;y:number}>;last?:{x:number;y:number}}
@@ -21,10 +21,11 @@ export class Adventure {
   this.active=saved.characterSet===1&&this.available.includes(saved.active!)?saved.active!:'violet';
   this.animals=[...new Set((saved.animals??[]).filter(isAnimal))];
   if(saved.mount==='yoshi'||saved.mount==='foot'||this.animals.includes(saved.mount as Animal))this.mount=saved.mount!;
+  if(this.active==='mario')this.mount='yoshi';
   this.pickups=(saved.pickups??[]).filter(p=>typeof p.id==='string'&&typeof p.room==='string'&&isAnimal(p.kind)&&Number.isFinite(p.x)&&Number.isFinite(p.y)).slice(-512);
  }
- select(character:Character):boolean{if(!this.available.includes(character))return false;this.active=character;return true;}
- ride(mount:Mount):boolean{if(mount!=='foot'&&mount!=='yoshi'&&!this.animals.includes(mount))return false;this.mount=mount;return true;}
+ select(character:Character):boolean{if(!this.available.includes(character))return false;this.active=character;if(character==='mario')this.mount='yoshi';return true;}
+ ride(mount:Mount):boolean{if(this.active==='mario'&&mount!=='yoshi')return false;if(mount!=='foot'&&mount!=='yoshi'&&!this.animals.includes(mount))return false;this.mount=mount;return true;}
  /** Switch to native Yoshi as soon as Baby Mario escapes, keeping the rider. */
  hit():void{this.mount='yoshi';}
  resetRoom(room:string):void{this.rooms.delete(room);this.pickups=this.pickups.filter(p=>p.room!==room);}
@@ -50,7 +51,7 @@ export class Adventure {
  breakNearby(room:string,x:number,y:number,attacking:boolean):Pickup[]{
   if(!attacking)return[];
   const hits=this.nearby(room).filter(p=>Math.abs(p.x-x)<=34&&Math.abs(p.y-y)<=30);
-  for(const p of hits){p.collected=true;if(p.kind==='barrel')this.available=[...CHARACTERS];else{if(!this.animals.includes(p.kind))this.animals.push(p.kind);this.mount=p.kind;}}
+  for(const p of hits){p.collected=true;if(p.kind==='barrel')this.available=[...CHARACTERS];else{if(!this.animals.includes(p.kind))this.animals.push(p.kind);this.ride(p.kind);}}
   return hits;
  }
  serialize():AdventureData{return {version:2,characterSet:1,active:this.active,available:this.available,mount:this.mount,animals:this.animals,pickups:this.pickups.slice(-512),...(this.guardian?{guardian:this.guardian}:{})};}

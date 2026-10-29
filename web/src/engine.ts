@@ -1,3 +1,4 @@
+import {parentAudioHost} from './audio-host';
 import {requestPlaybackAudio,unlockMediaPlayback} from './audio';
 export interface NativeAudioSlot {audioCtx:AudioContext;gain?:GainNode}
 export interface CoreModule { HEAPU8: Uint8Array; AL?: { contexts?: Record<string,NativeAudioSlot> | Array<NativeAudioSlot>; currentCtx?: NativeAudioSlot } }
@@ -11,7 +12,7 @@ export interface GameManager {
  loadState(state: Uint8Array): void;
  functions: { getVideoDimensions(kind:string):number; getFrameNum(): number; setFastForwardRatio(value: number): void; toggleFastForward(value: number): void };
 }
-export interface Emulator { webgl2Enabled?:boolean;supportsWebgl2?:boolean;gameManager: GameManager; frontend?: {canvas: HTMLCanvasElement}; paused: boolean; togglePlaying(): void; setVolume(value: number): void; Module: CoreModule }
+export interface Emulator {isSafari?:boolean;isMobile?:boolean; webgl2Enabled?:boolean;supportsWebgl2?:boolean;gameManager: GameManager; frontend?: {canvas: HTMLCanvasElement}; paused: boolean; togglePlaying(): void; setVolume(value: number): void; Module: CoreModule }
 declare global { interface Window { EJS_emulator: Emulator; [key: `EJS_${string}`]: unknown } }
 export const INPUT={b:0,y:1,select:2,start:3,up:4,down:5,left:6,right:7,a:8} as const;
 export const iosDevice=()=>/iPad|iPhone|iPod|CriOS/.test(navigator.userAgent)||/iPad|iPhone|iPod/.test(navigator.platform)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -19,7 +20,7 @@ const NativeAudio=typeof window==='undefined'?undefined:window.AudioContext||(wi
 let sharedAudio:AudioContext|undefined,audioShimmed=false;
 let mediaUnlock:HTMLAudioElement|undefined;
 function shareAudioContext():void{
- if(audioShimmed||!NativeAudio||!sharedAudio||(!iosDevice()&&navigator.maxTouchPoints<1))return;
+ if(audioShimmed||!NativeAudio||!sharedAudio||(!parentAudioHost(window)&&!iosDevice()&&navigator.maxTouchPoints<1))return;
  audioShimmed=true;
  const share=function SharedAudio(this:unknown){return sharedAudio;} as unknown as typeof AudioContext;
  share.prototype=NativeAudio.prototype;
@@ -27,6 +28,7 @@ function shareAudioContext():void{
 }
 /** Create and resume audio inside a completed tap. Mobile blocks this on pointerdown. */
 export function primeAudio():void{
+ const host=parentAudioHost(window);if(host){host.prime();sharedAudio=host.context;shareAudioContext();return;}
  // Retain a real media session across the asynchronous ROM/core load. A running
  // AudioContext alone does not prove that iOS routes it to an audible output.
  if(iosDevice()){
@@ -136,6 +138,7 @@ export async function launch(rom: Uint8Array, onStatus: (text: string)=>void,gam
    EJS_disableLocalStorage:true,EJS_controlScheme:'none',EJS_virtualGamepad:false,
    EJS_defaultOptions:{'vsync':ios?'disabled':'enabled','fps':'disabled','webgl2Enabled':ios?'disabled':'enabled'},
    EJS_Buttons:{playPause:false,restart:false,mute:false,settings:false,fullscreen:false,saveState:false,loadState:false,screenRecord:false,gamepad:false,cheat:false,volume:false,saveSavFiles:false,loadSavFiles:false,quickSave:false,quickLoad:false,screenshot:false,cacheManager:false},
+   EJS_ready:()=>{if(import.meta.env.DEV&&new URLSearchParams(location.search).has('ios-audio-test')){window.EJS_emulator.isSafari=true;window.EJS_emulator.isMobile=true;}},
    EJS_onGameStart:()=>{void sharedAudio?.resume().catch(()=>{});finish(true,window.EJS_emulator);},
   });
   const script=document.createElement('script');script.src=`${import.meta.env.BASE_URL}emulator/loader.js`;
@@ -172,4 +175,10 @@ export function setNativeDrawing(heap:Uint8Array,pointer:number,hidden:boolean):
   !DRAW_SIGNATURE.subarray(3).every((b,j)=>heap[pointer+3+j]===b)||
   ![normal,HIDDEN_DRAW].some(sig=>sig.every((b,j)=>heap[pointer+j]===b)))throw new Error('The draw routine was modified: access denied.');
  heap.set(hidden?HIDDEN_DRAW:normal,pointer);
+}
+
+/** Release only this frame's native mixer. The parent audio session must survive. */
+export function detachNativeMixer(module:Pick<CoreModule,'AL'>):void{
+ const slots=[...Object.values(module.AL?.contexts??{}),module.AL?.currentCtx];
+ for(const slot of new Set(slots))try{slot?.gain?.disconnect();}catch{}
 }

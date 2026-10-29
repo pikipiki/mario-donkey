@@ -1,3 +1,19 @@
+## 29 octobre 2026 — blocage iPhone après tuyau, propriétaire audio permanent (470 tests)
+
+Photo utilisateur : « undefined / Click to resume Emulator » et « Decompress Game Core99% » après DKC→Yoshi. La version précédente quittait le document entier ; WebKit perdait le contexte déverrouillé par Jouer. Le moteur local EmulatorJS checkStarted attend alors AL.sources[].gain.context.state et ouvre un popup audio via createPopup sans titre, origine du undefined. Ne pas simplement masquer le popup : le cœur peut rester sans frames et prepare finit en timeout.
+
+Architecture corrigée : `src/main.ts` devient un hôte léger permanent. `src/app.ts` contient l’ancienne application. Un seul iframe same-origin game-host contient le monde actif. Le tuyau conserve son flux sauvegarde+son+transfert, mais location.replace remplace désormais seulement le document du jeu. L’hôte parent et son HTMLAudioElement déverrouillé/AudioContext restent vivants. installAudioHost crée réellement AudioContext dans le parent ; primeAudio dans le jeu appelle son propriétaire et fournit exactement ce contexte au constructeur OpenAL de chaque nouveau cœur, sur mobile et desktop. Pas de clic synthétique, pas de contournement des règles d’activation : premier Jouer est toujours un vrai geste.
+
+Un seul cœur actif ; l’ancien monde est mis en pause/sauvegardé puis déchargé avec son document. detachNativeMixer déconnecte uniquement ses gains, jamais ne close/suspend le contexte partagé. Le détachement est évité pour un pagehide.persisted (BFCache) afin que le retour navigateur puisse reprendre son mixer. Ne pas remettre le propriétaire audio dans le document qui navigue. Le plein écran cible le document parent afin de survivre aux tuyaux. syncHostRoute reflète l’adresse du monde dans la barre d’adresse sans naviguer le parent et sans exposer game-frame=1. Origine IndexedDB/localStorage inchangée, schémas et clés de sauvegarde inchangés.
+
+470 tests /43 fichiers, build TypeScript/Vite. Les tests audio-host couvrent propriétaire unique entre fenêtres, contexte non fermé lors du détachement des gains, route parent remplacée sans navigation et isolation cross-origin. Le diagnostic DEV audioOwner indique persistent, generation et state ; data-frame-loads sur game-host compte les documents remplacés. Paramètre DEV ios-audio-test active les branches isSafari/isMobile du moteur local avant son démarrage (via EJS_ready), avec le cœur legacy. Il ne prétend pas émuler physiquement WebKit.
+
+Recette isolée5199 : DKC initial→Yoshi→DKC avec Safari-checkStarted activé ; générations audio=1 tout du long, état running, chargements iframe1→2→3→4 (dernier passage à nouveau vers Yoshi), aucune validation Jouer/resume. Signal natif Yoshi mesuré0.04263, DKC0.08781 ; transfert Mario+Yoshi conservé. Preuves outputs/verification-pipe-persistent-yoshi.png et verification-pipe-persistent-audio.json. Pas de téléphone physique ni nouveau redimensionnement global du navigateur : validation matérielle iPhone reste à faire. Le chargement de la nouvelle ROM/cœur existe toujours ; le 99% périmé est remplacé par Opening your saved adventure dès que le moteur démarre.
+
+Pour les futures modifications UI, éditer désormais app.ts. main.ts ne doit plus contenir le runtime SNES ni stocker la partie. Ne jamais effacer les sauvegardes pour corriger un échec de démarrage.
+
+---
+
 ## 29 octobre 2026 — Bébé Mario sur Yoshi dans DKC (466 tests)
 
 Nouvelle sélection `mario` affichée « Mario + Yoshi ». Le défaut Bobope reste conservé. Adventure.select et la restauration placent ce duo sur mount=yoshi ; le duo ne descend pas à pied via ride. Les quatre héros précédents et leurs sauvegardes restent compatibles, sans changement de version. Les transferts par tuyau conservent ce choix.

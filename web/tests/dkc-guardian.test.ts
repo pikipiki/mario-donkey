@@ -62,3 +62,5 @@ it('does not let rapid eggs damage the native player, exit or guard state',()=>{
 });
 
 it.each([9,0xa,0xb,0xd,0xe,0x11])('never hits or advances boss motion during native loss/takeover state %i',state=>{const f=fixture();f.tick();Object.assign(f.boss.state!,{phase:'fight',elapsed:1,heroHitUntil:4});writeWord(f.w,DKC.state+2,state);const before=structuredClone(f.boss.state);expect(requestDkcGuardianHit(f.w)).toBe(false);f.boss.update(f.w,100,()=>true);expect(f.boss.state!.elapsed).toBe(before!.elapsed);expect(f.boss.state!.heroHitUntil).toBe(4);expect(word(f.w,DKC.hit+2)).toBe(0);});
+
+it('retains a living post-boss guardian and its HP if native banana state advances or resumes beyond zero',()=>{const f=fixture();writeWord(f.w,DKC.entrance,0xe0);writeWord(f.w,DKC.id+6,0x74);f.boss.update(f.w,1,()=>false,pendingBossVictory(f.w));Object.assign(f.boss.state!,{phase:'fight',hp:5});for(const state of[1,2,3]){writeWord(f.w,DKC.state+6,state);f.boss.restore(structuredClone(f.boss.state));f.boss.update(f.w,100+state,()=>false,pendingBossVictory(f.w));expect(f.boss.state?.hp).toBe(5);expect(f.boss.state?.phase).toBe('fight');}});

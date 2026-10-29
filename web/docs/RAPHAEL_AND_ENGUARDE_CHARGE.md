@@ -1,3 +1,5 @@
+> Rectification du diagnostic : l’état natif11 n’est pas une preuve de mort. La commande1 de1E2B produit aussi cet état avec l’animation de victoire63. La conclusion ci-dessous « mort du duo » était trop affirmative. Voir RAPHAEL_EARLY_EXIT.md pour le correctif du verrou de victoire.
+
 # Raphael et charge d’Enguarde — 29 octobre 2026
 
 ## Corrections

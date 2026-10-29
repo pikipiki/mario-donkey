@@ -7,5 +7,5 @@ it('keeps native exits gated through a temporary missing hero during an unfinish
  const ctx=new Proxy({}as CanvasRenderingContext2D,{get:(t,k)=>k in t?Reflect.get(t,k):vi.fn()});
  const game=new DkcGame({Module:{HEAPU8:w},gameManager:{simulateInput:vi.fn(),functions:{getFrameNum:()=>2}}}as unknown as Emulator,new Controls(),{getContext:()=>ctx}as unknown as HTMLCanvasElement,{guardianReady:()=>true,prepareGuardian:()=>Promise.resolve()}as unknown as SpriteAtlas,vi.fn());
  game.wramBase=0;game.ready=true;Object.assign(game,{dkGuardian:guardian,dkBossHooks:hooks,dkBossFinish:finish,teamInitialized:true});
- writeWord(w,DKC.id+2,0);game.tick(100);expect(hooks.sync).toHaveBeenLastCalledWith(true);expect(finish.sync).toHaveBeenLastCalledWith(true);expect(guardian.state?.hp).toBe(4);
+ writeWord(w,DKC.id+2,0);game.tick(100);expect(hooks.sync).toHaveBeenLastCalledWith(true);expect(finish.sync).toHaveBeenLastCalledWith(true,true);expect(guardian.state?.hp).toBe(4);
 });

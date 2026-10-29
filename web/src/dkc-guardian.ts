@@ -57,7 +57,7 @@ export class DkcGuardian{
   const scene=readDkcScene(w),previous=this.state;
   if(scene.isMap){this.clear();return{};}
   if(previous&&previous.level!==scene.level)this.clear();
-  if(this.state&&this.state.phase!=='released'){const saved=this.state;if(saved.exitKind?(!victory||victory.slot!==saved.slot||victory.kind!==saved.exitKind):![0x6a,0x6b].includes(word(w,DKC.id+saved.slot)))this.clear();}
+  if(this.state&&this.state.phase!=='released'){const saved=this.state;if(saved.exitKind?(word(w,DKC.id+saved.slot)!==0x74):![0x6a,0x6b].includes(word(w,DKC.id+saved.slot)))this.clear();}
   if(!scene.playing){this.pause();return{};}
   const playerState=word(w,DKC.state+scene.playerSlot),spec=this.state?YOSHI_GUARDIANS.find(p=>p.id===this.state!.id):guardianForEntrance(scene.level);
   if(!spec){this.pause();return{};}

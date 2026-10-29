@@ -1,3 +1,7 @@
+## Correctif suivant — sortie anticipée de Raphael
+
+Voir [RAPHAEL_EARLY_EXIT.md](RAPHAEL_EARLY_EXIT.md). Rectification : état natif11 peut être une victoire63, la mort du duo n’était pas prouvée. Verrou strict sur tous les états de banane et consommation de commande de victoire, avant reprise native et jusqu’à la fin complète du gardien. Diagnostics bornés,747 tests/66 fichiers, build. Les victoires natives sans combat ajouté et les vraies morts restent originales. Le seuil utilisateur10% n’est pas atteint au dernier relevé58%restants.
+
 ## Dernier correctif — Raphael et Enguarde (29 octobre 2026)
 
 Voir [RAPHAEL_AND_ENGUARDE_CHARGE.md](RAPHAEL_AND_ENGUARDE_CHARGE.md). Raphael droit avec collision correspondant au corps, protection suspendue pendant les fuites/relais natifs, compteur de héros. Le retour reproduit à5PV était une mort native du duo, pas une victoire ; ce comportement normal est conservé. Enguarde : une seule Charge/X offensive, Swim/Espace monte. 744 tests/66 fichiers et build réussis ; test privé du vrai combat et de sa sortie après défaite. Restent les téléphones physiques, la charge sous-marine en situation prolongée et la campagne complète. Aucun changement de format de sauvegarde.

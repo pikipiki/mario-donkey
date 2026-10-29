@@ -40,12 +40,17 @@
 html,body,#app{touch-action:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 [data-control],[data-control] *,#stick,#stick *{touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}
 
-/* Give the directional pad its own generous target; action buttons stay compact. */
+/* Reuse portrait letterboxing for taller controls, retaining the game's 4:3
+   picture and the generous directional target. dvh follows browser toolbars. */
 @media(orientation:portrait) and (max-width:1099px){
- .game-layout{--touch-row:clamp(136px,21dvh,152px);grid-template-columns:minmax(0,45fr) minmax(0,55fr);grid-template-rows:minmax(0,1fr) auto var(--touch-row)}
- .stick{width:min(100%,calc(var(--touch-row) - 8px),144px);max-width:none}
- .action-pad{align-self:center;height:112px;grid-template-rows:repeat(2,minmax(44px,1fr))}
- .action-pad button{min-height:44px}
+ .game-layout{--portrait-game-width:calc(100vw - max(8px,env(safe-area-inset-left)) - max(8px,env(safe-area-inset-right)));--touch-row:clamp(152px,calc(100dvh - var(--portrait-game-width)*.75 - 144px),288px);grid-template-columns:minmax(0,45fr) minmax(0,55fr);grid-template-rows:minmax(0,1fr) auto var(--touch-row)}
+ .stick{width:min(100%,calc(var(--touch-row) - 8px),180px);max-width:none}
+ .action-pad{align-self:stretch;height:auto;grid-template-rows:repeat(2,minmax(60px,1fr));gap:8px;padding-block:4px}
+ .action-pad button{min-height:60px;border-radius:14px;gap:3px}
+ .action-pad strong{font-size:14px}
+ .action-pad button>span{font-size:22px}
+ .action-pad .world-portal strong{font-size:12px}
+ .action-pad .world-portal .portal-icon{width:44px;height:44px}
 }
 @media(orientation:landscape) and (max-height:600px) and (max-width:1099px){
  .shell{--stick-column:clamp(128px,16.6vw,140px);--action-column:clamp(116px,15.2vw,128px)}

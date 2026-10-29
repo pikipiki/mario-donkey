@@ -62,3 +62,11 @@ html,body,#app{touch-action:none;-webkit-text-size-adjust:100%;text-size-adjust:
  .character-select select{width:100%;min-height:44px;background:#223136;color:#e1eadb;border:1px solid var(--edge);border-radius:7px;padding:3px}
  .mount-picker{width:100%;flex:none}
 }
+
+/* The map portal replaces the unused roll action, keeping the game and stick full size. */
+.action-pad .world-portal{background:linear-gradient(90deg,#2d7f37 0 8%,#84c754 8% 15%,#4da743 15% 85%,#286e31 85%);border:2px solid #b4e880;border-radius:5px;box-shadow:inset 0 -4px #1b5f2a;color:#fffbd9;min-height:44px;padding:3px;gap:2px}
+.action-pad .world-portal .portal-icon{display:grid;place-items:center;width:22px;height:20px;border:2px solid #5f3e17;border-radius:2px;background:#f4c456;box-shadow:inset 2px 2px #fff1a6;color:#56391d;font-family:monospace;font-weight:900;font-size:17px;line-height:1}
+.action-pad .world-portal strong{font-size:11px;line-height:1.1;text-align:center;max-width:100%}
+.action-pad .world-portal small{font-size:8px;color:#f0f7df}
+.action-pad .world-portal:focus-visible{outline:3px solid #fff9b5;outline-offset:2px}
+@media(orientation:landscape) and (max-height:600px){.action-pad .world-portal strong{font-size:10px}.action-pad .world-portal .portal-icon{width:21px;height:19px}}

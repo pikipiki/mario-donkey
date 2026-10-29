@@ -44,3 +44,11 @@ La campagne originale n’est pas restreinte au 1-1 ; tous les niveaux/bosses n�
 ### DKC guardians at stage exits
 
 Each main/Extra stage cycles through the seven DKC1 guardians. Fortresses and castles keep their original boss first. During the added fight, tap **Throw · ∞** (or **V**) to fire an assisted-aim egg; eggs damage the guardian without consuming native inventory. Recover Baby Mario normally if hit. After victory, jump through the nearby exit ring to let the original game handle its score and progression. Encounter progress is included in the local campaign save. Boss movement is adapted in TypeScript with original DKC sprites; one SNES core runs Yoshi’s Island.
+
+### Two worlds: Yoshi’s Island ↔ Donkey Goonk
+
+The green pipe on either world map switches games. Press **Play / continue** after switching to enable mobile audio. Each game keeps its own full local save; the selected Violet, Pink, Donkey or Diddy avatar follows you. Only one SNES game runs in the page. DKC starts directly on its native Kongo Jungle map and retains the original campaign and progression.
+
+In DKC, **Tongue / C** swallows a nearby ordinary enemy and creates an egg (six maximum). **Eggs / V** throws toward a nearby target; an actual projectile collision requests the enemy’s original DKC death. Classic hazards and bosses keep their native rules. Jump and Roll keep the native Kong controls. DKC uses the active native Kong’s physics with your selected avatar; Yoshi-side mounts stay in the Yoshi-side party, while DKC keeps its original animal buddies.
+
+The game saves on pause, about every 20 seconds, and before changing worlds. **Leave stage · World map** restarts the current DKC attempt from its last map checkpoint. Reloading normally resumes the current saved scene. Saves depend on this browser/device’s local storage.

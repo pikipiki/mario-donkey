@@ -26,7 +26,7 @@ function coreState(state:Uint8Array):Uint8Array{
  throw invalid();
 }
 
-function blocks(state:Uint8Array):Map<string,Uint8Array>{
+function blocks(state:Uint8Array,superFx=true):Map<string,Uint8Array>{
  const core=coreState(state),found=new Map<string,Uint8Array>();
  if(text(core,0,NATIVE_HEADER.length)!==NATIVE_HEADER)throw invalid();
  let offset=NATIVE_HEADER.length;
@@ -37,12 +37,14 @@ function blocks(state:Uint8Array):Map<string,Uint8Array>{
   if(found.has(name)||length>core.length-offset)throw invalid();
   found.set(name,core.subarray(offset,offset+length));offset+=length;
  }
- for(const name of REQUIRED)if(!found.get(name)?.length)throw invalid();
+ for(const name of REQUIRED.filter(n=>superFx||n!=='SFX'))if(!found.get(name)?.length)throw invalid();
  for(const [name,length]of Object.entries(MEMORY_SIZES))if(found.get(name)!.length!==length)throw invalid();
  return found;
 }
 
 export function validateNativeState(state:Uint8Array):void{blocks(state);}
+/** DKC uses the same Snes9x serializer without the SuperFX component. */
+export function validateDkcNativeState(state:Uint8Array):void{blocks(state,false);}
 
 /** A view into the supplied bytes, useful for deliberate DEV fixtures. */
 export function stateBlock(state:Uint8Array,name:string):Uint8Array{

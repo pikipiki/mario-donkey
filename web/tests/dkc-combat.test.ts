@@ -1,0 +1,11 @@
+import{describe,it,expect}from'vitest';
+import{DkcCombat,sweptHit,type DkcTarget}from'../src/dkc-combat';
+const target:DkcTarget={slot:6,id:10,x:65,y:120,width:26,height:32},hero={x:20,y:120,facing:1};
+describe('DKC tongue and egg bridge',()=>{
+ it('eats one nearby enemy through its native hit request and creates one egg',()=>{const c=new DkcCombat();let hits=0;expect(c.update(1,0,hero,[target],false,true,false,()=>{hits++;return true;}).ate).toBe(true);expect(c.eggs).toBe(1);c.update(2,16,hero,[target],false,true,false,()=>{hits++;return true;});expect(hits).toBe(1);});
+ it('does not award ammunition for a refused native hit or out of reach target',()=>{const c=new DkcCombat();c.update(1,0,hero,[target],false,true,false,()=>false);expect(c.eggs).toBe(0);c.update(2,20,hero,[{...target,x:200}],false,false,false,()=>true);c.update(3,40,hero,[{...target,x:200}],false,true,false,()=>true);expect(c.eggs).toBe(0);});
+ it('throws an earned egg and hits an actual enemy only on swept collision',()=>{const c=new DkcCombat();c.eggs=1;let hits=0;c.update(1,0,hero,[target],true,false,false,()=>{hits++;return true;});expect(c.eggs).toBe(0);expect(hits).toBe(0);for(let f=2;f<30;f++)c.update(f,f*16,hero,[target],false,false,false,()=>{hits++;return true;});expect(hits).toBe(1);expect(c.shots).toHaveLength(0);});
+ it('cannot throw empty ammunition or repeat a held fire input',()=>{const c=new DkcCombat();c.update(1,0,hero,[],true,false,false,()=>true);expect(c.shots).toHaveLength(0);c.eggs=3;for(let f=2;f<20;f++)c.update(f,f*16,hero,[],true,false,false,()=>true);expect(c.eggs).toBe(3);});
+ it('handles facing, upward tongue, misses and six egg capacity',()=>{expect(sweptHit(0,0,10,0,target)).toBe(false);const c=new DkcCombat();c.eggs=6;c.update(1,0,{x:100,y:120,facing:-1},[target],false,true,false,()=>true);expect(c.eggs).toBe(6);expect(c.tongue!.endX).toBeLessThan(c.tongue!.x);});
+ it('restores valid inventory/projectiles without an elapsed pause jump',()=>{const c=new DkcCombat();c.eggs=2;c.update(1,0,hero,[],true,false,false,()=>true);const saved=c.serialize(),r=new DkcCombat();r.restore(saved);r.update(90000,1e8,hero,[],false,false,false,()=>true);expect(r.serialize()).toEqual(saved);r.restore({eggs:999,shots:[{x:NaN}]});expect(r.eggs).toBe(6);expect(r.shots).toHaveLength(0);});
+});

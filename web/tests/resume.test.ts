@@ -70,6 +70,20 @@ describe('resume the saved native scene',()=>{
  });
 });
 
+describe('a world change must confirm its save',()=>{
+ it('fails closed when the fresh checkpoint cannot be persisted',async()=>{
+  const {game}=fixture();game.ready=true;game.paused=true;game.wram[P.mode]=0x26;
+  vi.mocked(writeCampaign).mockResolvedValueOnce().mockRejectedValueOnce(new Error('Storage full'));
+  await expect(game.saveForWorldSwitch()).rejects.toThrow('Storage full');expect(writeCampaign).toHaveBeenCalledTimes(2);expect(game.paused).toBe(true);
+ });
+ it('does not leave when native pause cannot be confirmed',async()=>{
+  const {game,manager}=fixture();game.ready=true;game.paused=true;game.wram[P.mode]=0x26;vi.spyOn(console,'warn').mockImplementation(()=>{});
+  vi.mocked(waitForNativePause).mockRejectedValue(new Error('No pause acknowledgement'));
+  await expect(game.saveForWorldSwitch()).rejects.toThrow('could not be saved');expect(manager.getState).not.toHaveBeenCalled();expect(writeCampaign).not.toHaveBeenCalled();
+ });
+ it('rejects a world change before initialization',async()=>{const{game}=fixture();await expect(game.saveForWorldSwitch()).rejects.toThrow('not ready');expect(writeCampaign).not.toHaveBeenCalled();});
+});
+
 describe('latest position wins when leaving during an autosave',()=>{
  it('captures only after native pause and preserves a visibility pause requested while waiting',async()=>{
   const {game,manager}=fixture();game.ready=true;game.wram[P.mode]=P.gameplay;

@@ -1,3 +1,4 @@
+import {WORLD_PARTY_KEY,decodeWorldParty} from './world';
 import {BossRomHooks} from './boss-rom';
 import {StageBosses} from './boss';
 import {drawStageBoss} from './boss-draw';
@@ -10,7 +11,7 @@ import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
 import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing, waitForNativeFrames, waitForNativePause } from './engine';
 import { queueNativeSound, PROFILE as P, KONG_JUMP_HOLD_MS, SQUAWKS_FLIGHT_VELOCITY, squawksFlightVelocity, NativeJumpBoost, NativeFlutterInput, canModifyJump, canWriteVelocity, hideNativePlayer, absorbHit, keepBabyVisible, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
-import { storeFile } from './storage';
+import { loadFile,storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
 import { configureOverlay } from './overlay';
@@ -21,7 +22,7 @@ const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
 const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
 export class LiveGame {
  private bosses=new StageBosses();private bossHooks?:BossRomHooks;
- private animalAudio=new AnimalAudio();private animalSounds=new AnimalSoundTracker();
+ protected animalAudio=new AnimalAudio();private animalSounds=new AnimalSoundTracker();
  keepBabyOnScreen=true;
  wramBase=0;gsuBase=0;ready=false;paused=false;kills=0;walls=0;adventure=new Adventure();autoSkip=false;
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
@@ -30,6 +31,8 @@ export class LiveGame {
  private videoHeight=239;
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
+ get world():'yoshi'|'dkc'{return 'yoshi';}
+ get isMap():boolean{return this.ready&&isWorldMap(this.wram);}
  get canRepairDisplay():boolean{return (this.ready||this.loadedCampaign)&&[0,P.gameplay,0x26].includes(this.wram[P.mode]);}
  get eggsUnlimited():boolean{return Boolean(this.bossHooks)&&this.bosses.eggsUnlimited;}
  get eggCount():number{return Math.min(6,word(this.gsu,0x1df6)>>>1);}
@@ -75,7 +78,7 @@ export class LiveGame {
      // Start the saved native scene only after the bridge and partners are ready.
      // A held touch/key from the previous session must not survive the restore.
      this.stop();this.jumpSequence=this.controls.jumpSequence;
-     this.finishBoot();return;
+     await this.applyWorldParty();this.finishBoot();return;
     }
     throw new Error(this.canRepairDisplay?'The saved screen could not resume. Open ☰ → Repair display to rebuild the map and keep your progress.':'Your saved game could not be restored. Reload the page to retry.');
    }finally{m.toggleMainLoop(1);}
@@ -86,9 +89,15 @@ export class LiveGame {
   const initial=await loadStartState();m.loadState(initial);await waitForNativeFrames(m);
   if(this.wram[P.mode]!==0x26)throw new Error('The starting level could not be restored. Reload the page to retry.');
   void storeFile(INITIAL,initial).catch(()=>{});
-  this.finishBoot();
+  await this.applyWorldParty();this.finishBoot();
  }
 
+ private async applyWorldParty():Promise<void>{
+  const party=decodeWorldParty(await readBeforeDeadline(loadFile(WORLD_PARTY_KEY),3000).catch(()=>undefined));
+  if(!party)return;
+  const current=this.adventure.serialize();this.adventure=new Adventure({...current,...party,pickups:current.pickups,guardian:current.guardian});
+  await storeFile(WORLD_PARTY_KEY,new Uint8Array()).catch(()=>{});
+ }
  private finishBoot():void{
   this.adventure.guardian=this.bosses.state;
   const h=this.emulator.gameManager.functions.getVideoDimensions('height');if(h>=224&&h<=256){this.videoHeight=h;this.topPadding=(h-224)>>1;}
@@ -150,6 +159,12 @@ export class LiveGame {
   }finally{m.toggleMainLoop(0);this.recovering=false;}
  }
  skipDialogue():void{this.skipUntil=performance.now()+5000;}
+ async saveForWorldSwitch():Promise<void>{
+  if(!this.ready)throw new Error('The game is not ready to change worlds.');
+  await this.save();const snapshot=await this.captureSave();
+  if(!snapshot)throw new Error('The current game could not be saved. Stay here and try again.');
+  await writeCampaign(snapshot.state,snapshot.adventure);
+ }
  save():Promise<void>{
   if(!this.ready||this.recovering||this.wram[P.mode]===0)return Promise.resolve();
   if(!this.capture){

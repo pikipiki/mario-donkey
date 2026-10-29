@@ -114,7 +114,7 @@ export async function resolveMemory(manager:GameManager,address:number,offset:nu
  }finally{manager.toggleMainLoop(0);manager.resetCheat();if(ran&&state)await finishProbeRestore(manager,state);}
 }
 
-export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): Promise<Emulator> {
+export async function launch(rom: Uint8Array, onStatus: (text: string)=>void,gameName='Kong Island'): Promise<Emulator> {
  onStatus('Loading the SNES core…');
  const ios=iosDevice()||(import.meta.env.DEV&&new URLSearchParams(location.search).has('legacy'));
  return await new Promise((resolve,reject)=>{
@@ -128,7 +128,7 @@ export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): P
    if(progress)onStatus(progress);
   },400);
   Object.assign(window,{
-   EJS_player:'#emulator',EJS_core:'snes9x',EJS_gameName:'Kong Island',
+   EJS_player:'#emulator',EJS_core:'snes9x',EJS_gameName:gameName,
    EJS_gameUrl:new Blob([rom.slice().buffer],{type:'application/octet-stream'}),
    EJS_pathtodata:`${import.meta.env.BASE_URL}emulator/`,EJS_startOnLoaded:true,EJS_volume:1,
    EJS_language:'en-US',EJS_disableAutoLang:false,EJS_threads:false,EJS_noAutoFocus:true,

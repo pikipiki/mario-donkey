@@ -1,0 +1,50 @@
+export interface DkcTarget {slot:number;id:number;x:number;y:number;width:number;height:number}
+export interface DkcEgg {x:number;y:number;vx:number;vy:number;age:number}
+export interface DkcCombatSave {eggs:number;shots:DkcEgg[]}
+const clamp=(v:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,v));
+export function sweptHit(x:number,y:number,nx:number,ny:number,t:DkcTarget):boolean{
+ let lo=0,hi=1;
+ for(const [p,d,min,max]of [[x,nx-x,t.x-t.width/2-5,t.x+t.width/2+5],[y,ny-y,t.y-t.height-6,t.y+6]]){
+  if(Math.abs(d)<1e-9){if(p<min||p>max)return false;continue;}
+  const a=(min-p)/d,b=(max-p)/d;lo=Math.max(lo,Math.min(a,b));hi=Math.min(hi,Math.max(a,b));if(lo>hi)return false;
+ }
+ return true;
+}
+/** The native DKC enemy owns its death/graphics cleanup. Count an egg only
+ * after its validated native hit request has been accepted. */
+export class DkcCombat {
+ eggs=0;shots:DkcEgg[]=[];tongue?:{x:number;y:number;endX:number;endY:number;until:number};
+ private frame?:number;private eggHeld=false;private tongueHeld=false;
+ resetClock():void{this.frame=undefined;this.eggHeld=false;this.tongueHeld=false;this.tongue=undefined;}
+ restore(value:unknown):void{
+  const s=value as DkcCombatSave|undefined;this.eggs=Number.isInteger(s?.eggs)?clamp(s!.eggs,0,6):0;
+  this.shots=Array.isArray(s?.shots)?s.shots.filter(p=>p&&[p.x,p.y,p.vx,p.vy,p.age].every(Number.isFinite)&&p.age>=0&&p.age<=4&&Math.abs(p.vx)<=400&&Math.abs(p.vy)<=400).slice(0,6).map(p=>({...p})):[];this.resetClock();
+ }
+ serialize():DkcCombatSave{return{eggs:this.eggs,shots:this.shots.map(p=>({...p}))};}
+ update(frame:number,now:number,player:{x:number;y:number;facing:number},targets:DkcTarget[],egg:boolean,tongue:boolean,up:boolean,hit:(target:DkcTarget)=>boolean):{ate:boolean;killed:number;threw:boolean}{
+  const dt=this.frame===undefined?0:clamp((frame-this.frame)/60,0,.06);this.frame=frame;
+  const freshEgg=egg&&!this.eggHeld,freshTongue=tongue&&!this.tongueHeld;this.eggHeld=egg;this.tongueHeld=tongue;
+  const facing=player.facing<0?-1:1,x=player.x+facing*12,y=player.y-17;
+  let ate=false,killed=0,threw=false;
+  if(freshTongue){
+   const endX=x+(up?facing*20:facing*78),endY=y-(up?80:0);
+   this.tongue={x,y,endX,endY,until:now+150};
+   const target=targets.filter(t=>sweptHit(x,y,endX,endY,t)).sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y))[0];
+   if(target&&hit(target)){this.eggs=Math.min(6,this.eggs+1);ate=true;targets=targets.filter(t=>t.slot!==target.slot);}
+  }
+  if(freshEgg&&this.eggs>0&&this.shots.length<6){
+   const target=targets.filter(t=>(t.x-x)*facing>=-12&&Math.hypot(t.x-x,t.y-y)<240).sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y))[0];
+   const dx=target?target.x-x:facing*200,dy=target?target.y-target.height/2-y:up?-150:0,n=Math.hypot(dx,dy)||1;
+   this.shots.push({x,y,vx:dx/n*300,vy:dy/n*300,age:0});this.eggs--;threw=true;
+  }
+  this.shots=this.shots.filter(p=>{
+   const nx=p.x+p.vx*dt,ny=p.y+p.vy*dt;p.age+=dt;
+   const t=targets.find(t=>sweptHit(p.x,p.y,nx,ny,t));
+   p.x=nx;p.y=ny;
+   if(t&&hit(t)){killed++;targets=targets.filter(e=>e.slot!==t.slot);return false;}
+   return p.age<3&&Math.hypot(p.x-player.x,p.y-player.y)<360;
+  });
+  if(this.tongue&&now>=this.tongue.until)this.tongue=undefined;
+  return{ate,killed,threw};
+ }
+}

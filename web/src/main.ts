@@ -1,15 +1,22 @@
 import './style.css';
 import {installGameTouchGuards} from './touch';
 import { Controls,type Button } from './controls';
-import { launch,primeAudio,waitForNativeFrames } from './engine';
+import { launch,primeAudio,waitForNativeFrames,waitForNativePause } from './engine';
 import { LiveGame } from './game';
-import {isWorldMap,isWorldTab,needsLevelReturn} from './menu';
+import {DkcGame} from './dkc-game';
+import {patchDkcDrawing} from './dkc-profile';
+import {currentWorld,worldUrl,encodeWorldParty,WORLD_PARTY_KEY,ACTIVE_WORLD_KEY,DKC_ROM_SHA256} from './world';
+import {isWorldTab,needsLevelReturn} from './menu';
 import { SpriteAtlas } from './atlas';
 import { ANIMALS,CHARACTERS,type Character,type Mount } from './adventure';
 import { ROM_SHA256,patchYoshiDrawing } from './profile';
 import { loadFile,storeFile } from './storage';
 const animalNames:Record<string,string>={foot:'On foot',yoshi:'Yoshi',rambi:'Rambi',winky:'Winky',expresso:'Expresso',enguarde:'Enguarde',squawks:'Squawks'};
 const base=import.meta.env.BASE_URL;
+let rememberedWorld:string|null=null;
+try{if(!new URLSearchParams(location.search).has('test'))rememberedWorld=localStorage.getItem(ACTIVE_WORLD_KEY);}catch{}
+const world=currentWorld(location.search,rememberedWorld),dkcWorld=world==='dkc';
+const destination=dkcWorld?'yoshi':'dkc',destinationLabel=dkcWorld?'Yoshi’s Island':'Donkey Goonk';
 const debug=import.meta.env.DEV&&new URLSearchParams(location.search).has('debug');
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 <main class="shell">
@@ -24,17 +31,17 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
  <section class="game-layout" aria-label="The game and its controls">
   <div class="play-column"><div class="screen-frame"><div class="screen">
    <div id="emulator" aria-label="SNES game screen"></div><canvas id="actor" width="256" height="239" aria-hidden="true"></canvas>
-   <div id="welcome" class="welcome"><p class="eyebrow">DONKEY KONG COUNTRY × YOSHI’S ISLAND</p><h1>One island.<br>A whole adventure.</h1><p class="intro">PlushGoonk and the Kongs. Yoshi’s world.</p><button id="play" class="play-button" disabled>Play / continue <span aria-hidden="true">↗</span></button></div>
+   <div id="welcome" class="welcome"><p class="eyebrow">DONKEY KONG COUNTRY × YOSHI’S ISLAND</p><h1>${dkcWorld?'Into the jungle.<br>The same heroes.':'One island.<br>A whole adventure.'}</h1><p class="intro">${dkcWorld?'PlushGoonk and the Kongs. Donkey Kong’s world.':'PlushGoonk and the Kongs. Yoshi’s world.'}</p><button id="play" class="play-button" disabled>Play / continue <span aria-hidden="true">↗</span></button></div>
    <div id="loading" class="loading" hidden><span aria-hidden="true">✳</span><p>Getting the adventure ready…</p></div>
   </div></div></div>
   <aside class="controller" aria-label="Touch controls">
    <div class="stick-wrap"><div id="stick" class="stick" role="group" aria-label="Move in every direction"><div id="stick-nub" class="stick-nub"></div></div></div>
    <div class="hud-side"><div class="party-row"><div class="character-picker" role="group" aria-label="Choose a character">${CHARACTERS.map(char=>`<button data-character="${char}" class="character ${char==='violet'?'selected':''}" aria-pressed="${char==='violet'}">${char==='violet'||char==='pink'?`<span class="plush-portrait ${char}" aria-hidden="true"></span>`:`<img src="${base}art/portraits/${char}.png" alt="">`}<span>${({violet:'Violet',pink:'Pink',dk:'Donkey',diddy:'Diddy'})[char]}${char==='diddy'?'<small id="partner-status"></small>':''}</span></button>`).join('')}</div><label class="character-select"><span>Character</span><select id="character" aria-label="Choose a character">${CHARACTERS.map(char=>`<option value="${char}">${({violet:'PlushGoonk violet',pink:'PlushGoonk rose',dk:'Donkey',diddy:'Diddy'})[char]}</option>`).join('')}</select></label><label class="mount-picker"><span>Partner</span><select id="mount" aria-label="Choose a mount"><option value="foot">On foot</option><option value="yoshi">Yoshi</option></select></label></div>
-   <div class="action-pad"><button data-control="jump" class="jump-button"><span aria-hidden="true">↗</span><strong id="jump-label">Jump</strong><small id="jump-hint">normal jump</small></button><button data-control="roll" class="roll-button"><span aria-hidden="true">↻</span><strong>Roll</strong><small>attack</small></button><button data-control="tongue" class="tongue-button"><span aria-hidden="true">⌁</span><strong id="tongue-label">Tongue</strong><small id="tongue-hint">up: stick, then tap</small></button><button data-control="egg" class="egg-button"><span aria-hidden="true">◉</span><strong id="egg-label">Egg</strong><small id="egg-hint">throw · confirm · V</small></button></div></div>
+   <div class="action-pad"><button data-control="jump" class="jump-button"><span aria-hidden="true">↗</span><strong id="jump-label">Jump</strong><small id="jump-hint">normal jump</small></button><button data-control="roll" class="roll-button"><span aria-hidden="true">↻</span><strong>Roll</strong><small>attack</small></button><button id="world-portal" class="world-portal" hidden aria-label="Enter ${destinationLabel} world map"><span class="portal-icon" aria-hidden="true">?</span><strong>${destinationLabel}</strong><small>Change world</small></button><button data-control="tongue" class="tongue-button"><span aria-hidden="true">⌁</span><strong id="tongue-label">Tongue</strong><small id="tongue-hint">up: stick, then tap</small></button><button data-control="egg" class="egg-button"><span aria-hidden="true">◉</span><strong id="egg-label">Egg</strong><small id="egg-hint">throw · confirm · V</small></button></div></div>
   </aside>
  </section>
  <p id="status" class="status" role="status" aria-live="polite">Loading the game…</p>
- <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">On the map, Up selects the world tabs and Down returns to the levels. Levels ↓ also returns from the current world tab. Unlocked stages and worlds can be selected with Left/Right. Hold the stick to move. Release it to stop. Hold Jump to flutter on Yoshi; the Kongs on foot have a normal jump. Walking after release is optional: enable Keep walking below, then touch the center to stop. The roll keeps moving on its own. To grab Baby Mario above you: push the stick up, release, then tap Tongue within two seconds. An egg can also bring his bubble closer. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>Keep walking after release</span><input id="sticky" type="checkbox"></label><label class="setting"><span>Keep Baby Mario on screen</span><input id="baby-visibility" type="checkbox" checked aria-describedby="baby-visibility-hint"></label><p id="baby-visibility-hint" class="sheet-hint">Slows his bubble near the top edge. Turn off for the original flight. The countdown stays the same.</p><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><button id="level-map" class="sheet-button" disabled>Choose a level · World map</button><button id="repair-display" class="sheet-button" disabled>Repair display · Return to map</button><p class="sheet-hint">If the image is scrambled: rebuild the map. Completed stages and partners stay saved; the current stage starts again. A copy of the previous state is kept on this device.</p><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button><button id="test-audio">Check native audio signal (test)</button><button id="test-goal">Approach the 1-1 goal (test)</button><button id="test-boss-eggs">Fire boss eggs (test)</button><button id="test-castle">Enter original 1-4 boss room (test)</button><button id="test-burt-end">Run original Burt defeat sequence (test)</button></details></dialog>
+ <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">On the map, Up selects the world tabs and Down returns to the levels. Levels ↓ also returns from the current world tab. Unlocked stages and worlds can be selected with Left/Right. Hold the stick to move. Release it to stop. Hold Jump to flutter on Yoshi; the Kongs on foot have a normal jump. Walking after release is optional: enable Keep walking below, then touch the center to stop. The roll keeps moving on its own. To grab Baby Mario above you: push the stick up, release, then tap Tongue within two seconds. An egg can also bring his bubble closer. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>Keep walking after release</span><input id="sticky" type="checkbox"></label><label class="setting"><span>Keep Baby Mario on screen</span><input id="baby-visibility" type="checkbox" checked aria-describedby="baby-visibility-hint"></label><p id="baby-visibility-hint" class="sheet-hint">Slows his bubble near the top edge. Turn off for the original flight. The countdown stays the same.</p><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><button id="level-map" class="sheet-button" disabled>Choose a level · World map</button><button id="repair-display" class="sheet-button" disabled>Repair display · Return to map</button><p class="sheet-hint">If the image is scrambled: rebuild the map. Completed stages and partners stay saved; the current stage starts again. A copy of the previous state is kept on this device.</p><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-export-dkc" ${dkcWorld?'':'hidden'}>Export DKC map bootstrap (test)</button><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button><button id="test-audio">Check native audio signal (test)</button><button id="test-goal">Approach the 1-1 goal (test)</button><button id="test-boss-eggs">Fire boss eggs (test)</button><button id="test-castle">Enter original 1-4 boss room (test)</button><button id="test-burt-end">Run original Burt defeat sequence (test)</button></details></dialog>
 </main>`;
 installGameTouchGuards(document.querySelector<HTMLElement>('.shell')!);
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -54,19 +61,19 @@ function syncParty():void{
  document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>{const char=b.dataset.character as Character,active=(a?.active??'violet')===char;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active));b.disabled=a?!a.available.includes(char):false;});
  const character=$<HTMLSelectElement>('character');character.value=a?.active??'violet';character.querySelectorAll('option').forEach(o=>{o.disabled=a?!a.available.includes(o.value as Character):false;});
  $('partner-status').textContent=a?.available.includes('diddy')?'':'';
- const mounts:Mount[]=['foot','yoshi',...(a?.animals??[])];const select=$<HTMLSelectElement>('mount');select.innerHTML=mounts.map(m=>`<option value="${m}">${animalNames[m]}</option>`).join('');select.value=a?.mount??'foot';
- $('jump-hint').textContent=a?.mount==='yoshi'?'hold to flutter':a?.mount==='squawks'?'hold to fly':'normal jump';
+ const mounts:Mount[]=['foot','yoshi',...(a?.animals??[])];const select=$<HTMLSelectElement>('mount');select.innerHTML=mounts.map(m=>`<option value="${m}">${animalNames[m]}</option>`).join('');select.value=a?.mount??'foot';select.hidden=dkcWorld;
+ $('jump-hint').textContent=dkcWorld?'native jump':a?.mount==='yoshi'?'hold to flutter':a?.mount==='squawks'?'hold to fly':'normal jump';
  if(game?.ready)$('stage-name').textContent=game.stageLabel;
 }
 async function acceptRom(bytes:Uint8Array):Promise<void>{
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes.slice().buffer))).map(v=>v.toString(16).padStart(2,'0')).join('');
- if(hash!==ROM_SHA256)throw new Error('This game data is invalid or incomplete.');
- patchYoshiDrawing(bytes); // Validate the exact draw routine, without patching the source ROM.
- rom=bytes; // Bundled ROM loads independently of iOS/private storage availability.
- void storeFile('rom',bytes).catch(()=>{});if(!starting){setStatus('Ready · Play resumes your saved game.');$<HTMLButtonElement>('play').disabled=false;}
+ if(hash!==(dkcWorld?DKC_ROM_SHA256:ROM_SHA256))throw new Error('This game data is invalid or incomplete.');
+ if(!dkcWorld)patchYoshiDrawing(bytes); // Validate the exact draw routine, without patching the source ROM.
+ rom=dkcWorld?patchDkcDrawing(bytes):bytes; // Bundled ROM loads independently of iOS/private storage availability.
+ void storeFile(dkcWorld?'rom-dkc':'rom',bytes).catch(()=>{});if(!starting){setStatus('Ready · Play resumes your saved game.');$<HTMLButtonElement>('play').disabled=false;}
 }
 async function loadBundledRom():Promise<void>{
- const url=import.meta.env.DEV&&import.meta.env.VITE_DEV_ROM_URL?import.meta.env.VITE_DEV_ROM_URL:`${base}rom/yoshi-eu.sfc`;
+ const url=import.meta.env.DEV&&import.meta.env.VITE_DEV_ROM_URL?import.meta.env.VITE_DEV_ROM_URL:`${base}rom/${dkcWorld?'dkc-usa-rev2.sfc':'yoshi-eu.sfc'}`;
  const r=await fetch(url);if(!r.ok)throw new Error('Couldn’t load the game.');
  await acceptRom(new Uint8Array(await r.arrayBuffer()));
 }
@@ -75,7 +82,7 @@ $('play').addEventListener('click',async()=>{
  if(starting)return;if(game&&!game.ready){location.reload();return;}if(!rom){setStatus('The game is still loading…');return;}
  primeAudio();
  starting=true;$('welcome').hidden=true;$('loading').hidden=false;setStatus('Loading the SNES core…');
- try{const atlas=await SpriteAtlas.load();const emulator=await launch(rom,setStatus);game=new LiveGame(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty);game.autoSkip=$<HTMLInputElement>('auto-skip').checked;game.keepBabyOnScreen=$<HTMLInputElement>('baby-visibility').checked;await game.prepare();$('loading').hidden=true;
+ try{const atlas=await SpriteAtlas.load();const emulator=await launch(rom,setStatus,dkcWorld?'Donkey Goonk DKC Rev2':'Kong Island');game=new (dkcWorld?DkcGame:LiveGame)(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty);game.autoSkip=$<HTMLInputElement>('auto-skip').checked;game.keepBabyOnScreen=$<HTMLInputElement>('baby-visibility').checked;await game.prepare();$('loading').hidden=true;
   for(const id of ['pause','skip','save','sound-quick','level-map','repair-display'])$<HTMLButtonElement>(id).disabled=false;
   await game.unlockAudio().catch(()=>{});if(game.audio?.state!=='running')setStatus('Tap ♪ at the top to enable sound.');syncParty();
  }catch(e){console.error('KONG_START_ERROR',e);setStatus((e as Error).message);$('loading').hidden=true;$('welcome').hidden=false;if(game){game.setPaused(true);$('play').textContent='Reload the page';$<HTMLButtonElement>('repair-display').disabled=!game.canRepairDisplay;}starting=false;}
@@ -84,7 +91,23 @@ function releaseUiFocus(target:EventTarget|null):void{const el=target instanceof
 document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>b.addEventListener('click',()=>{if(game)game.character=b.dataset.character as Character;releaseUiFocus(b);}));
 $('character').addEventListener('change',e=>{const select=e.target as HTMLSelectElement;if(game)game.character=select.value as Character;releaseUiFocus(select);});
 $('mount').addEventListener('change',e=>{const select=e.target as HTMLSelectElement;game?.stop();game?.mount(select.value as Mount);releaseUiFocus(select);});
-function refreshButtons():void{}
+let worldSwitchPending=false;
+function refreshButtons():void{
+ const map=Boolean(game?.ready&&game.isMap);
+ $('world-portal').hidden=!map;$<HTMLButtonElement>('world-portal').disabled=worldSwitchPending;
+ document.querySelector<HTMLElement>('[data-control="roll"]')!.hidden=map;
+}
+$('world-portal').addEventListener('click',async()=>{
+ if(!game?.ready||!game.isMap||worldSwitchPending)return;
+ worldSwitchPending=true;const wasPaused=game.paused;pause(true);refreshButtons();
+ setStatus(`Saving your adventure · Opening ${destinationLabel}…`);
+ try{
+  await game.saveForWorldSwitch();await storeFile(WORLD_PARTY_KEY,encodeWorldParty(game.adventure.serialize()));
+  try{if(!new URLSearchParams(location.search).has('test'))localStorage.setItem(ACTIVE_WORLD_KEY,destination);}catch{}
+  location.replace(worldUrl(location.href,destination));
+ }catch(error){worldSwitchPending=false;pause(wasPaused);refreshButtons();setStatus(`The world could not be opened. ${(error as Error).message}`);}
+ releaseUiFocus($('world-portal'));
+});
 const stick=$('stick'),nub=$('stick-nub');let stickPointer:number|undefined;
 function placeStick(e:PointerEvent):void{
  const rect=stick.getBoundingClientRect(),radius=rect.width/2,max=radius*0.58;
@@ -106,6 +129,15 @@ function pause(value:boolean):void{game?.setPaused(value);$('pause').innerHTML=v
 $('pause').addEventListener('click',()=>{if(game)pause(!game.paused);releaseUiFocus($('pause'));});$('skip').addEventListener('click',()=>{if(game?.paused)pause(false);game?.skipDialogue();releaseUiFocus($('skip'));});
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{setStatus('The game already uses all the space in this browser.');}releaseUiFocus($('fullscreen'));});
 const settings=$<HTMLDialogElement>('settings');
+if(dkcWorld){
+ $('skip').hidden=true;
+ $('settings').querySelector('.sheet-hint')!.textContent='Choose a stage on the native Donkey Kong map with the stick, then tap Enter. In a stage, hold Jump for a native Kong jump and use Roll to attack. Tongue swallows a nearby enemy and creates one egg (up to six). Tap Eggs or press V to throw toward a nearby enemy. C uses the tongue, X rolls, arrows move. Each world keeps its own local save; the green pipe on either map changes worlds with the same selected hero.';
+ for(const id of ['baby-visibility','auto-skip'])$(id).closest('label')!.setAttribute('hidden','');
+ $('baby-visibility-hint').hidden=true;
+ $('level-map').textContent='Leave stage · World map';
+ $('repair-display').textContent='Return to the last map checkpoint';
+ $('repair-display').nextElementSibling!.textContent='Returning to the map restarts the current stage attempt from the last map checkpoint. Your separate Yoshi adventure is kept.';
+}
 function closeSettings():void{settings.close();if(menuResume)pause(false);menuResume=false;}
 function resumeFromSettings():void{closeSettings();if(game?.ready&&game.paused)pause(false);}
 $('options').addEventListener('click',()=>{menuResume=Boolean(game?.ready&&!game.paused);if(menuResume)pause(true);settings.showModal();});$('close-settings').addEventListener('click',closeSettings);settings.addEventListener('cancel',e=>{e.preventDefault();closeSettings();});
@@ -152,26 +184,26 @@ function suspendGame():void{keys.clear();releaseStick();if(game?.ready)pause(tru
 document.addEventListener('visibilitychange',()=>{if(document.hidden)suspendGame();});
 // Covers navigation/reload and the browser back-forward cache as well as hiding.
 window.addEventListener('pagehide',suspendGame);
-$('test-wall').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();if(game.paused)pause(false);game.stop();setStatus(`${game.testWall()} test blocks placed. Roll to break them.`);});
-$('test-reset').addEventListener('click',async()=>{if(!debug||!game)return;const state=await loadFile('campaign-eu-map-v3-snes9x-2.0.2');if(!state)return;closeSettings();game.stop();game.emulator.gameManager.loadState(state);});
-$('test-egg').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-40);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);write(0xc4,0);write(0x1d6,0x3f);controls.facing=1;controls.activate('tongue',performance.now());setTimeout(()=>controls.activate('down',performance.now()),700);break;}}});
-$('test-hit').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();game.gsu[0x8c]=0xd0;game.gsu[0x8d]=1;game.gsu[0x90]=0x70;game.gsu[0x91]=7;});
-$('test-roll').addEventListener('click',()=>{if(!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-24);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);controls.facing=1;controls.activate('roll',performance.now());break;}}});
-$('test-dialogue').addEventListener('click',()=>{if(!debug||!game?.ready||game.wram[0x118]!==0x13)return;closeSettings();if(game.paused)pause(false);game.stop();game.wram[0xd11]=1;game.gsu[0x4070]=0x2c;game.gsu[0x4071]=0;});
+$('test-wall').addEventListener('click',()=>{if(dkcWorld||!debug||!game?.ready)return;closeSettings();if(game.paused)pause(false);game.stop();setStatus(`${game.testWall()} test blocks placed. Roll to break them.`);});
+$('test-reset').addEventListener('click',async()=>{if(dkcWorld||!debug||!game)return;const state=await loadFile('campaign-eu-map-v3-snes9x-2.0.2');if(!state)return;closeSettings();game.stop();game.emulator.gameManager.loadState(state);});
+$('test-egg').addEventListener('click',()=>{if(dkcWorld||!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-40);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);write(0xc4,0);write(0x1d6,0x3f);controls.facing=1;controls.activate('tongue',performance.now());setTimeout(()=>controls.activate('down',performance.now()),700);break;}}});
+$('test-hit').addEventListener('click',()=>{if(dkcWorld||!debug||!game?.ready)return;closeSettings();game.stop();game.gsu[0x8c]=0xd0;game.gsu[0x8d]=1;game.gsu[0x90]=0x70;game.gsu[0x91]=7;});
+$('test-roll').addEventListener('click',()=>{if(dkcWorld||!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-24);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);controls.facing=1;controls.activate('roll',performance.now());break;}}});
+$('test-dialogue').addEventListener('click',()=>{if(dkcWorld||!debug||!game?.ready||game.wram[0x118]!==0x13)return;closeSettings();if(game.paused)pause(false);game.stop();game.wram[0xd11]=1;game.gsu[0x4070]=0x2c;game.gsu[0x4071]=0;});
 $('test-unlock').addEventListener('click',()=>{if(!debug||!game)return;game.adventure.available=[...CHARACTERS];game.adventure.animals=[...ANIMALS];syncParty();});
 let lastDiagnostic=0;
 function frame():void{
  const now=performance.now();game?.tick(now);refreshButtons();
  if(game?.ready){
-  const map=isWorldMap(game.wram),returnToLevels=needsLevelReturn(game.wram);
+  const map=game.isMap,returnToLevels=!dkcWorld&&needsLevelReturn(game.wram);
   const mapLabel=returnToLevels?'Levels ↓':'Enter';
-  const mapHint=returnToLevels?'back to the level grid':isWorldTab(game.wram)?'selected world':'selected level';
+  const mapHint=returnToLevels?'back to the level grid':!dkcWorld&&isWorldTab(game.wram)?'selected world':'selected level';
   $('jump-label').textContent=map?mapLabel:'Jump';
-  $('jump-hint').textContent=map?mapHint:game.adventure.mount==='yoshi'?'hold to flutter':game.adventure.mount==='squawks'?'hold to fly':'normal jump';
-  const up=controls.tongueAimingUp(now);$('tongue-label').textContent=up?'Tongue ↑':'Tongue';$('tongue-hint').textContent=up?'aimed up':'up: stick, then tap';
+  $('jump-hint').textContent=map?mapHint:dkcWorld?'native jump':game.adventure.mount==='yoshi'?'hold to flutter':game.adventure.mount==='squawks'?'hold to fly':'normal jump';
+  const up=controls.tongueAimingUp(now);$('tongue-label').textContent=up?'Tongue ↑':'Tongue';$('tongue-hint').textContent=dkcWorld?'eat an enemy':up?'aimed up':'up: stick, then tap';
   const n=game.eggCount,aiming=game.aiming,unlimited=game.eggsUnlimited;
   $('egg-label').textContent=map?mapLabel:game.messageOpen?'OK':unlimited?'Throw · ∞':aiming?'Throw':`Eggs · ${n}`;
-  $('egg-hint').textContent=map?mapHint:game.messageOpen?'confirm':unlimited?'assisted aim / V':aiming?'press / V':n?'aim / V':'Tongue then Down';
+  $('egg-hint').textContent=map?mapHint:game.messageOpen?'confirm':unlimited?'assisted aim / V':aiming?'press / V':n?(dkcWorld?'throw / V':'aim / V'):dkcWorld?'eat an enemy first':'Tongue then Down';
  }
  if(debug&&game?.ready&&now-lastDiagnostic>500){$('diagnostic').textContent=JSON.stringify(game.diagnostics(),null,2);lastDiagnostic=now;}
  requestAnimationFrame(frame);
@@ -185,7 +217,7 @@ $('test-audio').addEventListener('click',async()=>{
  try{await new Promise(r=>setTimeout(r,250));const data=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(data);const rms=Math.sqrt(data.reduce((sum,v)=>sum+v*v,0)/data.length);setStatus(`Native audio: ${slot.audioCtx.state} · signal ${rms.toFixed(5)}`);}finally{slot.gain.disconnect(analyser);analyser.disconnect();}
 });
 $('test-goal').addEventListener('click',async()=>{
- if(!debug||!game?.ready||game.wram[0x21a]!==0)return;
+ if(dkcWorld||!debug||!game?.ready||game.wram[0x21a]!==0)return;
  resumeFromSettings();game.stop();
  // Reload 1-1 through its real entrance loader near the goal. Restore the ROM
  // data immediately afterwards; never manufacture a goal sprite or completion.
@@ -204,7 +236,7 @@ $('test-goal').addEventListener('click',async()=>{
 });
 
 $('test-boss-eggs').addEventListener('click',async()=>{
- if(!debug||!game?.ready)return;resumeFromSettings();game.stop();
+ if(dkcWorld||!debug||!game?.ready)return;resumeFromSettings();game.stop();
  for(let i=0;i<18;i++){
   if(!game.eggsUnlimited||game.paused)break;
   // DEV transition fixture: avoid an unattended rescue while checking endings.
@@ -218,7 +250,7 @@ $('test-boss-eggs').addEventListener('click',async()=>{
 });
 
 $('test-castle').addEventListener('click',async()=>{
- if(!debug||!game?.ready)return;resumeFromSettings();game.goToMap();
+ if(dkcWorld||!debug||!game?.ready)return;resumeFromSettings();game.goToMap();
  const w=game.wram;w[0x218]=0;w[0x21a]=3;
  w.set([0x3d,5,0x63,0],0x17e00);w[0x38e]=0;w[0x38f]=0;w[0x38c]=1;w[0x38d]=0;w[0x118]=0x0f;
  const began=performance.now();while(w[0x118]!==0x13){if(performance.now()-began>15000){setStatus('Native castle load timed out.');return;}await waitForNativeFrames(game.emulator.gameManager);}
@@ -228,7 +260,7 @@ $('test-castle').addEventListener('click',async()=>{
 });
 
 $('test-burt-end').addEventListener('click',async()=>{
- if(!debug||!game?.ready||game.wram[0x21a]!==3)return;resumeFromSettings();
+ if(dkcWorld||!debug||!game?.ready||game.wram[0x21a]!==3)return;resumeFromSettings();
  const g=game.gsu,word=(a:number)=>g[a]|g[a+1]<<8;
  for(let slot=6;slot<24;slot++){
   const o=slot*4;if(word(0x1360+o)!==0x46||word(0xf00+o)!==0x10)continue;
@@ -240,4 +272,17 @@ $('test-burt-end').addEventListener('click',async()=>{
   pause(true);setStatus('Post-Burt guardian ready · Resume or fire the test eggs.');return;
  }
  setStatus('Burt is not active yet.');
+});
+
+$('test-export-dkc').addEventListener('click',async()=>{
+ if(!debug||!game?.ready||game.world!=='dkc'||!game.isMap)return;
+ const active=game,wasPaused=active.paused;active.setPaused(true);
+ try{
+  await waitForNativePause(active.emulator.gameManager);
+  const state=new Uint8Array(active.emulator.gameManager.getState());
+  const url=URL.createObjectURL(new Blob([state.buffer],{type:'application/octet-stream'}));
+  const link=document.createElement('a');link.href=url;link.download='dkc-map-snes9x-2.0.2.state';link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus('DKC map bootstrap exported.');
+ }catch(error){setStatus((error as Error).message);}
+ finally{if(!wasPaused)active.setPaused(false);}
 });

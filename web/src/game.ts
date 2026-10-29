@@ -1,3 +1,4 @@
+import{GoalDepartureHooks}from'./goal-departure';
 import{GoalHandoffRecovery,requestGoalReturn,type StalledGoal}from'./goal-recovery';
 import {SquawksCamera}from'./squawks-camera';
 import {TeamTag,drawTagContact}from'./team-tag';
@@ -27,7 +28,7 @@ export type { Character } from './adventure';
 const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
 const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
 export class LiveGame {
- private goalRecovery=new GoalHandoffRecovery();
+ private goalRecovery=new GoalHandoffRecovery();private goalDeparture?:GoalDepartureHooks;
  private previousRoll?:{x:number;y:number;room:string};
  private squawksCamera=new SquawksCamera();
  private bosses=new StageBosses();private bossHooks?:BossRomHooks;private nativeBossEggs?:NativeBossEggs;private eggFlights=new NativeEggFlights();
@@ -74,7 +75,7 @@ export class LiveGame {
   // These probes run only on the disposable title scene. The complete campaign
   // or bootstrap is loaded once afterwards; never queue intermediate title restores.
   try{this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000,false);this.gsuBase=await resolveMemory(m,0x7007e0,0x7e0,0x8000,false);this.drawSite=await resolveDrawing(m,false);}finally{m.toggleMainLoop(1);}
-  this.bossHooks=new BossRomHooks(this.emulator.Module.HEAPU8,this.drawSite);this.nativeBossEggs=new NativeBossEggs(this.emulator.Module.HEAPU8,this.drawSite);
+  this.goalDeparture=new GoalDepartureHooks(this.emulator.Module.HEAPU8,this.drawSite);this.bossHooks=new BossRomHooks(this.emulator.Module.HEAPU8,this.drawSite);this.nativeBossEggs=new NativeBossEggs(this.emulator.Module.HEAPU8,this.drawSite);
   const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
   const campaign=fresh?undefined:await readBeforeDeadline(readCampaign(),4000);
   if(campaign){
@@ -181,8 +182,9 @@ export class LiveGame {
   try{
    await this.capture;await this.saving;await waitForNativePause(m);
    const snapshot={state:new Uint8Array(m.getState()),adventure:structuredClone(this.adventure.serialize())};
-   await backupCampaign(snapshot,'goal-handoff');
-   if(requestGoalReturn(this.wram,this.gsu,candidate))this.onStatus('Finishing the stage · Baby Mario is returning to Yoshi…');
+   await backupCampaign(snapshot,candidate.kind==='departure'?'goal-departure':'goal-handoff');
+   if(candidate.kind==='departure'){if(this.goalDeparture?.request(this.wram,this.gsu,candidate))this.onStatus('Finishing the stage · Restoring the score transition…');}
+   else if(requestGoalReturn(this.wram,this.gsu,candidate))this.onStatus('Finishing the stage · Baby Mario is returning to Yoshi…');
   }finally{this.recovering=false;if(!this.paused)m.toggleMainLoop(1);}
  }
  skipDialogue():void{this.skipUntil=performance.now()+5000;}
@@ -227,6 +229,7 @@ export class LiveGame {
  tick(now:number):void{
   if(!this.ready||this.paused||this.recovering||this.capturing)return;
   const g=this.gsu;
+  this.goalDeparture?.sync(this.wram,g);
   const stalled=this.goalRecovery.update(this.wram,g,this.emulator.gameManager.functions?.getFrameNum?.()??0);
   if(stalled){void this.recoverGoalHandoff(stalled).catch(error=>this.onStatus((error as Error).message));return;}
   const rollActive=now<this.controls.rollUntil&&this.wram[P.mode]===P.gameplay&&!this.messageOpen&&!this.teamTag.swapping;

@@ -1,3 +1,11 @@
+## 29 octobre 2026 — seconde phase de récupération de fin de stage (départ figé)
+
+Après la réception de Baby, la sauvegarde utilisateur reste au jingle sans scores. Reproduction privée : vraie cérémonie1-2 et réception native, puis verrou joueur1AE=1 injecté comme fixture ancienne. Baby porté, goalphase3, timer0, écranX74 et caméra immobile pendant700frames : aucun départ. Le correctif observe150frames natives sans progression >8px du héros ni caméra, sauvegarde une copie indépendante campagne-before-goal-departure, revalide le goal et abaisse temporairement UN octet de comparaison ROM EU fichier12C40 deF0 à00. Signature entière vérifiée : ADB060C9F0003015EE590BEE590BBC367A88BB221EA303A612221EA303. La routine native12C3C effectue alors elle-même INC0B59 deux fois, nettoyage ancienYoshi/goal, fade, scores et progression. Aucune position, vie, score ni drapeau de stage n'est forcé. L'octetF0 est restauré dès la sortie de cette condition. Ne jamais appliquer cette comparaison pendant un départ qui avance normalement.
+
+Preuves : scripts/probe-goal-departure.py : vraie entrée1-2, bulle libre puis demande de retour native, verrou de départ, correction temporaire, tableau des scores et carte1-3 (stage2/tuile2) débloquée par le jeu. Navigateur isolé5204 : fixture enregistrée, rechargement et reprise sans fresh, vrai tableau10points affiché (outputs/goal-departure-browser.png). L'onglet a ensuite été rechargé par Vite pendant les autres modifications ; le passage carte est prouvé dans Mesen. Ne pas prétendre lire la sauvegarde physique de l'iPhone. Les tests de reprise mockent ce hook ROM comme les autres hooks, les tests goal-departure vérifient séparément la signature exacte, la mutation et restauration, et les conditions exclues. Le guard normal Baby perdu reste inchangé.
+
+---
+
 ## 29 octobre 2026 — récupération d’une fin de niveau sauvegardée bloquée (606 tests)
 
 Photo utilisateur iPhone :1-2, Yoshi receveur à gauche et Baby Mario dans sa bulle à droite, impossible de passer au stage suivant. Sa sauvegarde physique n’est pas accessible depuis le Mac. Question joystick bloqué vs encore mobile posée mais sans réponse à ce stade ; ne pas affirmer avoir lu ou réparé les octets de son téléphone. Le correctif cible strictement la cérémonie native, pas une perte ordinaire de Baby Mario.

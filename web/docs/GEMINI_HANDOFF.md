@@ -1,3 +1,19 @@
+## 29 octobre 2026 — ordre des boss DKC et noms des peluches (458 tests)
+
+Les sept arènes DKC (entrées E0..E5 et68) gardent leur combat original. Burt apparaît ensuite, après la création de la vraie banane géante de victoire (ID74, état0). Le héros doit être au sol avant l’apparition : le sol de Burt vient du héros, pas de la banane suspendue hors écran. Après trois œufs visés et son animation de défaite, la cérémonie DKC reprend et débloque la vraie carte. Musique/FX Burt et œufs illimités existants restent actifs.
+
+`dkc-boss-finish.ts` ne modifie que trampoline banane3F836C → garde libre3BFA00, drapeau privé3BFBFE ; dispatcher musiqueFBF880 existant, contexte P/A/X/Y/DB/DP intégralement conservé. Installer après DkcBossRomHooks et avant loadState. Les états de banane déjà avancés continuent : une sauvegarde dans la cérémonie ne se bloque pas. `DkcGuardianSave.exitKind` optionnel conserve la compatibilité des anciennes sauvegardes de portes. Les portes ne déclenchent jamais Burt prématurément dans une arène de boss.
+
+K.Rool : NE PAS retenir directement CurrentWorldBoss au sous-état13 ! Une attente longue y cassait le contexte natif. La version finale laisse son script entier continuer : vraie animation01B2 → commande finale → propriétaire1E0F=5 → CODE_B6D1C5 → banane. La fausse défaite01AF ne crée aucune banane. Le trampoline du boss3F837C reste inchangé.
+
+Noms affichés : violet → Bobope, pink → Paingpaing via CHARACTER_NAMES ; IDs internes, sélection et sauvegardes restent compatibles.
+
+Validation : 458 tests /42 fichiers et build TypeScript/Vite valides. Mesen ROM Rev2 exacte : Very Gnawty vrai dernier saut (fixture1HP) → banane141frames → retenue600frames, déplacement natif → libération → vraie carteED. K.Rool : fixture honnêtement limitée au script final (pas combat complet) → banane156frames → retenue600frames, mouvement → libération → carte16 native. Navigateur isolé5196 Snes9x : vrai Very Gnawty avant Burt ; banane retenue ; Burt3HP, musique native arrêtée051D0 et audio Burt actif, trois tirs visés jusqu’à0HP, vraie carte Monkey MinesED et musique native12 rétablie. Preuves outputs/verification-dkc-native-boss-sequence.json et verification-dkc-after-native-boss.png. Scripts/probe-dkc-boss-sequence.py reproduit le test natif hors ligne sans modifier la ROM livrée.
+
+À poursuivre : recette physique iPhone/Android et campagnes complètes des sept boss ; aucune affirmation que chaque combat complet a été joué. Les boss Yoshi dans DKC restent des adaptations Canvas/TypeScript et non une seconde ROM en simultané. Les vrais œufs SNES restent réservés au moteur Yoshi ; DKC utilise sa file/visée Canvas existante.
+
+---
+
 ## 29 octobre 2026 — boss réciproques, audio et vrais œufs (448 tests, recette native effectuée)
 
 ### Changement demandé

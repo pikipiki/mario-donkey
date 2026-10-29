@@ -3,6 +3,8 @@ export const ANIMALS=['rambi','winky','expresso','enguarde','squawks'] as const;
 export type Animal=typeof ANIMALS[number];
 export const CHARACTERS=['violet','pink','dk','diddy'] as const;
 export type Character=typeof CHARACTERS[number];
+/** Display names only: stable IDs keep existing saves and sprite assets valid. */
+export const CHARACTER_NAMES:Readonly<Record<Character,string>>={violet:'Bobope',pink:'Paingpaing',dk:'Donkey',diddy:'Diddy'};
 export type Mount='foot'|'yoshi'|Animal;
 export interface Pickup {id:string;room:string;kind:'barrel'|Animal;x:number;y:number;collected:boolean}
 interface Room {distance:number;crates:number;nextCrate:number;samples:Array<{x:number;y:number}>;last?:{x:number;y:number}}

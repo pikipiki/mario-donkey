@@ -9,6 +9,7 @@ import{loadFile,storeFile}from'./storage';
 import{readBeforeDeadline}from'./startup';
 import{decodeWorldParty,WORLD_PARTY_KEY}from'./world';
 import {DkcGuardian} from './dkc-guardian';
+import {DkcBossFinishHooks,pendingBossVictory} from './dkc-boss-finish';
 import {DkcBossRomHooks} from './dkc-boss-rom';
 import {drawDkcGuardian,drawDkcEgg} from './dkc-guardian-draw';
 import {word} from './profile';
@@ -17,7 +18,7 @@ import{decodeDkcSave,encodeDkcSave,DKC_SAVE_KEY,DKC_MAP_KEY}from'./dkc-save';
 import{validateDkcNativeState}from'./snapshot';
 import{readDkcScene,dkcEnemies,killDkcEnemy}from'./dkc-profile';
 export class DkcGame extends LiveGame{
- private combat=new DkcCombat();private dkGuardian=new DkcGuardian();private dkBossHooks?:DkcBossRomHooks;private dkMusicHeld=false;private dkLastSave=0;private dkSaving?:Promise<void>;private dkCapturing=false;private dkMap=false;private dkHeight=224;private dkFrame=0;private dkAnimation='';private dkAnimationAt=0;private dkStage='';private dkRoom?:number;
+ private combat=new DkcCombat();private dkGuardian=new DkcGuardian();private dkBossHooks?:DkcBossRomHooks;private dkBossFinish?:DkcBossFinishHooks;private dkMusicHeld=false;private dkLastSave=0;private dkSaving?:Promise<void>;private dkCapturing=false;private dkMap=false;private dkHeight=224;private dkFrame=0;private dkAnimation='';private dkAnimationAt=0;private dkStage='';private dkRoom?:number;
  constructor(emulator:Emulator,controls:Controls,private dkCanvas:HTMLCanvasElement,private dkAtlas:SpriteAtlas,private dkStatus:(message:string)=>void,private dkChanged:()=>void=()=>{}){super(emulator,controls,dkCanvas,dkAtlas,dkStatus,dkChanged);}
  override get world():'yoshi'|'dkc'{return 'dkc';}
  override get isMap():boolean{return this.ready&&readDkcScene(this.wram).isMap;}
@@ -34,7 +35,7 @@ export class DkcGame extends LiveGame{
  override async prepare():Promise<void>{
   const m=this.emulator.gameManager;await this.unlockAudio().catch(()=>{});
   await waitForNativeFrames(m);this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000,false);
-  this.dkBossHooks=new DkcBossRomHooks(this.emulator.Module.HEAPU8);this.dkBossHooks.sync(true);m.toggleMainLoop(1);
+  this.dkBossHooks=new DkcBossRomHooks(this.emulator.Module.HEAPU8);this.dkBossHooks.sync(true);this.dkBossFinish=new DkcBossFinishHooks(this.emulator.Module.HEAPU8);m.toggleMainLoop(1);
   const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
   const saved=fresh?undefined:await readBeforeDeadline(loadFile(DKC_SAVE_KEY),4000);
   if(saved){const data=decodeDkcSave(saved);m.loadState(data.state);await waitForNativeFrames(m);this.adventure=new Adventure(data.adventure);this.combat.restore(data.combat);this.dkGuardian.restore(data.guardian);}
@@ -55,7 +56,7 @@ export class DkcGame extends LiveGame{
  override goToMap():void{void this.returnToMap();}
  private async returnToMap():Promise<void>{
   const bytes=await loadFile(DKC_MAP_KEY);if(!bytes){this.dkStatus('Return through the native stage exit to reach the DKC map.');return;}
-  const saved=decodeDkcSave(bytes),m=this.emulator.gameManager;await this.save();await waitForNativePause(m);this.stop();m.loadState(saved.state);m.toggleMainLoop(1);await waitForNativeFrames(m);this.paused=false;this.combat.shots=[];this.dkGuardian.clear();this.dkBossHooks?.sync(false);this.bossAudio.stop();this.dkMusicHeld=false;this.dkStatus('Donkey Goonk · World map');
+  const saved=decodeDkcSave(bytes),m=this.emulator.gameManager;await this.save();await waitForNativePause(m);this.stop();m.loadState(saved.state);m.toggleMainLoop(1);await waitForNativeFrames(m);this.paused=false;this.combat.shots=[];this.dkGuardian.clear();this.dkBossHooks?.sync(false);this.dkBossFinish?.sync(false);this.bossAudio.stop();this.dkMusicHeld=false;this.dkStatus('Donkey Goonk · World map');
  }
  override async repairDisplay():Promise<void>{await this.returnToMap();}
  override async saveForWorldSwitch():Promise<void>{if(!this.ready)throw new Error('The game is not ready.');await this.save();}
@@ -75,8 +76,9 @@ export class DkcGame extends LiveGame{
   if(!this.ready||this.paused||this.dkCapturing)return;
   const m=this.emulator.gameManager,w=this.wram,s=readDkcScene(w);
   if(this.dkRoom!==s.level){this.dkRoom=s.level;this.combat.shots=[];this.combat.resetClock();}
-  const bossResult=this.dkGuardian.update(w,m.functions.getFrameNum(),slot=>this.dkBossHooks?.isMapExit(w,slot)??false);
+  const bossResult=this.dkGuardian.update(w,m.functions.getFrameNum(),slot=>this.dkBossHooks?.isMapExit(w,slot)??false,pendingBossVictory(w));
   this.dkBossHooks?.sync(s.playing&&this.dkGuardian.state?.phase!=='released');
+  this.dkBossFinish?.sync(this.dkGuardian.state?.phase!=='released');
   const guardian=this.dkGuardian.state;
   const musicPlaying=this.bossAudio.sync(this.audio,s.playing&&guardian?{world:'yoshi',id:'burt',phase:guardian.phase}:undefined);
   // Native music dispatch is performed by the guarded exit routine.
@@ -120,5 +122,5 @@ export class DkcGame extends LiveGame{
   drawDkcGuardian(c,this.dkAtlas,this.dkGuardian.state,s.cameraX,s.cameraY,pad);
   c.globalAlpha=1;
  }
- override diagnostics():Record<string,unknown>{return{native:{mode:this.wram[0x32]|this.wram[0x33]<<8,scene:this.wram[0x40]|this.wram[0x41]<<8,process:this.wram[0x508]|this.wram[0x509]<<8,brightness:this.wram[0x51a],playerIds:[this.wram[0xd45]|this.wram[0xd46]<<8,this.wram[0xd47]|this.wram[0xd48]<<8,this.wram[0xd49]|this.wram[0xd4a]<<8]},nativeMusic:{playing:word(this.wram,0x51d),song:word(this.wram,0x523),bank:word(this.wram,0x521)},guardian:this.dkGuardian.state,bossAudio:{playing:this.bossAudio.playing,played:this.bossAudio.played,last:this.bossAudio.lastEffect},world:'dkc',...readDkcScene(this.wram),eggs:this.eggCount,shots:this.combat.shots,kills:this.kills,enemies:dkcEnemies(this.wram),frame:this.dkFrame,paused:this.paused,audio:this.audio?.state,party:this.adventure.serialize()};}
+ override diagnostics():Record<string,unknown>{return{bossFinish:this.dkBossFinish?.bases.map(base=>({base,hold:this.emulator.Module.HEAPU8[base+0x3bfbfe],banana:Array.from(this.emulator.Module.HEAPU8.slice(base+0x3f836c,base+0x3f8370))})),victory:pendingBossVictory(this.wram),nativeActors:Array.from({length:23},(_,i)=>6+i*2).map(slot=>({slot,id:word(this.wram,0xd45+slot),state:word(this.wram,0x1029+slot)})).filter(a=>a.id),native:{mode:this.wram[0x32]|this.wram[0x33]<<8,scene:this.wram[0x40]|this.wram[0x41]<<8,process:this.wram[0x508]|this.wram[0x509]<<8,brightness:this.wram[0x51a],playerIds:[this.wram[0xd45]|this.wram[0xd46]<<8,this.wram[0xd47]|this.wram[0xd48]<<8,this.wram[0xd49]|this.wram[0xd4a]<<8]},nativeMusic:{playing:word(this.wram,0x51d),song:word(this.wram,0x523),bank:word(this.wram,0x521)},guardian:this.dkGuardian.state,bossAudio:{playing:this.bossAudio.playing,played:this.bossAudio.played,last:this.bossAudio.lastEffect},world:'dkc',...readDkcScene(this.wram),eggs:this.eggCount,shots:this.combat.shots,kills:this.kills,enemies:dkcEnemies(this.wram),frame:this.dkFrame,paused:this.paused,audio:this.audio?.state,party:this.adventure.serialize()};}
 }

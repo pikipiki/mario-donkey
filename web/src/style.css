@@ -70,3 +70,6 @@ html,body,#app{touch-action:none;-webkit-text-size-adjust:100%;text-size-adjust:
 .action-pad .world-portal small{font-size:9px;color:#375c3c}
 .action-pad .world-portal:focus-visible{outline:3px solid #fff9b5;outline-offset:2px}
 @media(orientation:landscape) and (max-height:600px){.action-pad .world-portal strong{font-size:10px}.action-pad .world-portal .portal-icon{width:30px;height:30px}}
+
+/* Longer companion names stay readable without shrinking touch targets. */
+.character-name{display:block;max-width:100%;font-size:clamp(8px,2.3vw,11px);letter-spacing:-.02em;line-height:1.15}

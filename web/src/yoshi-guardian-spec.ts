@@ -1,3 +1,4 @@
+import{dkcStageOrdinal}from'./dkc-levels';
 /** Native DKC entrance IDs, including checkpoints, bonuses and boss arenas.
  * Stage labels come from DKC1 entrance definitions (also used by dkc-levels).
  * World order is Kongo / Monkey / Vine / Glacier / Kremkroc / Chimp / Galleon.
@@ -19,9 +20,12 @@ export const YOSHI_GUARDIANS:readonly YoshiGuardianSpec[]=[
  {id:'raphael',name:'Raphael the Raven',width:80,height:80,hp:6,motion:'orbit',source:'native roomC4 sprite0C'},
  {id:'tap-tap',name:'Tap-Tap the Red Nose',width:72,height:80,hp:6,motion:'bounce',source:'native roomCC sprite3C'},
 ];
-/** 1-based DKC world. Return undefined for unknown worlds. Availability of
+/** Legacy 1-based world metadata, not the encounter rotation. Return undefined for unknown worlds. Availability of
  * authentic art must be checked by the caller; metadata is not an art claim. */
 export function guardianForWorld(world:number):YoshiGuardianSpec|undefined{return Number.isInteger(world)?YOSHI_GUARDIANS[world-1]:undefined;}
+/** One different guardian for every campaign stage, then repeat after all seven.
+ * Native boss stages count too; their crossover still follows the original fight. */
+export function guardianForEntrance(entrance:number):YoshiGuardianSpec|undefined{const index=dkcStageOrdinal(entrance);return index===undefined?undefined:YOSHI_GUARDIANS[index%YOSHI_GUARDIANS.length];}
 /** Salvo's native EU50Hz motion constants: source068A85 jumpFCE0;
  * acceleration10 and target x-speedC0 at068A68 / 0689E5. The native morph
  * and shrink state machine is a separate visual system, not recreated here. */

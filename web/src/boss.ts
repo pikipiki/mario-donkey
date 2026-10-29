@@ -13,7 +13,10 @@ export type BossId=typeof STAGE_BOSSES[number]['id'];
 export type BossPhase='intro'|'fight'|'dying'|'exit'|'released';
 export interface Shot{x:number;y:number;vx:number;vy:number;age:number;kind:'egg'|'nut'|'crown'|'shock'}
 export interface GuardianSave {version:1;stage:number;room:string;id:BossId;kind:BossExitKind;slot:number;phase:BossPhase;hp:number;maxHp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;nextAttack:number;hitUntil:number;facing:number;music?:number;ring?:{x:number;y:number};nativeGoal?:{x:number;y:number};shots:Shot[];jumpEpoch?:number;arena?:{x:number;y:number;height:number}}
-export function bossForStage(stage:number){return STAGE_BOSSES[Math.max(0,stage)%STAGE_BOSSES.length];}
+/** SNES slots reserve twelve entries per world, but only eight main stages.
+ * Extras rotate after all48 main levels, so menu gaps don't skip bosses. */
+export function yoshiStageOrdinal(stage:number):number|undefined{if(!Number.isInteger(stage)||stage<0||stage>=72||stage%12>8)return;const world=Math.floor(stage/12),level=stage%12;return level===8?48+world:world*8+level;}
+export function bossForStage(stage:number){return STAGE_BOSSES[(yoshiStageOrdinal(stage)??0)%STAGE_BOSSES.length];}
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
 /** Reject malformed encounter metadata without invalidating an older campaign. */
@@ -29,7 +32,9 @@ export function validateGuardian(value:unknown):GuardianSave|undefined{
  if(s.nativeGoal&&(!finite(s.nativeGoal.x)||!finite(s.nativeGoal.y)||s.nativeGoal.x<0||s.nativeGoal.x>4096||s.nativeGoal.y<0||s.nativeGoal.y>2304))return;
  if(s.ring&&(!finite(s.ring.x)||!finite(s.ring.y)||s.ring.x<0||s.ring.x>4096||s.ring.y<0||s.ring.y>2304))return;
  if(!Array.isArray(s.shots)||s.shots.length>24||s.shots.some(p=>!p||!['egg','nut','crown','shock'].includes(p.kind)||![p.x,p.y,p.vx,p.vy,p.age].every(finite)||p.age<0||p.age>8||Math.abs(p.vx)>1000||Math.abs(p.vy)>1000))return;
- return structuredClone(s);
+ const copy=structuredClone(s),expected=bossForStage(copy.stage).id;
+ if(copy.id!==expected&&(copy.phase==='intro'||copy.phase==='fight')){copy.id=expected;copy.shots=[];copy.hitUntil=copy.elapsed;copy.nextAttack=copy.elapsed+1.8;copy.jumpEpoch=copy.elapsed;}
+ return copy;
 }
 function activeSlot(g:Uint8Array,id:number):number|undefined{
  for(let slot=6;slot<24;slot++)if(word(g,P.spriteState+slot*4)===0x10&&word(g,P.spriteId+slot*4)===id)return slot;

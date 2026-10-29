@@ -16,7 +16,7 @@ describe('Yoshi guardian before the genuine DKC map exit',()=>{
 
 describe('native DKC boss before Yoshi crossover',()=>{
  it('never spawns from a door in a boss arena before native defeat',()=>{for(const arena of[0xe0,0xe1,0xe2,0xe3,0xe4,0xe5,0x68]){const f=fixture();writeWord(f.w,DKC.entrance,arena);f.boss.update(f.w,1,()=>true);expect(f.boss.state).toBeUndefined();}});
- it('waits for the hero to land, uses the arena floor rather than the airborne banana, survives a save, and releases after six eggs',()=>{const f=fixture();writeWord(f.w,DKC.entrance,0xe0);writeWord(f.w,DKC.id+6,0x74);writeWord(f.w,DKC.y+6,528);writeWord(f.w,0x12a7,0);const tick=(frame:number)=>f.boss.update(f.w,frame,()=>false,pendingBossVictory(f.w));tick(1);expect(f.boss.state).toBeUndefined();writeWord(f.w,0x12a7,1);tick(2);expect(f.boss.state?.floor).toBe(312);expect(f.boss.state?.exitKind).toBe('banana');f.boss.restore(f.boss.state);for(let i=3;i<65;i++)tick(i);for(let n=0;n<6;n++){expect(f.boss.hit()).toBe(true);for(let i=0;i<700;i++)tick(65+n*700+i);}expect(f.boss.state?.phase).toBe('released');expect(word(f.w,DKC.state+6)).toBe(0);});
+ it('waits for the hero to land, uses the arena floor rather than the airborne banana, survives a save, and releases after six eggs',()=>{const f=fixture();writeWord(f.w,DKC.entrance,0xe0);writeWord(f.w,DKC.id+6,0x74);writeWord(f.w,DKC.y+6,528);writeWord(f.w,0x12a7,0);const tick=(frame:number)=>f.boss.update(f.w,frame,()=>false,pendingBossVictory(f.w));tick(1);expect(f.boss.state).toBeUndefined();writeWord(f.w,0x12a7,1);tick(2);expect(f.boss.state?.floor).toBe(312);expect(f.boss.state?.exitKind).toBe('banana');f.boss.restore(f.boss.state);for(let i=3;i<65;i++)tick(i);for(let n=0;n<6;n++){expect(f.boss.hit()).toBe(true);for(let i=0;i<700;i++)tick(65+n*700+i);}for(let i=0;i<600;i++)tick(4265+i);expect(f.boss.state?.phase).toBe('released');expect(word(f.w,DKC.state+6)).toBe(0);});
  it('clears an interrupted post-boss fight when its native victory cue disappears',()=>{const f=fixture();writeWord(f.w,DKC.entrance,0xe0);writeWord(f.w,DKC.id+6,0x74);f.boss.update(f.w,1,()=>false,pendingBossVictory(f.w));writeWord(f.w,DKC.id+6,0x70);f.boss.update(f.w,2,()=>false,pendingBossVictory(f.w));expect(f.boss.state).toBeUndefined();});
  it('K.Rool fake defeat does not spawn Burt, real final boundary does',()=>{const f=fixture();writeWord(f.w,DKC.entrance,0x68);writeWord(f.w,DKC.id+6,0x70);writeWord(f.w,DKC.state+6,0xb);writeWord(f.w,0x152d+6,0x12);f.boss.update(f.w,1,()=>false,pendingBossVictory(f.w));expect(f.boss.state).toBeUndefined();writeWord(f.w,0x152d+6,0x13);f.boss.update(f.w,2,()=>false,pendingBossVictory(f.w));expect(f.boss.state).toBeUndefined();writeWord(f.w,DKC.id+6,0x74);writeWord(f.w,DKC.state+6,0);f.boss.update(f.w,3,()=>false,pendingBossVictory(f.w));expect(f.boss.state?.exitKind).toBe('banana');});
 });
@@ -37,9 +37,9 @@ it('never treats native exit animation as a victory over a living guardian',()=>
  for(const state of [0x1b,0x1c,0x1d,0x1e,0x1f,0x20,0x3c,0x3d]){const f=fixture();f.tick();const hp=f.boss.state!.hp;writeWord(f.w,DKC.state+2,state);const r=f.boss.update(f.w,10,()=>true);expect(f.boss.state?.phase).toBe('intro');expect(f.boss.state?.hp).toBe(hp);expect(r.notice).toContain('still alive');}
 });
 
-it('uses Salvo in world 2, migrates an unfinished legacy Burt save, and retains a completed exit',()=>{
- const f=fixture();writeWord(f.w,DKC.entrance,217);f.boss.update(f.w,1,()=>true);expect(f.boss.state?.id).toBe('salvo');
- const save={...f.boss.state!,id:'burt' as const,hp:4};f.boss.restore(save);expect(f.boss.state?.id).toBe('salvo');expect(f.boss.state?.hp).toBe(4);
+it('uses the seventh guardian on Winky’s Walkway, migrates an unfinished legacy save, and retains a completed exit',()=>{
+ const f=fixture();writeWord(f.w,DKC.entrance,217);f.boss.update(f.w,1,()=>true);expect(f.boss.state?.id).toBe('tap-tap');
+ const save={...f.boss.state!,id:'burt' as const,hp:4};f.boss.restore(save);expect(f.boss.state?.id).toBe('tap-tap');expect(f.boss.state?.hp).toBe(4);
  f.boss.restore({...save,phase:'released',hp:0});expect(f.boss.state?.phase).toBe('released');expect(f.boss.state?.id).toBe('burt');
 });
 

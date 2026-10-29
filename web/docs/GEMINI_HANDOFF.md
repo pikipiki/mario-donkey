@@ -1,3 +1,7 @@
+## 29 octobre 2026 — rotation des boss par niveau dans les deux jeux
+
+Sélection désormais basée sur le rang du niveau, cycle complet des7boss puis reprise au premier. Yoshi :48niveaux principaux continus entre mondes +6extras placés après ; DKC :40étapes dans l’ordre natif, boss natifs compris, checkpoints/bonus rattachés au parent. Les boss ajoutés restent après les boss originaux. Sauvegardes inachevées remappées sans soin ; cinématiques de mort et sorties terminées conservées. Voir [BOSS_ROTATION.md](BOSS_ROTATION.md), tests/boss-rotation.test.ts. 715tests/65fichiers validés. Les anciennes descriptions « un boss par monde » plus bas sont historiques. Publication : voir outputs/boss-rotation-release.json.
+
 ## 29 octobre 2026 — Rambi invisible et interruption Bélixo
 
 Voir [DKC_BOSS_AND_RAMBI_FIX.md](DKC_BOSS_AND_RAMBI_FIX.md). Rendu natif monté inversé corrigé (corps sur Kong masqué, cavalier sur acteur animal) ; Rambi réellement monté, déplacement et saut vérifiés en privé. Protection partagée 3s après contact du boss pour éviter de perdre le partenaire immédiatement ; clignotement et message d’interruption. Verrou de sortie conservé même pendant absence temporaire du héros. Une vraie perte des deux héros continue de renvoyer à la carte comme dans DKC ; les œufs ne modifient aucun flag natif de fin. Tests/build/publication : voir outputs pour l’état final.

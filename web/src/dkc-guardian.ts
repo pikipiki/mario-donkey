@@ -1,5 +1,5 @@
 import{guardianAnimationDuration,guardianDamageStage,guardianAnimationEnd,guardianDefeatCue,guardianBodyBounds,guardianCinematicAnchor}from'./guardian-animation';
-import{dkcWorldForEntrance,guardianForWorld,YOSHI_GUARDIANS,type YoshiGuardianId}from'./yoshi-guardian-spec';
+import{guardianForEntrance,YOSHI_GUARDIANS,type YoshiGuardianId}from'./yoshi-guardian-spec';
 import{advanceYoshiGuardian}from'./yoshi-guardian-motion';
 import {hydrateBurtMotion,type BurtMotion}from'./burt-motion';
 import {sweptHit}from'./dkc-combat';
@@ -21,7 +21,11 @@ export function validateDkcGuardian(value:unknown):DkcGuardianSave|undefined{
  if(![s.x,s.y,s.floor,s.elapsed,s.phaseTime,s.hitUntil,s.cameraX,s.cameraY].every(Number.isFinite)||s.x<0||s.x>65535||Math.abs(s.y)>65535||s.elapsed<0||s.elapsed>36000||s.phaseTime<0||s.phaseTime>36000)return;
  if(s.motion!==undefined&&!['windup','jump','land'].includes(s.motion))return;
  for(const v of[s.arenaLeft,s.arenaRight,s.direction,s.vx,s.vy,s.motionTime,s.animationX,s.animationY])if(v!==undefined&&(!Number.isFinite(v)||Math.abs(v)>65535))return;
- const copy={...s};if(copy.id==='burt'&&copy.phase!=='released'){const spec=guardianForWorld(dkcWorldForEntrance(copy.level)??1);if(spec)copy.id=spec.id;}hydrateBurtMotion(copy);return copy;
+ const copy={...s},spec=guardianForEntrance(copy.level);
+ // Rebind old region-based encounters without healing the boss or replaying a
+ // completed victory. An already-running death cinematic keeps its own bank.
+ if(spec&&copy.id!==spec.id&&(copy.phase==='intro'||copy.phase==='fight')){copy.id=spec.id;copy.y=copy.floor-(spec.id==='bigger-boo'?90:0);copy.hitUntil=copy.elapsed;copy.animationX=copy.animationY=undefined;copy.animationMirror=undefined;copy.vx=copy.vy=0;copy.motion='windup';copy.motionTime=0;}
+ hydrateBurtMotion(copy);return copy;
 }
 /** Request native damage, never replace death/partner/dismount/progression states. */
 export function requestDkcGuardianHit(w:Uint8Array):boolean{
@@ -55,7 +59,8 @@ export class DkcGuardian{
   if(previous&&previous.level!==scene.level)this.clear();
   if(this.state&&this.state.phase!=='released'){const saved=this.state;if(saved.exitKind?(!victory||victory.slot!==saved.slot||victory.kind!==saved.exitKind):![0x6a,0x6b].includes(word(w,DKC.id+saved.slot)))this.clear();}
   if(!scene.playing){this.pause();return{};}
-  const playerState=word(w,DKC.state+scene.playerSlot),spec=guardianForWorld(dkcWorldForEntrance(scene.level)??1)!;
+  const playerState=word(w,DKC.state+scene.playerSlot),spec=this.state?YOSHI_GUARDIANS.find(p=>p.id===this.state!.id):guardianForEntrance(scene.level);
+  if(!spec){this.pause();return{};}
   if(this.state&&this.state.phase!=='released'&&((playerState>=0x1b&&playerState<=0x20)||[0x3c,0x3d].includes(playerState))){this.pause();return{notice:'Saved exit interrupted · The boss is still alive. Options → World map restores the last map checkpoint.'};}
   if(!this.state&&victory&&scene.grounded){
    const floor=scene.y;

@@ -7,7 +7,7 @@ import {DKC,readDkcScene,dkcEnemies,killDkcEnemy} from './dkc-profile';
 import {word,writeWord} from './profile';
 import type{DkcBossVictory}from'./dkc-boss-finish';
 import type{DkcTarget}from'./dkc-combat';
-export interface DkcGuardianSave extends BurtMotion{version:1;level:number;slot:number;id:YoshiGuardianId;phase:'intro'|'fight'|'dying'|'released';hp:number;maxHp?:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;hitUntil:number;cameraX:number;cameraY:number;animationX?:number;animationY?:number;animationMirror?:1|-1;defeatFx?:boolean;music?:number;exitKind?:'banana'|'krool'}
+export interface DkcGuardianSave extends BurtMotion{version:1;level:number;slot:number;id:YoshiGuardianId;phase:'intro'|'fight'|'dying'|'released';hp:number;maxHp?:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;hitUntil:number;cameraX:number;cameraY:number;animationX?:number;animationY?:number;animationMirror?:1|-1;defeatFx?:boolean;music?:number;heroHitUntil?:number;exitKind?:'banana'|'krool'}
 export function validateDkcGuardian(value:unknown):DkcGuardianSave|undefined{
  const s=value as DkcGuardianSave|undefined;
  if(!s||s.version!==1||!YOSHI_GUARDIANS.some(spec=>spec.id===s.id)||!['intro','fight','dying','released'].includes(s.phase)||!Number.isInteger(s.level)||s.level<1||(s.level>0xe5&&s.level!==0xea)||!Number.isInteger(s.slot)||s.slot<6||s.slot>=0x34||s.slot%2||!Number.isInteger(s.hp)||s.hp<0||s.hp>6)return;
@@ -15,6 +15,7 @@ export function validateDkcGuardian(value:unknown):DkcGuardianSave|undefined{
  if(s.defeatFx!==undefined&&typeof s.defeatFx!=='boolean')return;
  if(s.maxHp!==undefined&&s.maxHp!==3&&s.maxHp!==6)return;
  if(s.hp>(s.maxHp??3))return;
+ if(s.heroHitUntil!==undefined&&(!Number.isFinite(s.heroHitUntil)||s.heroHitUntil<0||s.heroHitUntil>36003))return;
  if(s.exitKind!==undefined&&!['banana','krool'].includes(s.exitKind))return;
  if(s.music!==undefined&&(!Number.isInteger(s.music)||s.music<0||s.music>255))return;
  if(![s.x,s.y,s.floor,s.elapsed,s.phaseTime,s.hitUntil,s.cameraX,s.cameraY].every(Number.isFinite)||s.x<0||s.x>65535||Math.abs(s.y)>65535||s.elapsed<0||s.elapsed>36000||s.phaseTime<0||s.phaseTime>36000)return;
@@ -118,7 +119,7 @@ export class DkcGuardian{
    record.x=x;record.y=y;this.barrels.set(slot,record);
   }
   for(const slot of this.barrels.keys())if(!live.has(slot))this.barrels.delete(slot);
-  if(overlap)requestDkcGuardianHit(w);
+  if(overlap&&s.elapsed>=(s.heroHitUntil??0)&&requestDkcGuardianHit(w)){s.heroHitUntil=s.elapsed+3;return{effect,notice:`${spec.name} · Hero hit · Move away!`};}
   return{effect};
  }
 }

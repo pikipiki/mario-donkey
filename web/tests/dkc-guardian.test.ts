@@ -44,3 +44,19 @@ it('uses Salvo in world 2, migrates an unfinished legacy Burt save, and retains 
 });
 
 it('grounds an exit guardian on the native platform instead of its door origin16px higher',()=>{const f=fixture();writeWord(f.w,DKC.y+2,184);f.tick();expect(f.boss.state?.floor).toBe(328);const old={...f.boss.state!,floor:312,y:312};f.boss.restore(old);f.tick();expect(f.boss.state?.floor).toBe(328);expect(f.boss.state?.y).toBe(328);});
+
+
+it('gives the incoming partner three playable seconds of shared boss protection and persists it',()=>{
+ const f=fixture();f.tick();Object.assign(f.boss.state!,{phase:'fight',x:140,y:312,floor:312,motion:'windup',motionTime:0});
+ f.boss.update(f.w,2,()=>true);expect(word(f.w,DKC.hit+2)).toBe(1);const until=f.boss.state!.heroHitUntil!;expect(until).toBeGreaterThan(3);
+ // Native hurt/flee then hands control to the second Kong at the same spot.
+ writeWord(f.w,DKC.hit+2,0);writeWord(f.w,DKC.id+4,2);writeWord(f.w,DKC.currentKong,2);writeWord(f.w,DKC.x+4,140);writeWord(f.w,DKC.y+4,200);
+ const saved=structuredClone(f.boss.state);f.boss.restore(saved);
+ f.boss.update(f.w,1000,()=>true);expect(word(f.w,DKC.hit+4)).toBe(0);expect(f.boss.state?.heroHitUntil).toBe(until);
+ Object.assign(f.boss.state!,{elapsed:until-.02,x:140,y:312,motion:'windup',motionTime:0});f.boss.update(f.w,1001,()=>true);expect(word(f.w,DKC.hit+4)).toBe(0);
+ Object.assign(f.boss.state!,{elapsed:until,x:140,y:312,motion:'windup',motionTime:0});f.boss.update(f.w,1002,()=>true);expect(word(f.w,DKC.hit+4)).toBe(1);
+});
+it('does not let rapid eggs damage the native player, exit or guard state',()=>{
+ const f=fixture();f.tick();Object.assign(f.boss.state!,{phase:'fight',elapsed:1});const before=f.w.slice();
+ for(let i=0;i<100;i++)f.boss.hit();expect(f.boss.state!.hp).toBe(5);expect(f.boss.state!.phase).toBe('fight');expect(f.w).toEqual(before);
+});

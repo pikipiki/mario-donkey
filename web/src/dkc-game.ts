@@ -110,8 +110,9 @@ export class DkcGame extends LiveGame{
   const rolling=now<this.controls.rollUntil&&!this.dkBarrel.handling;
   const drum=this.dkDrum.sync(w,Math.min(4,Math.max(0,m.functions.getFrameNum()-this.dkFrame)));this.dkNativeHits?.requestDrumDefeat(drum?.defeatRequested?drum.slot:null);
   this.dkBossContact.update(w,rolling,[...dkcNativeBossTargets(w),...this.dkDrum.targets(w)],(target,kind)=>this.hitNativeBoss(target,kind));
+  const interruptedGuardian=s.isMap&&this.dkGuardian.state&&this.dkGuardian.state.phase!=='released'?this.dkGuardian.state.id:undefined;
   const bossResult=this.dkGuardian.update(w,m.functions.getFrameNum(),slot=>this.dkBossHooks?.isMapExit(w,slot)??false,pendingBossVictory(w),{rolling,visualReady:!this.dkGuardian.state||this.dkAtlas.guardianReady(this.dkGuardian.state.id)});
-  this.dkBossHooks?.sync(s.playing&&this.dkGuardian.state?.phase!=='released');
+  this.dkBossHooks?.sync(this.dkGuardian.state?.phase!=='released');
   this.dkBossFinish?.sync(this.dkGuardian.state?.phase!=='released');
   const guardian=this.dkGuardian.state;if(guardian&&guardian.phase!=='released')void this.dkAtlas.prepareGuardian(guardian.id).catch(()=>this.dkStatus('Loading original boss animation…'));
   const musicPlaying=this.bossAudio.sync(this.audio,s.playing&&guardian?{world:'yoshi',id:guardian.id,phase:guardian.phase}:undefined);
@@ -140,6 +141,7 @@ export class DkcGame extends LiveGame{
    this.kills+=result.killed+Number(result.ate);if(result.ate){this.dkStatus('Enemy in mouth · Press Down to make an egg');this.dkChanged();}else if(result.madeEgg){this.dkStatus('Egg ready · Aim, then throw');this.dkChanged();}else if(result.threw)this.dkStatus('Egg thrown');
   }else{this.combat.shots=[];this.combat.resetClock();}
   if(this.dkStage!==this.stageLabel){this.dkStage=this.stageLabel;this.dkChanged();this.dkStatus(this.dkStage);}
+  if(interruptedGuardian)this.dkStatus('Combat interrupted · Boss still alive · Stage not completed');
   this.drawDkc(now,s);
   if(now-this.dkLastSave>20000&&!this.dkSaving)void this.save().catch(e=>this.dkStatus((e as Error).message));
  }
@@ -149,6 +151,7 @@ export class DkcGame extends LiveGame{
   for(const p of this.combat.eggTrail)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,now);
   const moving=Math.abs(this.controls.runAxis())>.1,rolling=now<this.controls.rollUntil&&!this.dkBarrel.handling;
   const animation=this.teamTag.swapping?'jump':rolling?'roll':this.dkFlutter.active?'flutter':!s.grounded?'jump':moving?'walk':'idle';if(this.dkAnimation!==animation){this.dkAnimation=animation;this.dkAnimationAt=now;}
+  const heroAlpha=c.globalAlpha,g=this.dkGuardian.state;if(g&&g.elapsed<(g.heroHitUntil??0)&&Math.floor(now/100)%2)c.globalAlpha*=.35;
   const poses=this.teamTag.poses({...s,facing:this.controls.facing},this.adventure),back=this.teamDamage.nativePartner(this.wram,this.adventure)??poses.partner;
   // The follower owns no attack: rolling belongs to the active hero only.
   // Preserve native hurt/flee poses; a healthy companion follows on foot.
@@ -156,14 +159,16 @@ export class DkcGame extends LiveGame{
   if(this.teamDamage.hasPartner(this.wram)){if(back.character==='mario')this.dkAtlas.drawMarioYoshi(c,backAnimation,back.x-s.cameraX,back.y-s.cameraY+pad,now-this.dkAnimationAt,back.facing);else this.dkAtlas.draw(c,back.character,backAnimation,back.x-s.cameraX,back.y-s.cameraY+pad,now-this.dkAnimationAt,back.facing);}
   const throwing=now<this.combat.throwUntil,recoil=throwing?-this.controls.facing*2:0;
   const leaderY=poses.leader.y-s.cameraY+pad,leaderFacing=this.teamDamage.transitioning?s.facing:this.controls.facing;drawTagContact(c,x,leaderY-24,poses.contact);
-  if(this.adventure.active==='mario')this.dkAtlas.drawMarioYoshi(c,this.teamTag.swapping?'jump':animation,x+recoil,leaderY,now-this.dkAnimationAt,leaderFacing);
+  const nativeMount=nativeDkcMount(this.wram);
+  if(this.adventure.active==='mario'&&!nativeMount)this.dkAtlas.drawMarioYoshi(c,this.teamTag.swapping?'jump':animation,x+recoil,leaderY,now-this.dkAnimationAt,leaderFacing);
   else{
-   const nativeMount=nativeDkcMount(this.wram),mount=nativeMount?.kind??this.adventure.mount;
+   const mount=nativeMount?.kind??this.adventure.mount;
    const mounted=mount!=='foot',mx=nativeMount?nativeMount.x-s.cameraX:x,my=nativeMount?nativeMount.y-s.cameraY+pad:leaderY;
-   if(mounted&&!nativeMount){if(mount==='yoshi')this.dkAtlas.drawYoshi(c,animation,mx,my,now-this.dkAnimationAt,leaderFacing);else this.dkAtlas.draw(c,mount,animation,mx,my,now-this.dkAnimationAt,leaderFacing);}
+   if(mounted){if(mount==='yoshi')this.dkAtlas.drawYoshi(c,animation,mx,my,now-this.dkAnimationAt,leaderFacing);else this.dkAtlas.draw(c,mount,animation,mx,my,now-this.dkAnimationAt,leaderFacing);}
    const seat=mounted?dkcSaddle(mount,this.adventure.active):{x:0,y:0};
    this.dkAtlas.draw(c,this.adventure.active,mounted?'ride':this.teamTag.swapping?'jump':animation,mx+recoil+seat.x*leaderFacing,my+seat.y,now-this.dkAnimationAt,leaderFacing);
   }
+  c.globalAlpha=heroAlpha;
   const t=this.combat.tongue;
   if(t)this.dkAtlas.drawTongue(c,t.x-s.cameraX,t.y-s.cameraY+pad,t.endX-s.cameraX,t.endY-s.cameraY+pad,1-(t.until-now)/150);
   for(const p of this.combat.shots)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,p.age*1000,true);

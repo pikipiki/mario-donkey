@@ -1,3 +1,7 @@
+## 29 octobre 2026 — Rambi invisible et interruption Bélixo
+
+Voir [DKC_BOSS_AND_RAMBI_FIX.md](DKC_BOSS_AND_RAMBI_FIX.md). Rendu natif monté inversé corrigé (corps sur Kong masqué, cavalier sur acteur animal) ; Rambi réellement monté, déplacement et saut vérifiés en privé. Protection partagée 3s après contact du boss pour éviter de perdre le partenaire immédiatement ; clignotement et message d’interruption. Verrou de sortie conservé même pendant absence temporaire du héros. Une vraie perte des deux héros continue de renvoyer à la carte comme dans DKC ; les œufs ne modifient aucun flag natif de fin. Tests/build/publication : voir outputs pour l’état final.
+
 ## 29 octobre2026 — tonneau DKC au bouton, en deux appuis
 
 Le bouton Roll / Pick up (clavier X) prend un tonneau et conserve Y natif tant que le lien de portage est valide. Le deuxième appui relâche Y pour laisser le moteur DKC lancer ; le libellé devient Throw pendant le portage. Un appui rapide est accepté, aucun déplacement automatique/roulade/dégât de roue pendant le portage, Bas ne transforme pas le deuxième appui en dépôt. Pause/Stop/tape conservent la prise, et loadState restaure Y avant les premières frames. Dégâts/changement de héros natif/room effacent le verrou. Pas de réécriture des acteurs/ROM. Voir [DKC_BARREL_TOGGLE.md](DKC_BARREL_TOGGLE.md).

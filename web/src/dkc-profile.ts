@@ -47,13 +47,27 @@ export function killDkcEnemy(w:Uint8Array,slot:number):boolean{
  if(!Number.isInteger(slot)||!enemies(w).some(e=>e.slot===slot))return false;
  w[DKC.hit+slot]=0x20;w[DKC.hit+slot+1]=0;return true;
 }
-const RENDER=0x3ba86b,GUARD=0x3bffd0;
-// Zero levelheight identifies the native overworld projection: show its actors.
-// The original loader at ROM8179 first reads$40, falling back to$3E.
-// LDA0040/BNE +3/LDA003E; BEQ normal; CMP E6/BCC player/CMP EA/BNE normal;
-// player: LDA id,Y/CMP1/BEQ skip/CMP2/BEQ skip;
-// normal: LDA id,Y/JMP A86E; skip: JMP AA26. All branches stay in bankBB.
-const guard=new Uint8Array([0xad,0x4a,0,0xf0,33,0xad,0x40,0,0xd0,3,0xad,0x3e,0,0xf0,23,0xc9,0xe6,0,0x90,5,0xc9,0xea,0,0xd0,13,0xb9,0x45,0x0d,0xc9,1,0,0xf0,11,0xc9,2,0,0xf0,6,0xb9,0x45,0x0d,0x4c,0x6e,0xa8,0x4c,0x26,0xaa]);
+const RENDER=0x3ba86b,GUARD=0x3bfe00;
+/** Bank BB free zero padding, below the bank boundary and above collectible
+ * mailbox FB:FDE0. Preserve X/Y and reload the original actor ID on both exits.
+ * Mounted animations put the body on the Kong slot (hidden below), and the
+ * native rider on the linked animal slot: BE8092 / BE8054 / BEBAD1. */
+function renderGuard():Uint8Array{
+ const b:number[]=[],labels=new Map<string,number>(),branches:{at:number;to:string}[]=[];
+ const emit=(...v:number[])=>b.push(...v),label=(n:string)=>labels.set(n,b.length),branch=(op:number,to:string)=>{emit(op,0);branches.push({at:b.length-1,to});};
+ emit(0xad,0x4a,0);branch(0xf0,'normal');emit(0xad,0x40,0);branch(0xd0,'scene');emit(0xad,0x3e,0);
+ label('scene');branch(0xf0,'normal');emit(0xc9,0xe6,0);branch(0x90,'stage');emit(0xc9,0xea,0);branch(0xd0,'normal');
+ label('stage');emit(0xb9,0x45,0x0d,0xc9,1,0);branch(0xf0,'skip');emit(0xc9,2,0);branch(0xf0,'skip');
+ emit(0xc9,9,0);branch(0x90,'normal');emit(0xc9,13,0);branch(0xb0,'normal');
+ emit(0xb9,0x75,0x13,0xc9,2,0);branch(0xf0,'dk');emit(0xc9,4,0);branch(0xd0,'normal');
+ emit(0xcc,0x14,5);branch(0xf0,'skip');branch(0x80,'normal');
+ label('dk');emit(0xcc,0x12,5);branch(0xf0,'skip');
+ label('normal');emit(0xb9,0x45,0x0d,0x4c,0x6e,0xa8);
+ label('skip');emit(0xb9,0x45,0x0d,0x4c,0x26,0xaa);
+ for(const j of branches){const d=labels.get(j.to)!-j.at-1;if(Math.abs(d)>127)throw Error('Render guard branch overflow');b[j.at]=d&255;}
+ if(b.length>0x100)throw Error('Render guard exceeds free ROM region');return new Uint8Array(b);
+}
+const guard=renderGuard();
 export function validateDkcRom(rom:Uint8Array,base=0):void{
  for(const [offset,bytes]of [[0xe282,[0xa9,0x10,0,0x8d,0x45,0x0d,0xa9,0,0x2c]], [0xe4dc,[0x64,0x4a,0x9c,0x95,8,0xa9,0,2,0x8d,0x87,8]], [0x8179,[0xa5,0x40,0xd0,4,0xa5,0x3e,0x85,0x40,0xc9,0xeb,0]], [0x3ba864,[0xac,0xab,8,0xb9,0xb1,0x0a,0xa8,0xb9,0x45,0x0d,0xd0,3,0x4c,0x26,0xaa]], [0x3fc726,[0xa6,0x82,0xbd,0x95,0x15,0xd0,2,0x18,0x60,0xc9,1,0,0xf0,0x0a,0xc9,0x20,0,0xf0,5,0x9e,0x95,0x15]], [GUARD,Array(guard.length).fill(0)]] as const){
   if(!bytes.every((b,i)=>rom[base+offset+i]===b))throw new Error('Unsupported DKC ROM revision. Your existing game has been kept.');
@@ -61,13 +75,13 @@ export function validateDkcRom(rom:Uint8Array,base=0):void{
 }
 /** Verified render-only guard. The free zero padding is documented by the local
  * disassembly FREE_BYTES($FBF790,2160,$00). Original LDA continues at BBA86E;
- * in actual stage entrances (1..E5 and EA) only IDs1/2 take the existing skip-render path BBAA26. No physics is patched. */
+ * in actual stage entrances (1..E5 and EA) IDs1/2 and verified linked animal rider actors take the existing skip-render path BBAA26. No physics is patched. */
 export class DkcRenderHooks{
  private original:Uint8Array;
  constructor(private heap:Uint8Array,private base=0){validateDkcRom(heap,base);this.original=heap.slice(base+RENDER,base+RENDER+3);}
  setHidden(hidden:boolean):void{
   this.heap.set(hidden?guard:new Uint8Array(guard.length),this.base+GUARD);
-  this.heap.set(hidden?new Uint8Array([0x4c,0xd0,0xff]):this.original,this.base+RENDER);
+  this.heap.set(hidden?new Uint8Array([0x4c,0x00,0xfe]):this.original,this.base+RENDER);
  }
  sync(hidden:boolean):void{this.setHidden(hidden);}
  restore():void{this.setHidden(false);}

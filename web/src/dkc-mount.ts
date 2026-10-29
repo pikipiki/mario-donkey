@@ -2,7 +2,8 @@ import{DKC,readDkcScene}from'./dkc-profile';import{word}from'./profile';import t
 const NATIVE_ANIMALS:Readonly<Record<number,Animal>>={9:'rambi',10:'expresso',11:'winky',12:'enguarde'};
 /** Original DKC mount links: $0512+(Kong slot-2) points at the animal actor,
  * whose $1375 backlink is the rider. An unmounted nearby animal is not a mount.
- * The native renderer already draws that animal; only its hidden rider changes. */
+ * Mounted animation scripts draw the body on the hidden Kong slot and the
+ * rider on this linked actor. Both visuals are replaced together, not physics. */
 export function nativeDkcMount(w:Uint8Array):{kind:Animal;slot:number;x:number;y:number}|undefined{
  const s=readDkcScene(w);if(!s.playing)return;const slot=word(w,0x512+s.playerSlot-2);
  if(slot<6||slot>=0x34||slot%2||word(w,0x1375+slot)!==s.playerSlot||word(w,DKC.state+slot)===0xc)return;

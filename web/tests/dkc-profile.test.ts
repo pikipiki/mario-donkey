@@ -33,19 +33,21 @@ describe('verified DKC Rev2 bridge',()=>{
   const rom=patchDkcDrawing(new Uint8Array(readFileSync(new URL('../public/rom/dkc-usa-rev2.sfc',import.meta.url))));
   // Small interpreter for the exact 16-bit-accumulator 65816 instructions in
   // the guard. Execute branch offsets, not just compare hand-written bytes.
-  const entry=rom[0x3ba86c]|rom[0x3ba86d]<<8;expect(entry).toBe(0xffd0);
-  function run(entrance:number,id:number,loadedScene=0,height=512){let pc=entry,a=0,zero=false,carry=false;const y=6;
+  const entry=rom[0x3ba86c]|rom[0x3ba86d]<<8;expect(entry).toBe(0xfe00);
+  function run(entrance:number,id:number,loadedScene=0,height=512,rider=0,link=0){let pc=entry,a=0,zero=false,carry=false;const y=6;
    const next=()=>rom[0x3b0000+pc++],u16=()=>next()|next()<<8;
-   for(let count=0;count<30;count++){
+   for(let count=0;count<60;count++){
     const op=next();
-    if(op===0xad||op===0xb9){const address=u16()+(op===0xb9?y:0);a=address===0x4a?height:address===0x40?loadedScene:address===0x3e?entrance:address===0xd45+y?id:-1;expect(a).toBeGreaterThanOrEqual(0);zero=a===0;}
+    if(op===0xad||op===0xb9){const address=u16()+(op===0xb9?y:0);a=address===0x4a?height:address===0x40?loadedScene:address===0x3e?entrance:address===0xd45+y?id:address===0x1375+y?rider:-1;expect(a).toBeGreaterThanOrEqual(0);zero=a===0;}
     else if(op===0xc9){const value=u16();zero=a===value;carry=a>=value;}
-    else if(op===0xf0||op===0xd0||op===0x90){const raw=next(),offset=raw&128?raw-256:raw;if(op===0xf0?zero:op===0xd0?!zero:!carry)pc+=offset;}
+    else if(op===0xcc){const at=u16();expect([0x512,0x514]).toContain(at);zero=y===link;}
+    else if(op===0xf0||op===0xd0||op===0x90||op===0xb0||op===0x80){const raw=next(),offset=raw&128?raw-256:raw;if(op===0xf0?zero:op===0xd0?!zero:op===0x90?!carry:op===0xb0?carry:true)pc+=offset;}
     else if(op===0x4c){const target=u16();expect([0xa86e,0xaa26]).toContain(target);return{target,a};}
     else throw new Error('Unexpected guard opcode '+op.toString(16));
    }
    throw new Error('Render guard did not return');
   }
+  for(const id of[9,10,11,12])for(const rider of[0,2,4,6])for(const link of[0,6,8]){const r=run(22,id,0,512,rider,link);expect(r.target).toBe([2,4].includes(rider)&&link===6?0xaa26:0xa86e);expect(r.a).toBe(id);}
   for(const height of[0,512])for(const loadedScene of[0,0xec,0xea,0x16,0xee])for(let entrance=0;entrance<=255;entrance++)for(const id of[0,1,2,3,5,0x19,0x70]){
    const r=run(entrance,id,loadedScene,height);expect(r.target).toBe(height>0&&isDkcStageEntrance(loadedScene||entrance)&&(id===1||id===2)?0xaa26:0xa86e);expect(r.a).toBe(id);
   }
@@ -54,7 +56,7 @@ describe('verified DKC Rev2 bridge',()=>{
  it('never eats scenery, items, bosses, the player, dead enemies or an odd slot',()=>{const {w,put}=fixture();for(const id of[1,2,0x26,0x34,0x70]){put(DKC.id+6,id);expect(killDkcEnemy(w,6)).toBe(false);}put(DKC.id+6,5);put(DKC.state+6,1);expect(killDkcEnemy(w,6)).toBe(false);expect(killDkcEnemy(w,7)).toBe(false);expect(killDkcEnemy(w,2)).toBe(false);});
  it('rejects pending hits and the correct native death state for birds and squid',()=>{const {w,put}=fixture();for(const[id,dead]of [[0x4b,5],[0x56,2],[0x0e,2]]){put(DKC.id+6,id);put(DKC.state+6,1);expect(enemies(w)).toHaveLength(1);put(DKC.state+6,dead);expect(enemies(w)).toHaveLength(0);}put(DKC.id+6,5);put(DKC.state+6,0);put(DKC.hit+6,0x20);expect(killDkcEnemy(w,6)).toBe(false);});
  it('patches only the render entry/free guard and restores the exact ROM',()=>{
-  const rom=new Uint8Array(readFileSync(new URL('../public/rom/dkc-usa-rev2.sfc',import.meta.url)));const original=rom.slice();const hooks=new DkcRenderHooks(rom);hooks.setHidden(true);expect([...rom.slice(0x3ba86b,0x3ba86e)]).toEqual([0x4c,0xd0,0xff]);expect([...rom.slice(0x3bffd0,0x3bffd3)]).toEqual([0xad,0x4a,0]);hooks.restore();expect(Buffer.compare(Buffer.from(rom),Buffer.from(original))).toBe(0);const patched=patchDkcDrawing(rom);expect(rom).not.toBe(patched);expect(Buffer.compare(Buffer.from(rom),Buffer.from(original))).toBe(0);
+  const rom=new Uint8Array(readFileSync(new URL('../public/rom/dkc-usa-rev2.sfc',import.meta.url)));const original=rom.slice();const hooks=new DkcRenderHooks(rom);hooks.setHidden(true);expect([...rom.slice(0x3ba86b,0x3ba86e)]).toEqual([0x4c,0x00,0xfe]);expect([...rom.slice(0x3bfe00,0x3bfe03)]).toEqual([0xad,0x4a,0]);hooks.restore();expect(Buffer.compare(Buffer.from(rom),Buffer.from(original))).toBe(0);const patched=patchDkcDrawing(rom);expect(rom).not.toBe(patched);expect(Buffer.compare(Buffer.from(rom),Buffer.from(original))).toBe(0);
  });
  it('rejects a wrong revision before mutating any bytes',()=>{const rom=new Uint8Array(0x400000),before=rom.slice();expect(()=>new DkcRenderHooks(rom)).toThrow('revision');expect(Buffer.compare(Buffer.from(rom),Buffer.from(before))).toBe(0);});
 });

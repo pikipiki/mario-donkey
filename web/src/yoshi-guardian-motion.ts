@@ -8,7 +8,8 @@ export function advanceYoshiGuardian(s:BurtBody&{id:YoshiGuardianId;elapsed:numb
  if(s.id==='bigger-boo'){
   const looking=(heroX<s.x&&facing>0)||(heroX>s.x&&facing<0);s.vx=looking?0:Math.sign(heroX-s.x)*30;s.x+=s.vx*dt;s.y=s.floor-90+Math.sin(s.elapsed*2)*12;s.motion='jump';s.vy=Math.cos(s.elapsed*2)*24;
  }else if(s.id==='raphael'){
-  const centre=(s.arenaLeft!+s.arenaRight!)/2,radius=Math.min(65,(s.arenaRight!-s.arenaLeft!)/2);s.x=centre+Math.cos(s.elapsed*1.4)*radius;s.y=s.floor-45+Math.sin(s.elapsed*1.4)*35;s.motion='jump';s.vy=Math.cos(s.elapsed*1.4)*49;
+  // No moon exists in the DKC arena: keep his feet on its actual floor.
+  s.y=s.floor;s.vy=0;s.motion='land';s.vx=(s.direction??-1)*45;s.x+=s.vx*dt;
  }else{
   const windup=s.id==='salvo'?.55:s.id==='milde'?.75:.3,gravity=315;
   if(s.motion==='windup'){s.y=s.floor;s.vx=0;s.vy=0;if(s.motionTime!<windup)return;s.direction=heroX<s.x?-1:1;s.vx=s.direction*(s.id==='salvo'?SALVO_NATIVE.speed:s.id==='milde'?25:s.id==='froggy'?50:65);s.vy=s.id==='salvo'?SALVO_NATIVE.jumpVelocity:s.id==='milde'?-95:s.id==='froggy'?-165:-150;s.motion='jump';s.motionTime=0;return'attack';}

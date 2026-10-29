@@ -8,7 +8,9 @@ export function nativeDkcMount(w:Uint8Array):{kind:Animal;slot:number;x:number;y
  const s=readDkcScene(w);if(!s.playing)return;const slot=word(w,0x512+s.playerSlot-2);
  if(slot<6||slot>=0x34||slot%2||word(w,0x1375+slot)!==s.playerSlot||word(w,DKC.state+slot)===0xc)return;
  const kind=NATIVE_ANIMALS[word(w,DKC.id+slot)];if(!kind)return;
- return{kind,slot,x:word(w,DKC.x+slot),y:word(w,DKC.height)-word(w,DKC.y+slot)};
+ const bonus=[0x6c,0xa6,0xd2,0xd3].includes(s.level);
+ // Bonus animal actor is a dormant owner; native Kong slots carry its body.
+ return{kind,slot,x:bonus?s.x:word(w,DKC.x+slot),y:bonus?s.y:word(w,DKC.height)-word(w,DKC.y+slot)};
 }
 /** Seat offsets in native screen pixels. Rider pose foot anchors differ across
  * the original Kong sprites and the seated PlushGoonk renders. */

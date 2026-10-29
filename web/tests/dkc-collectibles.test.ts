@@ -30,3 +30,5 @@ describe('native collectible egg collisions',()=>{
   rom[0x38bc5a]^=1;expect(()=>new DkcCollectibleHooks(rom)).toThrow();
  });
 });
+
+it('uses the golden animal-token footprint in all four native bonuses and preserves its bitmap request coordinates',()=>{for(const level of[0x6c,0xa6,0xd2,0xd3]){const{w,put}=fixture();put(0x40,level);const t=targets(w)[0];expect(t).toMatchObject({width:16,height:16,banana:{level,nativeX:224,nativeY:320}});const before=w.slice();expect(hit(w,t)).toBe(true);expect(w).toEqual(before);}});

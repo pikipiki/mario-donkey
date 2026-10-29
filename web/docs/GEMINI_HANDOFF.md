@@ -1,3 +1,7 @@
+## Dernier lot — bonus animaux, vol Squawks et Raphael au sol
+
+Voir [ANIMAL_BONUS_AND_FLIGHT.md](ANIMAL_BONUS_AND_FLIGHT.md) : coordonnées des corps natifs dans les4bonus, collecte dorée par œuf avec hitbox16px, Raphael sans orbite flottante, vol maintenu Squawks et focus clavier aprèsDuo. 758 tests/68 fichiers et build, recette privée du bonus (compteur0→1) et du vol dans les mines. Les limites de téléphones physiques et de rails sont explicitement consignées. Conserver les formats de sauvegarde et les verrous de victoire du lot précédent.
+
 ## Correctif suivant — sortie anticipée de Raphael
 
 Voir [RAPHAEL_EARLY_EXIT.md](RAPHAEL_EARLY_EXIT.md). Rectification : état natif11 peut être une victoire63, la mort du duo n’était pas prouvée. Verrou strict sur tous les états de banane et consommation de commande de victoire, avant reprise native et jusqu’à la fin complète du gardien. Diagnostics bornés,747 tests/66 fichiers, build. Les victoires natives sans combat ajouté et les vraies morts restent originales. Le seuil utilisateur10% n’est pas atteint au dernier relevé58%restants.

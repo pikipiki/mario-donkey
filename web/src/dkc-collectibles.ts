@@ -9,7 +9,7 @@ const pending=new WeakMap<ArrayBufferLike,DkcCollectibleTarget[]>();
  * (already-collected HUD effect). $74 is a victory gate and is excluded. */
 export function targets(w:Uint8Array):DkcCollectibleTarget[]{
  const scene=readDkcScene(w);if(!scene.playing)return[];
- const result:DkcCollectibleTarget[]=[];
+ const result:DkcCollectibleTarget[]=[],golden=[0x6c,0xa6,0xd2,0xd3].includes(scene.level);
  for(let slot=6;slot<0x34;slot+=2){
   const id=word(w,DKC.id+slot),state=word(w,DKC.state+slot);
   if(!((id===0x15&&([0,3,4,6,7].includes(state)))||(id===0x34&&([0,1,4,5,6].includes(state))))||word(w,DKC.hit+slot))continue;
@@ -26,7 +26,7 @@ export function targets(w:Uint8Array):DkcCollectibleTarget[]{
     const nativeX=x+column*4,nativeY=y+(15-bit)*8;
     const worldX=nativeX+word(w,0x1b23);
     if(worldX<scene.cameraX-24||worldX>scene.cameraX+280||nativeY<scene.cameraY-24||nativeY>scene.cameraY+248)continue;
-    result.push({collectible:true,slot:0x10000+(bitmap+column)*16+bit,id:0x100,x:worldX+4,y:nativeY+8,width:8,height:8,banana:{chunk,address:bitmap+column,bit,nativeX,nativeY,level:scene.level}});
+    result.push({collectible:true,slot:0x10000+(bitmap+column)*16+bit,id:0x100,x:worldX+4,y:nativeY+8,width:golden?16:8,height:golden?16:8,banana:{chunk,address:bitmap+column,bit,nativeX,nativeY,level:scene.level}});
    }
   }
  }

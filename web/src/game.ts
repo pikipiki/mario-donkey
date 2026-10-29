@@ -15,7 +15,7 @@ import { readBeforeDeadline } from './startup';
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
 import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing, waitForNativeFrames, waitForNativePause } from './engine';
-import { queueNativeSound, PROFILE as P, KONG_JUMP_HOLD_MS, SQUAWKS_FLIGHT_VELOCITY, squawksFlightVelocity, NativeJumpBoost, NativeFlutterInput, canModifyJump, canWriteVelocity, hideNativePlayer, absorbHit, keepBabyVisible, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
+import { queueNativeSound, PROFILE as P, KONG_JUMP_HOLD_MS, SQUAWKS_FLIGHT_VELOCITY, squawksFlightVelocity, NativeJumpBoost, NativeFlutterInput, canModifyJump, canWriteVelocity, hideNativePlayer, absorbHit, keepBabyVisible, protectRoll, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
 import { loadFile,storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
@@ -26,6 +26,7 @@ export type { Character } from './adventure';
 const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
 const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
 export class LiveGame {
+ private previousRoll?:{x:number;y:number;room:string};
  private squawksCamera=new SquawksCamera();
  private bosses=new StageBosses();private bossHooks?:BossRomHooks;private nativeBossEggs?:NativeBossEggs;private eggFlights=new NativeEggFlights();
  protected teamTag=new TeamTag();
@@ -125,7 +126,7 @@ export class LiveGame {
   setNativeDrawing(this.emulator.Module.HEAPU8,this.drawSite,hide);this.hidden=hide;
  }
  mount(mount:Mount):void{const previous=this.adventure.mount;if(this.adventure.ride(mount)){if(previous!==mount&&isAnimalMount(mount)&&this.ready&&!this.paused&&this.wram[P.mode]===P.gameplay)this.animalAudio.play('animal-mount');this.animalSounds.reset();this.updateVisibility();this.changed();}}
- stop():void{this.teamTag.cancel();if(this.ready)this.squawksCamera.restore(this.gsu,this.room);this.bossAudio.pause();this.bosses.pause();this.eggFlights.reset();this.nativeBossEggs?.sync(false);this.animalAudio.stop();this.animalSounds.reset();this.controls.stop();this.mapConfirm.reset();this.jumpBoost.reset();this.flutterInput.reset();this.setInputs(new Set());}
+ stop():void{this.previousRoll=undefined;this.teamTag.cancel();if(this.ready)this.squawksCamera.restore(this.gsu,this.room);this.bossAudio.pause();this.bosses.pause();this.eggFlights.reset();this.nativeBossEggs?.sync(false);this.animalAudio.stop();this.animalSounds.reset();this.controls.stop();this.mapConfirm.reset();this.jumpBoost.reset();this.flutterInput.reset();this.setInputs(new Set());}
  setPaused(value:boolean):void{if(this.recovering||(!this.ready&&!value))return;this.stop();this.paused=value;if(!this.capturing)this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
  /** Native fade-out and overworld initialization; keeps completed-level progress. */
  goToMap():void{
@@ -212,11 +213,13 @@ export class LiveGame {
  tick(now:number):void{
   if(!this.ready||this.paused||this.recovering||this.capturing)return;
   const g=this.gsu;
+  const rollActive=now<this.controls.rollUntil&&this.wram[P.mode]===P.gameplay&&!this.messageOpen&&!this.teamTag.swapping;
+  if(rollActive)protectRoll(g,this.controls.rollUntil-now);
   if(this.bossHooks){
    const box=guardianHitbox(this.bosses.state);
    const eggHit=this.wram[P.mode]===P.gameplay&&box?this.eggFlights.collide(g,box)>0:false;
    if(!box)this.eggFlights.reset();
-   const result=this.bosses.update(this.wram,g,this.emulator.gameManager.functions.getFrameNum(),eggHit,this.videoHeight);
+   const result=this.bosses.update(this.wram,g,this.emulator.gameManager.functions.getFrameNum(),eggHit,this.videoHeight,{rolling:rollActive});
    this.nativeBossEggs?.sync(this.wram[P.mode]===P.gameplay&&this.bosses.eggsUnlimited);
    this.adventure.guardian=this.bosses.state;
    if(this.wram[P.mode]===P.victory)this.bossHooks.restore();else this.bossHooks.sync(this.bosses.state?.kind,this.bosses.state?.phase);
@@ -289,10 +292,11 @@ export class LiveGame {
     if(canWriteVelocity(g,'x',velocity))writeWord(g,P.vx,velocity);
    }
    if(rolling&&interactive){
-    writeWord(g,P.invincible,Math.max(word(g,P.invincible),4));
+    protectRoll(g,this.controls.rollUntil-now);
     if(yoshi&&canWriteVelocity(g,'x',this.controls.facing*0x360))writeWord(g,P.vx,this.controls.facing*0x360);
-    const hits=applyRoll(g,this.controls.facing);animalHit=hits.length>0;this.kills+=hits.length;for(const hit of hits)this.particles.push({...hit,until:now+420});
+    const hits=applyRoll(g,this.controls.facing,this.previousRoll?.room===this.room?this.previousRoll:undefined);this.previousRoll={x:word(g,P.x),y:word(g,P.y),room:this.room};animalHit=hits.length>0;this.kills+=hits.length;for(const hit of hits)this.particles.push({...hit,until:now+420});
    }
+   if(!rolling||!interactive)this.previousRoll=undefined;
    if(jumpVelocity!==undefined&&canWriteVelocity(g,'y',jumpVelocity))writeWord(g,P.vy,jumpVelocity);
    // Keep the native takeoff (including stronger spring/enemy impulses).
    // Once airborne, holding Jump sustains ascent; release restores gravity.

@@ -161,14 +161,22 @@ export class NativeFlutterInput{
  }
 }
 export interface RollHit { slot: number; x: number; y: number }
-export function applyRoll(gsu: Uint8Array, direction: number): RollHit[] {
+/** Cover the remaining roll in native 50Hz frames, even across slow mobile rendering.
+ * Stay below the native $40 damage/stun threshold and preserve longer immunity. */
+export function protectRoll(gsu:Uint8Array,remainingMs:number):void{
+ if(remainingMs<=0||!canModifyJump(gsu)||babyIsLost(gsu))return;
+ writeWord(gsu,PROFILE.invincible,Math.max(word(gsu,PROFILE.invincible),Math.min(0x3f,Math.ceil(remainingMs/20)+2)));
+}
+export function applyRoll(gsu: Uint8Array, direction: number,from?:{x:number;y:number}): RollHit[] {
   const x=word(gsu,PROFILE.x), y=word(gsu,PROFILE.y); const hits: RollHit[]=[];
   for (let slot=0;slot<24;slot++) {
     const offset=slot*4, id=word(gsu,PROFILE.spriteId+offset);
     if (word(gsu,PROFILE.spriteState+offset)!==0x10 || !ROLL_TARGETS.has(id)) continue;
     const ex=word(gsu,PROFILE.spriteX+offset), ey=word(gsu,PROFILE.spriteY+offset);
-    const dx=signed16(ex-x), dy=signed16(ey-y);
-    if (Math.abs(dx)<=36 && Math.abs(dy)<=40 && dx*direction>=-16) {
+    const previous=from&&Math.hypot(x-from.x,y-from.y)<=96?from:{x,y};
+    const length=(x-previous.x)**2+(y-previous.y)**2,t=length?Math.max(0,Math.min(1,((ex-previous.x)*(x-previous.x)+(ey-previous.y)*(y-previous.y))/length)):1;
+    const hitX=previous.x+(x-previous.x)*t,hitY=previous.y+(y-previous.y)*t;
+    if (Math.abs(ex-hitX)<=36 && Math.abs(ey-hitY)<=40 && (ex-hitX)*direction>=-16) {
       if(CUSTOM_DEATH_PLANTS.has(id))freeSpriteGraphics(gsu,slot);
       else writeWord(gsu,PROFILE.spriteState+offset,0x0c);
       hits.push({slot,x:ex,y:ey});

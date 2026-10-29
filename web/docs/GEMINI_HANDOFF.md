@@ -1,3 +1,19 @@
+## 29 octobre 2026 — régression roulade et boss DKC dans Yoshi (568 tests)
+
+Retour utilisateur : roulade inefficace contre monstres/plantes, puis saut/roulade sans dégâts sur les boss DKC ajoutés dans Yoshi et arène suivant l’écran. Le test navigateur pré-correctif a bien tué un Shy Guy du1-1 avec Bobope : ne pas prétendre que tous les contacts étaient cassés. Deux défauts boss sont établis dans le code : StageBosses ne prenait que nativeEggHit ; les positions/sol/vols étaient recalculés à partir de la caméra courante.
+
+Correction : StageBosses accepte une attaque rolling, détecte le franchissement descendant du dessus de chaque boss avec les pieds du héros (ancreY+32), donne un rebond natif-$500 uniquement sur un saut accepté, partage la grâce0.3s avec les œufs et empêche le même contact de blesser simultanément le héros. Contacts latéraux sans roulade et sauts montants restent dangereux. Réinitialiser l’historique de trajectoire à la pause/reprise/changement de pièce ; ne pas inventer une chute depuis un ancien état. Les sept boss DKC importés sont concernés. Les boss Yoshi d’origine restent natifs.
+
+GuardianSave.arena optionnel mémorise caméraX/Y et hauteur AU DÉBUT de la rencontre. Sol, limites, oscillations aériennes et décor Necky restent dans ce repère du niveau, indépendamment du défilement. Compatible avec les anciennes sauvegardes (initialisation de l’arène au premier tick). Le sol du boss reprend maintenant la hauteur native du goal, sans le décalage+16px qui enfonçait ses pieds. Pas de réécriture des tuiles du niveau ni des coordonnées de caméra. Il s’agit du décor Yoshi existant avec l’arène crossover, pas d’un remplacement du stage par une salle native DKC.
+
+Roulade ordinaire : l’ancien bouclier de4frames pouvait expirer entre deux rendus mobiles espacés. protectRoll couvre la durée restante en frames natives50Hz (+2), reste sous$40 pour ne pas déclencher le chemin de stun natif et conserve une protection native plus longue. Il s’exécute avant les collisions des boss. applyRoll balaie aussi le déplacement continu entre deux rendus (maximum96px, même pièce), conserve la liste des ennemis autorisés et le nettoyage natif des graphismes des plantes. Aucun décès de collectible, porte, anneau, Baby Mario ou objet de progression. Dialogues/verrous/transformations restent protégés. Le partenaire visuel n’a toujours pas de collisions indépendantes.
+
+Tests : les5 héros ×7 montures (à pied, Yoshi et5 animaux), chacun avec tous les IDs autorisés de monstres/plantes hostiles + une fleur collectible protégée ; rendu espacé de200ms ; ennemi traversé entre deux images vs téléportation ; les7 boss par roulade et saut, coups non répétés sur un même frame/grâce, contacts montants exclus ; les7 arènes inchangées après déplacement de caméra500px, décor Necky ancré. Certaines combinaisons Mario+monture artificielles sont exercées au niveau du pont, même si l’interface force Mario sur Yoshi.568 tests /49 fichiers et build. Recette physique mobile toujours restante ; tests du pont ne signifient pas campagne complète jouée avec chacune des35 combinaisons.
+
+Recette navigateur isolée5201 : vraie sortie1-1 chargée par la fixture native, Bobope à pied, direction gauche puis bouton Roll ; Gnawty3→2HP sans œuf, son boss-hit, arène3415/1532 et sol1712 conservés malgré caméraY1548. Preuves outputs/verification-yoshi-boss-roll.png/json. Les tentatives suivantes de saut/repositionnement ont pris des dégâts latéraux et ne constituent pas une preuve manuelle de stomp ni de victoire complète. Le stomp et les sept types de boss sont validés par tests du pont ; poursuivre une recette manuelle contrôlée sur mobile.
+
+---
+
 ## 29 octobre 2026 — duo, caméra Squawks, boss et Dumb Drum (515 tests)
 
 ### Livré dans ce lot

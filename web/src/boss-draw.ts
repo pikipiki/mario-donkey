@@ -3,10 +3,10 @@ import {STAGE_BOSSES,type GuardianSave} from './boss';
 /** Scenery stays at the arena edge, so Necky's original neck ends off-screen
  * rather than leaving an unexplained severed head in the middle of the stage.
  * These small props are presentation only; native terrain is never changed. */
-function drawNeckyArena(ctx:CanvasRenderingContext2D,s:GuardianSave,x:number,y:number,floor:number,top:number):void{
- const right=s.facing<0,edge=right?256:0;
+function drawNeckyArena(ctx:CanvasRenderingContext2D,s:GuardianSave,x:number,y:number,floor:number,top:number,cameraX:number,cameraY:number):void{
+ const right=s.facing<0,edge=(s.arena?s.arena.x-cameraX:0)+(right?256:0);
  ctx.save();ctx.translate(edge,0);ctx.scale(right?1:-1,1);
- const ground=Math.min(top+222,Math.max(y+23,floor)),ceiling=top+35;
+ const ground=Math.min((s.arena?s.arena.y-cameraY+s.arena.height-2:222)+top,Math.max(y+23,floor)),ceiling=(s.arena?s.arena.y-cameraY:0)+top+35;
  ctx.fillStyle='#342c36';ctx.fillRect(-18,ceiling,18,ground-ceiling);
  ctx.fillStyle='#645554';
  for(let row=0;row<12;row++){
@@ -49,7 +49,7 @@ export function drawStageBoss(ctx:CanvasRenderingContext2D,atlas:SpriteAtlas,s:G
   }
   ctx.restore();return;
  }
- if(s.id==='necky'||s.id==='necky-snr')drawNeckyArena(ctx,s,x,y,s.floor-cameraY+topPadding,topPadding);
+ if(s.id==='necky'||s.id==='necky-snr')drawNeckyArena(ctx,s,x,y,s.floor-cameraY+topPadding,topPadding,cameraX,cameraY);
  const dying=s.phase==='dying';ctx.globalAlpha=dying?Math.max(0,1-s.phaseTime/.8):1;
  const pose=dying?'dead':s.elapsed<s.hitUntil?'hurt':s.phase==='intro'?'idle':'attack';
  atlas.drawBoss(ctx,s.id,pose,x,y,s.elapsed*1000,s.facing);

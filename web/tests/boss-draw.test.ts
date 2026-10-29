@@ -30,3 +30,5 @@ describe('bounded boss impact and defeat effects',()=>{
   const first=bossSparks(encounter({phase:'dying',phaseTime:0})),last=bossSparks(encounter({phase:'dying',phaseTime:.7}));expect(first).toHaveLength(12);expect(last).toHaveLength(12);expect(last[0].x).toBeGreaterThan(first[0].x);expect(last[0].alpha).toBeLessThan(first[0].alpha);expect(bossSparks(encounter({phase:'dying',phaseTime:.9}))).toEqual([]);
  });
 });
+
+it('keeps Necky scenery in the saved arena when the camera scrolls',()=>{const f=drawing();drawStageBoss(f.ctx,f.atlas,encounter({x:722,y:804,floor:890,arena:{x:500,y:700,height:224}}),600,750,8);expect(f.ctx.translate).toHaveBeenCalledWith(156,0);expect(f.drawBoss).toHaveBeenCalledWith(f.ctx,'necky','attack',122,62,2000,-1);});

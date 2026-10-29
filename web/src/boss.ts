@@ -12,7 +12,7 @@ export const STAGE_BOSSES=[
 export type BossId=typeof STAGE_BOSSES[number]['id'];
 export type BossPhase='intro'|'fight'|'dying'|'exit'|'released';
 export interface Shot{x:number;y:number;vx:number;vy:number;age:number;kind:'egg'|'nut'|'crown'|'shock'}
-export interface GuardianSave {version:1;stage:number;room:string;id:BossId;kind:BossExitKind;slot:number;phase:BossPhase;hp:number;maxHp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;nextAttack:number;hitUntil:number;facing:number;music?:number;ring?:{x:number;y:number};nativeGoal?:{x:number;y:number};shots:Shot[]}
+export interface GuardianSave {version:1;stage:number;room:string;id:BossId;kind:BossExitKind;slot:number;phase:BossPhase;hp:number;maxHp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;nextAttack:number;hitUntil:number;facing:number;music?:number;ring?:{x:number;y:number};nativeGoal?:{x:number;y:number};shots:Shot[];arena?:{x:number;y:number;height:number}}
 export function bossForStage(stage:number){return STAGE_BOSSES[Math.max(0,stage)%STAGE_BOSSES.length];}
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
@@ -23,6 +23,7 @@ export function validateGuardian(value:unknown):GuardianSave|undefined{
  if(s.version!==1||!Number.isInteger(s.stage)||s.stage<0||s.stage>=72||s.stage%12>8||typeof s.room!=='string'||s.room.length>100||!STAGE_BOSSES.some(b=>b.id===s.id)||!['goal','key','mini','final'].includes(s.kind)||!['intro','fight','dying','exit','released'].includes(s.phase))return;
  if(!Number.isInteger(s.slot)||s.slot<6||s.slot>=24||!Number.isInteger(s.hp)||!Number.isInteger(s.maxHp)||s.maxHp<1||s.maxHp>12||s.hp<0||s.hp>s.maxHp)return;
  if(![s.x,s.y,s.floor,s.elapsed,s.phaseTime,s.nextAttack,s.hitUntil,s.facing].every(finite)||s.x<0||s.x>4096||s.y<0||s.y>2304||s.floor<0||s.floor>2304||s.elapsed<0||s.elapsed>36000||s.phaseTime<0||s.phaseTime>36000)return;
+ if(s.arena&&(![s.arena.x,s.arena.y,s.arena.height].every(finite)||s.arena.x<0||s.arena.x>4096||s.arena.y<0||s.arena.y>2304||s.arena.height<224||s.arena.height>256))return;
  if(s.music!==undefined&&(!Number.isInteger(s.music)||s.music<0||s.music>255))return;
  if(s.nativeGoal&&(!finite(s.nativeGoal.x)||!finite(s.nativeGoal.y)||s.nativeGoal.x<0||s.nativeGoal.x>4096||s.nativeGoal.y<0||s.nativeGoal.y>2304))return;
  if(s.ring&&(!finite(s.ring.x)||!finite(s.ring.y)||s.ring.x<0||s.ring.x>4096||s.ring.y<0||s.ring.y>2304))return;
@@ -42,13 +43,14 @@ function segmentHits(x0:number,y0:number,x1:number,y1:number,left:number,top:num
 }
 export class StageBosses {
  state?:GuardianSave;damageEvents=0;
+ private previousHero?:{x:number;y:number;frame:number};
  private previousMode=0;private frame?:number;private hurtFrame=-Infinity;private lastLives?:number;
- restore(value:unknown):void{this.state=validateGuardian(value);if(this.state)this.state.shots=this.state.shots.filter(s=>s.kind!=='egg');this.frame=undefined;this.lastLives=undefined;this.hurtFrame=-Infinity;}
+ restore(value:unknown):void{this.previousHero=undefined;this.state=validateGuardian(value);if(this.state)this.state.shots=this.state.shots.filter(s=>s.kind!=='egg');this.frame=undefined;this.lastLives=undefined;this.hurtFrame=-Infinity;}
  clear():void{this.state=undefined;this.hurtFrame=-Infinity;this.lastLives=undefined;this.pause();}
- pause():void{this.frame=undefined;}
+ pause():void{this.frame=undefined;this.previousHero=undefined;}
  get eggsUnlimited():boolean{return this.state?.phase==='intro'||this.state?.phase==='fight';}
  get nativeHitPending():boolean{return this.frame!==undefined&&this.frame-this.hurtFrame<2;}
- update(w:Uint8Array,g:Uint8Array,nativeFrame:number,nativeEggHit:boolean,videoHeight=224):{sound?:'hit'|'victory'|'throw'|'hurt'|'attack'|'land';notice?:string}{
+ update(w:Uint8Array,g:Uint8Array,nativeFrame:number,nativeEggHit:boolean,videoHeight=224,attack:{rolling?:boolean}={}):{sound?:'hit'|'victory'|'throw'|'hurt'|'attack'|'land';notice?:string}{
   const mode=w[P.mode],stage=w[P.stage],room=`${w[0x218]}:${stage}:${word(w,0x32).toString(16)}:${w[0x34]}`;
   const oldMode=this.previousMode;this.previousMode=mode;
   if(mode!==P.gameplay){
@@ -71,6 +73,7 @@ export class StageBosses {
   this.lastLives=w[0x379];
   let notice:string|undefined,sound:'hit'|'victory'|'throw'|'hurt'|'attack'|'land'|undefined;
   const playerX=word(g,P.x),playerY=word(g,P.y),cx=word(w,P.cameraX),cy=word(w,P.cameraY);
+  const prior=this.previousHero;if(prior?.frame!==nativeFrame)this.previousHero={x:playerX,y:playerY,frame:nativeFrame};
   if(!this.state){
    const goal=activeSlot(g,0x0d),key=activeSlot(g,0x14),final=stage===67?activeSlot(g,0x134):undefined;
    const explosion=activeSlot(g,0x13),mini=explosion!==undefined&&word(g,0x1900+explosion*4)===0?explosion:undefined;
@@ -80,10 +83,10 @@ export class StageBosses {
    if(kind&&slot!==undefined){
     const near=kind!=='goal'||Math.abs(signed16(word(g,P.spriteX+slot*4)-playerX))<270&&Math.abs(signed16(word(g,P.spriteY+slot*4)-playerY))<200;
     if(near&&!babyIsLost(g)&&word(g,0xae)===0){
-     const spec=bossForStage(stage),floor=kind==='goal'?word(g,P.spriteY+slot*4)+16:playerY+32;
+     const spec=bossForStage(stage),floor=kind==='goal'?word(g,P.spriteY+slot*4):playerY+32;
      const maxHp=3+Math.floor(stage/12);
      const spawnX=playerX-cx<128?playerX-cx+100:playerX-cx-100;
-     this.state={version:1,stage,room,id:spec.id,kind,slot,phase:'intro',hp:maxHp,maxHp,x:cx+clamp(spawnX,48,208),y:clamp(floor,cy+90,cy+videoHeight-8),floor:clamp(floor,cy+90,cy+videoHeight-8),elapsed:0,phaseTime:0,nextAttack:1.8,hitUntil:0,facing:-1,shots:[]};
+     this.state={version:1,stage,room,id:spec.id,kind,slot,phase:'intro',hp:maxHp,maxHp,x:cx+clamp(spawnX,48,208),y:clamp(floor,cy+90,cy+videoHeight-8),floor:clamp(floor,cy+90,cy+videoHeight-8),elapsed:0,phaseTime:0,nextAttack:1.8,hitUntil:0,facing:-1,shots:[],arena:{x:cx,y:cy,height:videoHeight}};
      if(kind==='goal')this.state.nativeGoal={x:word(g,P.spriteX+slot*4),y:word(g,P.spriteY+slot*4)};
      if(kind!=='goal'){
       // This is the held post-boss key / Bowser exit, after the original fight.
@@ -103,6 +106,7 @@ export class StageBosses {
   }
   const s=this.state;
   if(!s){this.frame=nativeFrame;return{};}
+  s.arena??={x:cx,y:cy,height:videoHeight};const arena=s.arena;
   const dt=this.frame===undefined?0:clamp((nativeFrame-this.frame)/50,0,.06);this.frame=nativeFrame;
   const spec=STAGE_BOSSES.find(b=>b.id===s.id)!;
   if(s.phase==='released')return{};
@@ -138,24 +142,29 @@ export class StageBosses {
    if(s.phaseTime>=.8){s.phase='exit';s.phaseTime=0;s.ring=s.kind==='goal'&&s.nativeGoal?{x:s.nativeGoal.x+24,y:s.nativeGoal.y-64}:this.exitPoint(playerX,playerY,cx,cy,videoHeight);notice='Guardian defeated · Go through the exit ring';sound='victory';}
    return{notice,sound};
   }
-  if(s.phase==='fight'&&nativeEggHit&&s.elapsed>=s.hitUntil){
+  const top=s.y-spec.height,foot=playerY+32,center=playerX+12;
+  const overlap=Math.abs(center-s.x)<spec.width/2+14&&foot>top&&playerY<s.y;
+  const stomp=prior&&prior.frame!==nativeFrame&&nativeFrame-prior.frame>0&&nativeFrame-prior.frame<=6&&Math.abs(playerX-prior.x)<96&&signed16(word(g,P.vy))>0&&word(g,0xc0)!==0&&Math.abs(center-s.x)<spec.width/2+12&&prior.y+32<=top+12&&foot>=top-8&&foot<=top+28;
+  const melee=Boolean(stomp||attack.rolling&&overlap);let attacked=false;
+  if(s.phase==='fight'&&(nativeEggHit||melee)&&s.elapsed>=s.hitUntil){
+   attacked=true;if(stomp){writeWord(g,P.vy,0xfb00);writeWord(g,0xc0,8);}if(melee)writeWord(g,P.invincible,Math.max(word(g,P.invincible),18));
    s.hp--;s.hitUntil=s.elapsed+.3;sound='hit';
    if(s.hp===0){s.phase='dying';s.phaseTime=0;s.shots=[];return{sound,notice:`${spec.name} defeated`};}
   }
-  const left=cx+spec.width/2+8,right=cx+256-spec.width/2-8;
-  s.floor=clamp(s.floor,cy+90,cy+videoHeight-8);
+  const left=arena.x+spec.width/2+8,right=arena.x+256-spec.width/2-8;
+  s.floor=clamp(s.floor,arena.y+90,arena.y+arena.height-8);
   s.facing=s.x>playerX?-1:1;
   const t=s.elapsed;
   switch(s.id){
    case 'gnawty':case 'really-gnawty':{
     const fast=s.id==='really-gnawty';s.x=clamp(s.x+s.facing*(fast?48:32)*dt,left,right);s.y=s.floor-Math.abs(Math.sin(t*(fast?4.5:3)))*(fast?55:33);break;
    }
-   case 'necky':case 'necky-snr':s.x=cx+222+Math.sin(t*1.3)*4;s.facing=-1;s.y=cy+104+Math.sin(t*2.1)*24;break;
-   case 'queen-b':s.x=clamp(cx+145+Math.cos(t*1.8)*55,left,right);s.y=cy+110+Math.sin(t*2.4)*35;break;
-   case 'dumb-drum':s.x=clamp(cx+150+Math.sin(t*.9)*45,left,right);s.y=s.floor-(Math.sin(t*2.4)>.4?62:8);break;
+   case 'necky':case 'necky-snr':s.x=arena.x+222+Math.sin(t*1.3)*4;s.facing=-1;s.y=arena.y+104+Math.sin(t*2.1)*24;break;
+   case 'queen-b':s.x=clamp(arena.x+145+Math.cos(t*1.8)*55,left,right);s.y=arena.y+110+Math.sin(t*2.4)*35;break;
+   case 'dumb-drum':s.x=clamp(arena.x+150+Math.sin(t*.9)*45,left,right);s.y=s.floor-(Math.sin(t*2.4)>.4?62:8);break;
    case 'k-rool':s.x=clamp(s.x+s.facing*(Math.sin(t*2)>0?65:15)*dt,left,right);s.y=s.floor-Math.max(0,Math.sin(t*2))*52;break;
   }
-  s.y=clamp(s.y,cy+spec.height+36,cy+videoHeight-8);
+  s.y=clamp(s.y,arena.y+spec.height+36,arena.y+arena.height-8);
   if(s.phase==='fight'&&t>=s.nextAttack){
    const flying=['necky','necky-snr','queen-b'].includes(s.id),kind:Shot['kind']=s.id==='k-rool'?'crown':flying?'nut':'shock';
    const x=s.x,y=s.y-spec.height*.45,dx=playerX+12-x,dy=playerY+15-y,length=Math.hypot(dx,dy)||1;
@@ -175,7 +184,7 @@ export class StageBosses {
   }
   if(s.phase==='fight')s.shots=remaining.slice(-20);else s.shots=[];
   if(s.phase==='fight'&&Math.abs(playerX+12-s.x)<spec.width/2+9&&playerY+28>s.y-spec.height&&playerY<s.y)playerHit=true;
-  if(s.phase==='fight'&&playerHit&&word(g,P.invincible)===0){
+  if(s.phase==='fight'&&playerHit&&!attacked&&word(g,P.invincible)===0){
    // The native Baby Mario routine watches the $9f damage frame after $a0
    // invincibility is decremented. Keep its own bubble/timer/recovery code.
    writeWord(g,P.invincible,0xa0);writeWord(g,0xc0,8);writeWord(g,P.vy,0xfc00);writeWord(g,P.vx,s.x<playerX?0x200:0xfe00);this.hurtFrame=nativeFrame;this.damageEvents++;sound='hurt';

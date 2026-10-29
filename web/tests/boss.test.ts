@@ -100,3 +100,25 @@ describe('a guardian gates the native level exit',()=>{
 describe('native egg sound queue',()=>{
  it('queues a byte in the verified native queue and refuses overflow',()=>{const w=new Uint8Array(0x20000);expect(queueNativeSound(w,0x20)).toBe(true);expect(w[0x59]).toBe(0x20);expect(word(w,0x57)).toBe(1);writeWord(w,0x57,7);expect(queueNativeSound(w,0x20)).toBe(false);});
 });
+
+
+describe('DKC guardians in Yoshi: melee and fixed world arenas',()=>{
+ it.each(STAGE_BOSSES.map((b,i)=>[b.id,i]as const))('accepts a roll and a descending stomp against %s with one hit per grace window',(id,stage)=>{
+  for(const kind of ['roll','stomp']){
+   const f=fixture(stage);for(let i=0;i<45;i++)f.tick();const b=f.boss.state!,spec=STAGE_BOSSES.find(s=>s.id===id)!;b.x=150;b.y=190;b.shots=[];const hp=b.hp;
+   writeWord(f.g,P.x,138);writeWord(f.g,P.y,kind==='roll'?165:190-spec.height-42);writeWord(f.g,P.vy,0x300);writeWord(f.g,0xc0,8);
+   f.boss.update(f.w,f.g,100,false,224);b.x=150;b.y=190;writeWord(f.g,P.y,kind==='roll'?165:190-spec.height-30);
+   const damageBefore=f.boss.damageEvents;f.boss.update(f.w,f.g,101,false,224,{rolling:kind==='roll'});expect(b.hp).toBe(hp-1);expect(f.boss.damageEvents).toBe(damageBefore);
+   if(kind==='stomp')expect(word(f.g,P.vy)).toBe(0xfb00);
+   f.boss.update(f.w,f.g,101,true,224,{rolling:true});expect(b.hp).toBe(hp-1);
+  }
+ });
+ it.each(STAGE_BOSSES.map((b,i)=>[b.id,i]as const))('keeps %s at the same world location when only the camera changes',(id,stage)=>{
+  const f=fixture(stage);for(let i=0;i<45;i++)f.tick();const original=structuredClone(f.boss.state!);f.boss.update(f.w,f.g,200,false,224);const a=new StageBosses(),b=new StageBosses();a.restore(original);b.restore(original);a.update(f.w,f.g,300,false,224);const w=f.w.slice();writeWord(w,P.cameraX,500);writeWord(w,P.cameraY,500);b.update(w,f.g,300,false,224);expect(b.state!.x).toBe(a.state!.x);expect(b.state!.y).toBe(a.state!.y);expect(b.state!.floor).toBe(a.state!.floor);expect(b.state!.arena).toEqual(original.arena);
+ });
+ it('rejects upward/side contacts without an active roll and never stomps through a pause',()=>{
+  const f=fixture();for(let i=0;i<45;i++)f.tick();const s=f.boss.state!,hp=s.hp;s.x=150;s.y=190;writeWord(f.g,P.x,138);writeWord(f.g,P.y,145);writeWord(f.g,P.vy,0xfc00);writeWord(f.g,0xc0,8);f.boss.update(f.w,f.g,100,false,224);expect(s.hp).toBe(hp);f.boss.pause();writeWord(f.g,P.vy,0x300);f.boss.update(f.w,f.g,102,false,224);expect(s.hp).toBe(hp);
+ });
+});
+
+it('aligns guardian feet with the actual native goal ground without the former 16px sink',()=>{const f=fixture();f.tick();expect(f.boss.state!.floor).toBe(word(f.g,P.spriteY+f.slot*4));});

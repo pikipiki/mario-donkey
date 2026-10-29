@@ -101,9 +101,9 @@ $('character').addEventListener('change',e=>{const select=e.target as HTMLSelect
 $('mount').addEventListener('change',e=>{const select=e.target as HTMLSelectElement;game?.stop();game?.mount(select.value as Mount);releaseUiFocus(select);});
 let worldSwitchPending=false,portalPreloaded=false;
 function refreshButtons():void{
- const carrying=game instanceof DkcGame&&game.carryingBarrel;
- $('roll-label').textContent=carrying?'Throw':dkcWorld?'Roll / Pick up':'Roll';
- $('roll-hint').textContent=carrying?'tap again to throw':dkcWorld?'tap to take a barrel':'attack';
+ const carrying=game instanceof DkcGame&&game.carryingBarrel,stabbing=game instanceof DkcGame&&game.swimming&&game.aquaticMount==='enguarde';
+ $('roll-label').textContent=carrying?'Throw':stabbing?'Stab':dkcWorld?'Roll / Pick up':'Roll';
+ $('roll-hint').textContent=carrying?'tap again to throw':stabbing?'pierce enemies ahead':dkcWorld?'tap to take a barrel':'attack';
  const map=Boolean(game?.ready&&game.isMap);
  if(map&&!portalPreloaded){portalPreloaded=true;void fetch(`${base}rom/${destination==='dkc'?'dkc-usa-rev2.sfc':'yoshi-eu.sfc'}`,{cache:'force-cache'}).then(r=>r.ok?r.arrayBuffer():undefined).catch(()=>{});}
  $<HTMLButtonElement>('team-swap').disabled=!game?.ready||Boolean(game?.paused)||Boolean(game?.teamSwapping)||worldSwitchPending;
@@ -156,7 +156,7 @@ $('team-close').addEventListener('click',closeTeam);teamDialog.addEventListener(
 $('team-apply').addEventListener('click',()=>{const first=$<HTMLSelectElement>('team-first').value as Character,second=$<HTMLSelectElement>('team-second').value as Character;if(!game?.configureTeam(first,second)){$('team-error').textContent='Choisis deux personnages différents.';return;}syncParty();closeTeam();setStatus(`${CHARACTER_NAMES[first]} + ${CHARACTER_NAMES[second]}`);});
 if(dkcWorld){
  $('skip').hidden=true;
- $('settings').querySelector('.sheet-hint')!.textContent='Choose a stage on the native Donkey Kong map with the stick, then tap Enter. In a stage, hold Jump to flutter on Yoshi or make a native Kong jump on foot and use Roll to attack. For barrels: tap Roll / Pick up once to take and keep one; tap again to throw (keyboard X). Hold a stick direction while tapping Tongue to swallow that way; release the stick for straight ahead. Press Down to make an egg (up to six). Tap Eggs or press V once to aim and again to throw. Against bosses, six eggs follow you: tap once to aim, then again to throw along the reticle. C uses the tongue, X rolls, arrows move. Each world keeps its own local save; the green pipe on either map changes worlds with the same selected hero.';
+ $('settings').querySelector('.sheet-hint')!.textContent='Choose a stage on the native Donkey Kong map with the stick, then tap Enter. In a stage, hold Jump to flutter on Yoshi or make a native Kong jump on foot and use Roll to attack. Underwater on Yoshi or Enguarde: hold Swim or Up to rise, Down to dive, and release to float. Enguarde spears fish ahead automatically; Stab / X extends the attack. For barrels: tap Roll / Pick up once to take and keep one; tap again to throw (keyboard X). Hold a stick direction while tapping Tongue to swallow that way; release the stick for straight ahead. Press Down to make an egg (up to six). Tap Eggs or press V once to aim and again to throw. Against bosses, six eggs follow you: tap once to aim, then again to throw along the reticle. C uses the tongue, X rolls, arrows move. Each world keeps its own local save; the green pipe on either map changes worlds with the same selected hero.';
  for(const id of ['baby-visibility','auto-skip'])$(id).closest('label')!.setAttribute('hidden','');
  $('baby-visibility-hint').hidden=true;
  $('level-map').textContent='Leave stage · World map';
@@ -233,8 +233,9 @@ function frame():void{
   const map=game.isMap,returnToLevels=!dkcWorld&&needsLevelReturn(game.wram);
   const mapLabel=returnToLevels?'Levels ↓':'Enter';
   const mapHint=returnToLevels?'back to the level grid':!dkcWorld&&isWorldTab(game.wram)?'selected world':'selected level';
-  $('jump-label').textContent=map?mapLabel:'Jump';
-  $('jump-hint').textContent=map?mapHint:game.adventure.mount==='yoshi'?'hold to flutter':game.adventure.mount==='squawks'?'hold to fly':'normal jump';
+  const swimming=game instanceof DkcGame&&game.swimming&&['yoshi','enguarde'].includes(game.aquaticMount);
+  $('jump-label').textContent=map?mapLabel:swimming?'Swim ↑':'Jump';
+  $('jump-hint').textContent=map?mapHint:swimming?'hold to rise · ↓ to dive':game.adventure.mount==='yoshi'?'hold to flutter':game.adventure.mount==='squawks'?'hold to fly':'normal jump';
   const up=controls.tongueAimingUp(now);$('tongue-label').textContent=up?'Tongue ↑':'Tongue';$('tongue-hint').textContent=up?'hold ↑ to aim up':'hold direction or straight ahead';
   const n=game.eggCount,aiming=game.aiming,unlimited=game.eggsUnlimited;
   $('egg-label').textContent=map?mapLabel:game.messageOpen?'OK':unlimited?(aiming?'Throw · ∞':'Aim · ∞'):aiming?'Throw':`Eggs · ${n}`;

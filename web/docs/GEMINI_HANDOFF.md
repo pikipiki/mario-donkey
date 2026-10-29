@@ -1,3 +1,7 @@
+## 29 octobre 2026 — nage Yoshi et pointe Enguarde dans DKC
+
+DkcWater adapte seulement les états sous-marins valides. Yoshi/Enguarde sélectionnés sur nageur : Jump ou ↑ pour monter, ↓ pour plonger, maintien de profondeur au relâchement par vitesse bornée ; pas de téléportation. Enguarde natif garde ses vitesses. Pointe avant automatique sur poissons vulnérables53..56, Stab/X étend la portée, animation et son natifs extraits ; pas de roulade forcée horizontale sous l’eau. Dos et obstacles invulnérables non neutralisés. Recette privée Coral Capers : Yoshi stable y10612 pendant672frames, Enguarde tue un vrai Bitesize et garde le cavalier. 727tests/66fichiers et build validés. Voir [DKC_WATER.md](DKC_WATER.md) et tests/dkc-water.test.ts ; fixture191 temporaire retirée avant publication. État dans outputs/dkc-water-release.json.
+
 ## 29 octobre 2026 — rotation des boss par niveau dans les deux jeux
 
 Sélection désormais basée sur le rang du niveau, cycle complet des7boss puis reprise au premier. Yoshi :48niveaux principaux continus entre mondes +6extras placés après ; DKC :40étapes dans l’ordre natif, boss natifs compris, checkpoints/bonus rattachés au parent. Les boss ajoutés restent après les boss originaux. Sauvegardes inachevées remappées sans soin ; cinématiques de mort et sorties terminées conservées. Voir [BOSS_ROTATION.md](BOSS_ROTATION.md), tests/boss-rotation.test.ts. 715tests/65fichiers validés. Les anciennes descriptions « un boss par monde » plus bas sont historiques. Publication : voir outputs/boss-rotation-release.json.

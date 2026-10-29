@@ -172,6 +172,8 @@ const keys=new Set<string>();const keyActions:Record<string,Button>={Space:'jump
 window.addEventListener('keydown',e=>{
  const target=e.target as HTMLElement|null;
  if(target?.matches('input,select,textarea')||settings.open)return;
+ // Keep the map portal's native Space/Enter activation instead of jumping.
+ if(target?.id==='world-portal'&&(e.code==='Space'||e.code==='Enter'))return;
  const gameKey=e.code==='ArrowLeft'||e.code==='ArrowRight'||Boolean(keyActions[e.code]);
  if(e.code==='Escape'&&game){e.preventDefault();pause(!game.paused);return;}
  if(!gameKey)return;

@@ -9,6 +9,7 @@ import {createRecoveryState} from '../src/recovery';
 import {waitForNativeFrames,waitForNativePause,type Emulator} from '../src/engine';
 import type {SpriteAtlas} from '../src/atlas';
 
+vi.mock('../src/boss-eggs',()=>({NativeBossEggs:class {sync(){}restore(){}},NativeEggFlights:class {reset(){}collide(){return 0;}}}));
 vi.mock('../src/boss-rom',()=>({BossRomHooks:class {sync(){}restore(){}}}));
 
 vi.mock('../src/campaign',()=>({readCampaign:vi.fn(),writeCampaign:vi.fn(),backupCampaign:vi.fn()}));

@@ -3,7 +3,7 @@ import {PipeAudio,travelThroughPipe} from './pipe';
 const pipeAudio=new PipeAudio();
 import {installGameTouchGuards} from './touch';
 import { Controls,type Button } from './controls';
-import { launch,primeAudio,waitForNativeFrames,waitForNativePause } from './engine';
+import { launch,INPUT,primeAudio,waitForNativeFrames,waitForNativePause } from './engine';
 import { LiveGame } from './game';
 import {DkcGame} from './dkc-game';
 import {patchDkcDrawing} from './dkc-profile';
@@ -43,7 +43,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   </aside>
  </section>
  <p id="status" class="status" role="status" aria-live="polite">Loading the game…</p>
- <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">On the map, Up selects the world tabs and Down returns to the levels. Levels ↓ also returns from the current world tab. Unlocked stages and worlds can be selected with Left/Right. Hold the stick to move. Release it to stop. Hold Jump to flutter on Yoshi; the Kongs on foot have a normal jump. Walking after release is optional: enable Keep walking below, then touch the center to stop. The roll keeps moving on its own. To grab Baby Mario above you: push the stick up, release, then tap Tongue within two seconds. An egg can also bring his bubble closer. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>Keep walking after release</span><input id="sticky" type="checkbox"></label><label class="setting"><span>Keep Baby Mario on screen</span><input id="baby-visibility" type="checkbox" checked aria-describedby="baby-visibility-hint"></label><p id="baby-visibility-hint" class="sheet-hint">Slows his bubble near the top edge. Turn off for the original flight. The countdown stays the same.</p><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><button id="level-map" class="sheet-button" disabled>Choose a level · World map</button><button id="repair-display" class="sheet-button" disabled>Repair display · Return to map</button><p class="sheet-hint">If the image is scrambled: rebuild the map. Completed stages and partners stay saved; the current stage starts again. A copy of the previous state is kept on this device.</p><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-export-dkc" ${dkcWorld?'':'hidden'}>Export DKC map bootstrap (test)</button><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button><button id="test-audio">Check native audio signal (test)</button><button id="test-goal">Approach the 1-1 goal (test)</button><button id="test-boss-eggs">Fire boss eggs (test)</button><button id="test-castle">Enter original 1-4 boss room (test)</button><button id="test-burt-end">Run original Burt defeat sequence (test)</button></details></dialog>
+ <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">On the map, Up selects the world tabs and Down returns to the levels. Levels ↓ also returns from the current world tab. Unlocked stages and worlds can be selected with Left/Right. Hold the stick to move. Release it to stop. Hold Jump to flutter on Yoshi; the Kongs on foot have a normal jump. Walking after release is optional: enable Keep walking below, then touch the center to stop. The roll keeps moving on its own. To grab Baby Mario above you: push the stick up, release, then tap Tongue within two seconds. An egg can also bring his bubble closer. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>Keep walking after release</span><input id="sticky" type="checkbox"></label><label class="setting"><span>Keep Baby Mario on screen</span><input id="baby-visibility" type="checkbox" checked aria-describedby="baby-visibility-hint"></label><p id="baby-visibility-hint" class="sheet-hint">Slows his bubble near the top edge. Turn off for the original flight. The countdown stays the same.</p><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><button id="level-map" class="sheet-button" disabled>Choose a level · World map</button><button id="repair-display" class="sheet-button" disabled>Repair display · Return to map</button><p class="sheet-hint">If the image is scrambled: rebuild the map. Completed stages and partners stay saved; the current stage starts again. A copy of the previous state is kept on this device.</p><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-export-dkc" ${dkcWorld?'':'hidden'}>Export DKC map bootstrap (test)</button><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button><button id="test-audio">Check native audio signal (test)</button><button id="test-goal">Approach the 1-1 goal (test)</button><button id="test-boss-eggs">Fire boss eggs (test)</button><button id="test-protect">Protect boss test: off</button><button id="test-necky">Preview Necky guardian (test)</button><button id="test-dkc-exit">Approach Jungle exit (test)</button><button id="test-castle">Enter original 1-4 boss room (test)</button><button id="test-burt-end">Run original Burt defeat sequence (test)</button></details></dialog>
 </main>`;
 installGameTouchGuards(document.querySelector<HTMLElement>('.shell')!);
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -138,7 +138,7 @@ $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenEle
 const settings=$<HTMLDialogElement>('settings');
 if(dkcWorld){
  $('skip').hidden=true;
- $('settings').querySelector('.sheet-hint')!.textContent='Choose a stage on the native Donkey Kong map with the stick, then tap Enter. In a stage, hold Jump for a native Kong jump and use Roll to attack. Tongue swallows a nearby enemy and creates one egg (up to six). Tap Eggs or press V to throw toward a nearby enemy. C uses the tongue, X rolls, arrows move. Each world keeps its own local save; the green pipe on either map changes worlds with the same selected hero.';
+ $('settings').querySelector('.sheet-hint')!.textContent='Choose a stage on the native Donkey Kong map with the stick, then tap Enter. In a stage, hold Jump for a native Kong jump and use Roll to attack. Tongue swallows a nearby enemy and creates one egg (up to six). Tap Eggs or press V to throw toward a nearby enemy. Against Burt, six eggs follow you: tap once to aim, then again to throw along the reticle. C uses the tongue, X rolls, arrows move. Each world keeps its own local save; the green pipe on either map changes worlds with the same selected hero.';
  for(const id of ['baby-visibility','auto-skip'])$(id).closest('label')!.setAttribute('hidden','');
  $('baby-visibility-hint').hidden=true;
  $('level-map').textContent='Leave stage · World map';
@@ -200,9 +200,16 @@ $('test-hit').addEventListener('click',()=>{if(dkcWorld||!debug||!game?.ready)re
 $('test-roll').addEventListener('click',()=>{if(dkcWorld||!debug||!game?.ready)return;closeSettings();game.stop();const g=game.gsu,read=(a:number)=>g[a]|g[a+1]<<8,write=(a:number,v:number)=>{g[a]=v&255;g[a+1]=v>>>8;};for(let i=0;i<24;i++){const o=i*4;if(read(0x1360+o)===0x1e&&read(0xf00+o)===0x10){write(0x8c,read(0x10e2+o)-24);write(0x90,read(0x1182+o));write(0xb4,0);write(0xaa,0);controls.facing=1;controls.activate('roll',performance.now());break;}}});
 $('test-dialogue').addEventListener('click',()=>{if(dkcWorld||!debug||!game?.ready||game.wram[0x118]!==0x13)return;closeSettings();if(game.paused)pause(false);game.stop();game.wram[0xd11]=1;game.gsu[0x4070]=0x2c;game.gsu[0x4071]=0;});
 $('test-unlock').addEventListener('click',()=>{if(!debug||!game)return;game.adventure.available=[...CHARACTERS];game.adventure.animals=[...ANIMALS];syncParty();});
-let lastDiagnostic=0;
+let lastDiagnostic=0,protectBossTest=false;
+$('test-protect').addEventListener('click',()=>{if(!debug)return;protectBossTest=!protectBossTest;$('test-protect').textContent=`Protect boss test: ${protectBossTest?'on':'off'}`;});
+$('test-necky').addEventListener('click',()=>{if(!debug||dkcWorld||!game?.adventure.guardian)return;const s=game.adventure.guardian;s.id='necky';s.hp=3;s.phase='fight';s.elapsed=0;s.hitUntil=0;s.shots=[];});
 function frame():void{
- const now=performance.now();game?.tick(now);refreshButtons();
+ const now=performance.now();
+ if(debug&&protectBossTest&&game?.ready&&!game.paused){
+  if(dkcWorld){const slot=(game.wram[0x56f]|game.wram[0x570]<<8)===2?4:2;game.wram[0x16d1+slot-2]=60;game.wram[0x16d2+slot-2]=0;}
+  else if(game.wram[0x118]===0x13){game.gsu[0x1d6]=0x3f;game.gsu[0x1d7]=0;}
+ }
+ game?.tick(now);refreshButtons();
  if(game?.ready){
   const map=game.isMap,returnToLevels=!dkcWorld&&needsLevelReturn(game.wram);
   const mapLabel=returnToLevels?'Levels ↓':'Enter';
@@ -211,8 +218,8 @@ function frame():void{
   $('jump-hint').textContent=map?mapHint:dkcWorld?'native jump':game.adventure.mount==='yoshi'?'hold to flutter':game.adventure.mount==='squawks'?'hold to fly':'normal jump';
   const up=controls.tongueAimingUp(now);$('tongue-label').textContent=up?'Tongue ↑':'Tongue';$('tongue-hint').textContent=dkcWorld?'eat an enemy':up?'aimed up':'up: stick, then tap';
   const n=game.eggCount,aiming=game.aiming,unlimited=game.eggsUnlimited;
-  $('egg-label').textContent=map?mapLabel:game.messageOpen?'OK':unlimited?'Throw · ∞':aiming?'Throw':`Eggs · ${n}`;
-  $('egg-hint').textContent=map?mapHint:game.messageOpen?'confirm':unlimited?'assisted aim / V':aiming?'press / V':n?(dkcWorld?'throw / V':'aim / V'):dkcWorld?'eat an enemy first':'Tongue then Down';
+  $('egg-label').textContent=map?mapLabel:game.messageOpen?'OK':unlimited?(aiming?'Throw · ∞':'Aim · ∞'):aiming?'Throw':`Eggs · ${n}`;
+  $('egg-hint').textContent=map?mapHint:game.messageOpen?'confirm':unlimited?'aim, then throw / V':aiming?'press / V':n?(dkcWorld?'throw / V':'aim / V'):dkcWorld?'eat an enemy first':'Tongue then Down';
  }
  if(debug&&game?.ready&&now-lastDiagnostic>500){$('diagnostic').textContent=JSON.stringify(game.diagnostics(),null,2);lastDiagnostic=now;}
  requestAnimationFrame(frame);
@@ -238,7 +245,10 @@ $('test-goal').addEventListener('click',async()=>{
  const wait=async(mode:number)=>{const began=performance.now();while(game!.wram[0x118]!==mode){if(performance.now()-began>12000)throw new Error('Native entrance timed out.');await waitForNativeFrames(manager);}};
  try{
   for(const p of sites){heap[p+1]=0xdd;heap[p+2]=0x69;}
-  game.goToMap();await wait(0x26);controls.pulse(0,performance.now());await wait(0x13);game.gsu[0x1d6]=0x3f;game.gsu[0x1d7]=0;
+  if(game.wram[0x118]!==0x26){game.goToMap();await wait(0x26);}
+  controls.pulse(0,performance.now());await wait(0x13);game.skipDialogue();
+  const readyAt=performance.now();while(!game.eggsUnlimited||game.messageOpen){if(performance.now()-readyAt>8000)break;game.gsu[0x1d6]=0x3f;game.gsu[0x1d7]=0;await waitForNativeFrames(manager);}
+  game.gsu[0x1d6]=0x3f;game.gsu[0x1d7]=0;
   pause(true);setStatus('Native goal approach loaded · Resume to test the ring.');
  }catch(e){setStatus((e as Error).message);}
  finally{for(const p of sites)heap.set(signature,p);}
@@ -298,4 +308,23 @@ $('test-export-dkc').addEventListener('click',async()=>{
   setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus('DKC map bootstrap exported.');
  }catch(error){setStatus((error as Error).message);}
  finally{if(!wasPaused)active.setPaused(false);}
+});
+
+$('test-dkc-exit').addEventListener('click',async()=>{
+ if(!debug||!dkcWorld||!game?.ready)return;
+ const active=game,w=active.wram,m=active.emulator.gameManager,read=(p:number)=>w[p]|w[p+1]<<8,write=(p:number,v:number)=>{w[p]=v&255;w[p+1]=v>>8&255;};
+ if(read(0x3e)!==22){setStatus('This fixture requires Jungle Hijinxs.');return;}
+ resumeFromSettings();protectBossTest=true;$('test-protect').textContent='Protect boss test: on';
+ if(active.isMap){controls.pulse(INPUT.b,performance.now());const began=performance.now();while(active.isMap){if(performance.now()-began>10000)return;await waitForNativeFrames(m);}}
+ const began=performance.now();while(read(0x4a)!==512||![1,2].includes(read(0xd47))){if(performance.now()-began>10000)return;await waitForNativeFrames(m);}
+ active.stop();
+ // DEV travel fixture only: the native loader still creates the actual door.
+ // Let its camera/tile streaming advance for real native frames at each step.
+ const waitFrames=async(count:number)=>{const first=m.functions.getFrameNum(),started=performance.now();while(m.functions.getFrameNum()-first<count){if(performance.now()-started>12000)throw Error('Native fixture frame timeout');await waitForNativeFrames(m);}};
+ for(let x=600;x<=5280;x+=120){
+  write(0xb1b,x);write(0xb1d,x-24);write(0xbc3,175);write(0xbc5,175);write(0xe8b,0);write(0xef3,0);write(0x102b,0);write(0x16d1,100);write(0x16d5,100);
+  await waitFrames(24);
+ }
+ for(let i=0;i<40;i++){write(0xb1b,5180);write(0xbc3,63);write(0xe8b,0);write(0xef3,0);write(0x102b,0);write(0x16d1,100);write(0x16d5,100);await waitFrames(1);}
+ pause(true);setStatus('Native Jungle exit loaded · Burt guards the genuine map return.');
 });

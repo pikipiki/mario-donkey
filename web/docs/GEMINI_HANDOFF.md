@@ -1,3 +1,43 @@
+## 29 octobre 2026 — boss réciproques, audio et vrais œufs (448 tests, recette native effectuée)
+
+### Changement demandé
+
+Musique/bruitages correspondant au boss donneur dans les deux jeux, tête Necky encadrée par son arène, et vrais œufs de Yoshi (file + visée + renouvellement) pendant les gardiens DKC. Il n’existait auparavant aucun boss Yoshi dans DKC : ajout de Burt aux vraies sorties vers la carte. Un seul cœur SNES exécute la ROM du monde actif ; les boss de l’autre jeu sont des adaptations TypeScript avec graphismes/audio natifs extraits hors ligne.
+
+### Œufs SNES authentiques dans Yoshi
+
+`boss-eggs.ts` : hook EU entrée initOAM fichier265, stub libre1FF00, routines natives allocation03A364 et insertion inventaire03BEB9, DP7960 et scratch7960..7976 sauvegardés/restaurés. Reconstitue jusqu’à6 vrais œufs via allocation, sans écrire un compteur fictif. Pas de refill en visée, dialogue, transformation, locks, Bébé perdu ou hors gameplay. Tous registres/flags/DB/DP restaurés ; signatures ROM exactes et restauration réversible. `NativeEggFlights` observe les vraies trajectoires ; exclut œufs suiveurs/tenus et consomme uniquement un projectile lancé. Important découvert en exécution : collision1D38 est un compte à rebours20→1F→… et non un bit20 permanent.
+
+`boss.ts/game.ts` suppriment tirs automatiques Canvas/A supprimé. Le premier appui vise réellement, le suivant tire ; les œufs suivent naturellement et les effets SNES d’origine restent actifs. Réapprovisionnement seulement pendant intro/combat ; stock réel conservé ensuite. Tests bytecode65816 et preuve native Mesen privée : inventaire0→12(6œufs), refs valides[92,88,84,80,76,72], viséeA, tirA, collisionShyGuy native, nouvelœuf, restauration exacte sans corruption. outputs/verification-native-eggs.json etcaptures. Recette navigateur5194 : vraisœufs derrière le héros, réticule jaune, vrai tir retireHP àGnawty, gardien vaincu et vraiGOAL natif.
+
+### Boss et arène
+
+Necky/NeckySnr sont ancrés vers xcam+222, cou tourné vers le bord. `boss-draw.ts` ajoute renfoncement rocheux/supports bois/mousse derrière la tête originale et particules bornées impact/défaite. Décor présenté par Canvas, ne modifie pas les tiles ni les collisions natives.
+
+`dkc-guardian.ts` ajoute Burt3HP aux sorties normales DKC identifiées par le moteur, après les ennemis du niveau. `dkc-boss-rom.ts` suspend les vrais trampolines6A/6B pendant le combat, puis les laisse exécuter leurs collisions/animation/progression d’origine. **Correction critique par preuve native : Jungleexit1375=12, pas0 !** Résoudre destination1375||0565 puis flags exacts DATA81D102&0C20 pour courant et destination : bonus/intérieurs non bloqués. Table Rev2 fichier1D102 ; sortie normale36C455, eau36C3F1 ; trampolines3F8398/3F8394 ; espace libre3BF800..3BF9FF, séparé du garde rendu3BFFD0. Tests d’interprétation sur2484combinaisons + restauration et copiesROM multiples. Dégâts Burt demandent le vrai chocDKC1595=1 et respectent invulnérabilité16D1, états spéciaux et hitflags existants. Ne jamais forcer progression/mort/partenaire.
+
+Le Burt complet est décodé de captures EU : corps BG2SuperFX4bpp et HDMA parscanline5C18/5B98, OBJpriorités2/3 (baseVRAM Mesen en mots→×2),192px/cellule, cinq poses. Atlas yoshi-bosses.png SHA b1afdc8a46780b7a20c19332a30940a8f831b0b6bd9937bd2f91be5c07bbd1f0. Script extract-yoshi-boss.py. Attaque/blessure réutilisent poses de mouvement ; décès par fondu, ce ne sont pas les programmes ni toutes les animations natives de Burt exécutés dans DKC. DkcCombat pendant gardien : œufs illimités en file, premier appui vise sans aimassist, secondtire suivant exactement le réticule, langue ne mange pas le boss. Dans DKC ces œufs sont une adaptation Canvas (DKC ne contient pas les routines Yoshi) ; dans Yoshi ce sont les véritables sprites/physique natifs.
+
+### Musiques/FX et mémoire
+
+`BossAudio` réutilise le contexte audio déverrouillé de l’émulateur, une seule boucle +4voixmax, pause/reprise sansdoublon, chargement asynchrone/cache/retry borné, pas de volume natif zéro qui couperait les vraisœufs. Export natif horsligne Mesen, MP3~3,5Mo au total, banquesFX PCM429Ko ; pas de secondémulateur dans la page. Boucles observées DKC2→24s, Burt30→87,08s, Salvo20→60,68s ; K.Rool146s originales, raccord musical complet non confirmé. FX DKC natifs et Burt saut13/atterrissage23/coup20/défaite78.
+
+Arrêt musique Yoshi : commandeF0 seulement àWRAM4D ; 4F n’est pas un registre de chanson courante fiable (retombe0 après commandes) ! `native-boss-music.ts` capture via0205 persistant et table d’entrée EU B273 ; répare music0/F0. Ne pas écraser les jingles/fin natifs. DKC051D est un booléen, chanson0523/banque0521 ; dispatcher dans garde de sortie, API.music(stop|resume|none,song), arrêt nativeB990E7/repriseB990CE, acquittement051D sans WRAM inventée. P/A/X/Y/DB/DP conservés et testés.
+
+### Validation effectuée et reprise
+
+- **448 tests passent sur41fichiers**, build TypeScript/Vite valide. Nouveau garde DKC : préservation complèteA/X/Y/P sur les deux chemins ; normalF800, eauF900, musiqueF880, metadataF9FC/FE. Les portes déjà entrées (état1029 nonnul) continuent toujours leur cérémonie native ; garde installé avantloadState pour fermer la fenêtre d’une frame surreprise d’un combat inachevé.
+- Origines de test isolées5194/5195, legacySnes9x : Yoshi1-1 vraie file d’œufs, réticule, projectile retirantHP3→2→0, GOAL puis score10. DKCJungle vrai Burt complet, mouvement natif, bossAudio.playingtrue pendantnative051D0, trois tirs visésHP3→2→1→0, FXyoshi-defeat, reprise native051D1 avecmusique0(DKIslandSwing), sortie authentique, carteRopeyRampage débloquée. Reprise parcheckpoint réaffiche la carte et son tuyau.
+- Aperçu Necky viafixtureDEV sur5195 : tête ancrée àdroite dans l’ouverture/supports, vraisœufs suiveurs etréticule natif, guardian.music1 conservé, stopnatifF0etbossAudio.playingtrue/FXboss-throw. Capture verification-necky-native-eggs.png ; il s’agit d’une sélection de boss de test, pas du boss normal1-1.
+- Autre correction découverte : après sortie nativeDKC, word32 reste0 tandis que le bootstrapavait1. La carte est reconnue par projectionheight0+acteur10/12, pas parword32 ; sinon le portail et lecheckpoint de carte disparaissaient après victoire. Régressiontestée. OriginalBurtadapté etbossDKCphases restent séparés des progressions originales.
+- Preuves : outputs/verification-boss-crossover.json, verification-boss-native-eggs-browser.png, verification-boss-native-score.png, verification-burt-map-browser.png, verification-dkc-boss-native-music.json etverification-dkc-boss-native-map.png. Mesen séparé confirme051D1→0→1 etretourcartesjingle26→musique12. Les essais de combat utilisent une protectionDEV, pas la sauvegarde de l’utilisateur.
+- Le contrôle automatique a refusé le redimensionnement global du navigateur pour préserver la partie ouverte de l’utilisateur. Aucun contournement : contrôles visuels auviewportactuel et tests logiques ; pas de nouveau passageportrait/paysage dans cette recette, ni téléphonephysique/haut-parleur iPhone/FPSmatériel.
+- CapturesBurt sources conservées dans work/burt-native-evidence ; extraction : python scripts/extract-yoshi-boss.py CAPTURE_FOLDER public/art, PythonavecPillow. Audio : python scripts/export-boss-audio.py MesenCore.dylib public/audio, PythonavecNumPy+ffmpeg déjà disponible. Les `.sfc` restent non pris encharge par REA ; ces preuves viennent du désassemblage source+octets exacts+exécutionnative, pas d’un résultatREA.
+
+Suite :
+
+Étendre la recette aux autres gardiens et vérifier les téléphones physiques. Rejouer bonus/intérieurs/eau et boss DKC originaux : ils restent natifs, certains n’utilisent pas une porte6A/6B donc ne pas annoncer que tous reçoivent Burt. Aucun téléphone physique, haut-parleur iPhone niFPS matériel testé. Quota52%utilisés/48%restants au contrôle, seuil utilisateur10%nonatteint. Maintenir ce rapport pour repriseGemini.
+
 ## 29 octobre 2026 — tuyaux Mario entre les deux cartes
 
 - `main.ts/style.css` : le bouton de changement de monde montre maintenant le même vrai pictogramme de tuyau vert sur la carte Yoshi (destination Donkey Goonk) et sur la carte DKC (destination Yoshi’s Island), avec nom, focus clavier et activation native Espace/Entrée. SVG de 40px dessiné dans le code, pas image floue ni bloc?. Le portail reste limité aux cartes et occupe la place inutilisée de Roll.

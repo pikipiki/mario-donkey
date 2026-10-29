@@ -12,7 +12,7 @@ export const STAGE_BOSSES=[
 export type BossId=typeof STAGE_BOSSES[number]['id'];
 export type BossPhase='intro'|'fight'|'dying'|'exit'|'released';
 export interface Shot{x:number;y:number;vx:number;vy:number;age:number;kind:'egg'|'nut'|'crown'|'shock'}
-export interface GuardianSave {version:1;stage:number;room:string;id:BossId;kind:BossExitKind;slot:number;phase:BossPhase;hp:number;maxHp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;nextAttack:number;hitUntil:number;facing:number;ring?:{x:number;y:number};nativeGoal?:{x:number;y:number};shots:Shot[]}
+export interface GuardianSave {version:1;stage:number;room:string;id:BossId;kind:BossExitKind;slot:number;phase:BossPhase;hp:number;maxHp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;nextAttack:number;hitUntil:number;facing:number;music?:number;ring?:{x:number;y:number};nativeGoal?:{x:number;y:number};shots:Shot[]}
 export function bossForStage(stage:number){return STAGE_BOSSES[Math.max(0,stage)%STAGE_BOSSES.length];}
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
@@ -23,6 +23,7 @@ export function validateGuardian(value:unknown):GuardianSave|undefined{
  if(s.version!==1||!Number.isInteger(s.stage)||s.stage<0||s.stage>=72||s.stage%12>8||typeof s.room!=='string'||s.room.length>100||!STAGE_BOSSES.some(b=>b.id===s.id)||!['goal','key','mini','final'].includes(s.kind)||!['intro','fight','dying','exit','released'].includes(s.phase))return;
  if(!Number.isInteger(s.slot)||s.slot<6||s.slot>=24||!Number.isInteger(s.hp)||!Number.isInteger(s.maxHp)||s.maxHp<1||s.maxHp>12||s.hp<0||s.hp>s.maxHp)return;
  if(![s.x,s.y,s.floor,s.elapsed,s.phaseTime,s.nextAttack,s.hitUntil,s.facing].every(finite)||s.x<0||s.x>4096||s.y<0||s.y>2304||s.floor<0||s.floor>2304||s.elapsed<0||s.elapsed>36000||s.phaseTime<0||s.phaseTime>36000)return;
+ if(s.music!==undefined&&(!Number.isInteger(s.music)||s.music<0||s.music>255))return;
  if(s.nativeGoal&&(!finite(s.nativeGoal.x)||!finite(s.nativeGoal.y)||s.nativeGoal.x<0||s.nativeGoal.x>4096||s.nativeGoal.y<0||s.nativeGoal.y>2304))return;
  if(s.ring&&(!finite(s.ring.x)||!finite(s.ring.y)||s.ring.x<0||s.ring.x>4096||s.ring.y<0||s.ring.y>2304))return;
  if(!Array.isArray(s.shots)||s.shots.length>24||s.shots.some(p=>!p||!['egg','nut','crown','shock'].includes(p.kind)||![p.x,p.y,p.vx,p.vy,p.age].every(finite)||p.age<0||p.age>8||Math.abs(p.vx)>1000||Math.abs(p.vy)>1000))return;
@@ -41,13 +42,13 @@ function segmentHits(x0:number,y0:number,x1:number,y1:number,left:number,top:num
 }
 export class StageBosses {
  state?:GuardianSave;damageEvents=0;
- private previousMode=0;private frame?:number;private eggDown=false;private hurtFrame=-Infinity;private lastLives?:number;
- restore(value:unknown):void{this.state=validateGuardian(value);this.frame=undefined;this.eggDown=false;this.lastLives=undefined;this.hurtFrame=-Infinity;}
+ private previousMode=0;private frame?:number;private hurtFrame=-Infinity;private lastLives?:number;
+ restore(value:unknown):void{this.state=validateGuardian(value);if(this.state)this.state.shots=this.state.shots.filter(s=>s.kind!=='egg');this.frame=undefined;this.lastLives=undefined;this.hurtFrame=-Infinity;}
  clear():void{this.state=undefined;this.hurtFrame=-Infinity;this.lastLives=undefined;this.pause();}
- pause():void{this.frame=undefined;this.eggDown=false;}
+ pause():void{this.frame=undefined;}
  get eggsUnlimited():boolean{return this.state?.phase==='intro'||this.state?.phase==='fight';}
  get nativeHitPending():boolean{return this.frame!==undefined&&this.frame-this.hurtFrame<2;}
- update(w:Uint8Array,g:Uint8Array,nativeFrame:number,eggPressed:boolean,facing:number,videoHeight=224):{sound?:'hit'|'victory'|'throw'|'hurt';notice?:string}{
+ update(w:Uint8Array,g:Uint8Array,nativeFrame:number,nativeEggHit:boolean,videoHeight=224):{sound?:'hit'|'victory'|'throw'|'hurt'|'attack'|'land';notice?:string}{
   const mode=w[P.mode],stage=w[P.stage],room=`${w[0x218]}:${stage}:${word(w,0x32).toString(16)}:${w[0x34]}`;
   const oldMode=this.previousMode;this.previousMode=mode;
   if(mode!==P.gameplay){
@@ -68,7 +69,7 @@ export class StageBosses {
    if(word(g,P.spriteId+this.state.slot*4)!==expected||word(g,P.spriteState+this.state.slot*4)!==0x10)this.clear();
   }
   this.lastLives=w[0x379];
-  let notice:string|undefined,sound:'hit'|'victory'|'throw'|'hurt'|undefined;
+  let notice:string|undefined,sound:'hit'|'victory'|'throw'|'hurt'|'attack'|'land'|undefined;
   const playerX=word(g,P.x),playerY=word(g,P.y),cx=word(w,P.cameraX),cy=word(w,P.cameraY);
   if(!this.state){
    const goal=activeSlot(g,0x0d),key=activeSlot(g,0x14),final=stage===67?activeSlot(g,0x134):undefined;
@@ -101,9 +102,8 @@ export class StageBosses {
    }
   }
   const s=this.state;
-  if(!s){this.frame=nativeFrame;this.eggDown=eggPressed;return{};}
+  if(!s){this.frame=nativeFrame;return{};}
   const dt=this.frame===undefined?0:clamp((nativeFrame-this.frame)/50,0,.06);this.frame=nativeFrame;
-  const freshEgg=eggPressed&&!this.eggDown;this.eggDown=eggPressed;
   const spec=STAGE_BOSSES.find(b=>b.id===s.id)!;
   if(s.phase==='released')return{};
   if(s.phase==='exit'){
@@ -138,10 +138,9 @@ export class StageBosses {
    if(s.phaseTime>=.8){s.phase='exit';s.phaseTime=0;s.ring=s.kind==='goal'&&s.nativeGoal?{x:s.nativeGoal.x+24,y:s.nativeGoal.y-64}:this.exitPoint(playerX,playerY,cx,cy,videoHeight);notice='Guardian defeated · Go through the exit ring';sound='victory';}
    return{notice,sound};
   }
-  if(s.phase==='fight'&&freshEgg&&s.shots.filter(p=>p.kind==='egg').length<8){
-   const x=playerX+12+Math.sign(s.x-playerX||facing)*14,y=playerY+12;
-   const dx=s.x-x,dy=s.y-spec.height*.55-y,length=Math.hypot(dx,dy)||1;
-   s.shots.push({x,y,vx:dx/length*310,vy:dy/length*310,age:0,kind:'egg'});sound='throw';
+  if(s.phase==='fight'&&nativeEggHit&&s.elapsed>=s.hitUntil){
+   s.hp--;s.hitUntil=s.elapsed+.3;sound='hit';
+   if(s.hp===0){s.phase='dying';s.phaseTime=0;s.shots=[];return{sound,notice:`${spec.name} defeated`};}
   }
   const left=cx+spec.width/2+8,right=cx+256-spec.width/2-8;
   s.floor=clamp(s.floor,cy+90,cy+videoHeight-8);
@@ -151,7 +150,7 @@ export class StageBosses {
    case 'gnawty':case 'really-gnawty':{
     const fast=s.id==='really-gnawty';s.x=clamp(s.x+s.facing*(fast?48:32)*dt,left,right);s.y=s.floor-Math.abs(Math.sin(t*(fast?4.5:3)))*(fast?55:33);break;
    }
-   case 'necky':case 'necky-snr':s.x=clamp(cx+175+Math.sin(t*1.3)*35,left,right);s.y=cy+104+Math.sin(t*2.1)*24;break;
+   case 'necky':case 'necky-snr':s.x=cx+222+Math.sin(t*1.3)*4;s.facing=-1;s.y=cy+104+Math.sin(t*2.1)*24;break;
    case 'queen-b':s.x=clamp(cx+145+Math.cos(t*1.8)*55,left,right);s.y=cy+110+Math.sin(t*2.4)*35;break;
    case 'dumb-drum':s.x=clamp(cx+150+Math.sin(t*.9)*45,left,right);s.y=s.floor-(Math.sin(t*2.4)>.4?62:8);break;
    case 'k-rool':s.x=clamp(s.x+s.facing*(Math.sin(t*2)>0?65:15)*dt,left,right);s.y=s.floor-Math.max(0,Math.sin(t*2))*52;break;
@@ -163,17 +162,15 @@ export class StageBosses {
    const speed=s.id==='necky-snr'?125:95;
    s.shots.push({x,y,vx:dx/length*speed,vy:dy/length*speed,age:0,kind});
    if(s.id==='necky-snr')s.shots.push({x,y:y-18,vx:dx/length*speed,vy:dy/length*speed+12,age:0,kind});
-   s.nextAttack=t+(['gnawty','really-gnawty'].includes(s.id)?2.6:s.id==='necky-snr'?1.5:2.1);
+   sound='attack';s.nextAttack=t+(['gnawty','really-gnawty'].includes(s.id)?2.6:s.id==='necky-snr'?1.5:2.1);
   }
+  if(!sound&&['gnawty','really-gnawty'].includes(s.id)&&Math.floor(t*(s.id==='gnawty'?3:4.5)/Math.PI)!==Math.floor((t-dt)*(s.id==='gnawty'?3:4.5)/Math.PI))sound='land';
   const remaining:Shot[]=[];let playerHit=false;
   for(const shot of s.shots){
    const ox=shot.x,oy=shot.y;shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;shot.age+=dt;
    if(shot.age>4||shot.x<cx-32||shot.x>cx+288||shot.y<cy-32||shot.y>cy+videoHeight+32)continue;
-   if(shot.kind==='egg'&&s.phase==='fight'&&segmentHits(ox,oy,shot.x,shot.y,s.x-spec.width/2-4,s.y-spec.height-4,s.x+spec.width/2+4,s.y+4)){
-    if(t>=s.hitUntil){s.hp--;s.hitUntil=t+.3;sound='hit';if(s.hp===0){s.phase='dying';s.phaseTime=0;s.shots=[];notice=`${spec.name} defeated`;}}
-    continue;
-   }
-   if(shot.kind!=='egg'&&segmentHits(ox,oy,shot.x,shot.y,playerX-3,playerY-2,playerX+27,playerY+33)){playerHit=true;continue;}
+   if(shot.kind==='egg')continue; // retire legacy assisted projectiles
+   if(segmentHits(ox,oy,shot.x,shot.y,playerX-3,playerY-2,playerX+27,playerY+33)){playerHit=true;continue;}
    remaining.push(shot);
   }
   if(s.phase==='fight')s.shots=remaining.slice(-20);else s.shots=[];
@@ -186,4 +183,11 @@ export class StageBosses {
   return{notice,sound};
  }
  private exitPoint(x:number,y:number,cx:number,cy:number,height:number){return{x:cx+clamp(x-cx+76,52,208),y:cy+clamp(y-cy-48,56,height-80)};}
+}
+
+/** World-space native egg collision bounds; sprite pixels and hitbox share this anchor. */
+export function guardianHitbox(s:GuardianSave|undefined):{left:number;top:number;right:number;bottom:number}|undefined{
+ if(!s||s.phase!=='fight')return;
+ const spec=STAGE_BOSSES.find(b=>b.id===s.id)!;
+ return{left:s.x-spec.width/2-4,top:s.y-spec.height-4,right:s.x+spec.width/2+4,bottom:s.y+4};
 }

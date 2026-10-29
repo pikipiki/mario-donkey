@@ -1,0 +1,119 @@
+{
+  "cell": 192,
+  "columns": 5,
+  "origin": [
+    96,
+    176
+  ],
+  "groups": {
+    "burt": {
+      "idle": {
+        "start": 0,
+        "frames": 5,
+        "fps": 6
+      },
+      "attack": {
+        "start": 0,
+        "frames": 5,
+        "fps": 6
+      },
+      "hurt": {
+        "start": 0,
+        "frames": 5,
+        "fps": 6
+      },
+      "dead": {
+        "start": 4,
+        "frames": 1,
+        "fps": 1
+      }
+    }
+  },
+  "provenance": {
+    "source": "Yoshi Island Europe original Burt the Bashful; native BG2 4bpp + per-scanline HDMA + native 4bpp OBJ",
+    "romSha256": "91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90",
+    "captureHeight": 239,
+    "bodyTilemapWords": 14336,
+    "bodyChrWords": 28672,
+    "hdmaHorizontalTable": 23576,
+    "hdmaVerticalTable": 23448,
+    "frames": [
+      {
+        "capture": 18,
+        "rawSha256": "21e8574c4c2d4d1b9b7aba7d261227e9e3096e45c84fa701bd7bcf8037c29ab7",
+        "actorSlot": 22,
+        "nativeFeet": [
+          164,
+          171
+        ],
+        "bounds": [
+          35,
+          43,
+          156,
+          186
+        ]
+      },
+      {
+        "capture": 19,
+        "rawSha256": "4c34560e0a42d875945cf51876327e012890e1f5ca82812ef49b5f7d897b0f6a",
+        "actorSlot": 22,
+        "nativeFeet": [
+          164,
+          171
+        ],
+        "bounds": [
+          37,
+          43,
+          156,
+          184
+        ]
+      },
+      {
+        "capture": 20,
+        "rawSha256": "89439c11b6e0a3384998fdfa7ca3a8f314629de6f44dafd10219bd21145af01c",
+        "actorSlot": 22,
+        "nativeFeet": [
+          164,
+          171
+        ],
+        "bounds": [
+          35,
+          43,
+          156,
+          184
+        ]
+      },
+      {
+        "capture": 21,
+        "rawSha256": "e0e55562426d8fb8641c3f913a71ffa5d2ca659c806e6951b12fcaf397ac86f1",
+        "actorSlot": 22,
+        "nativeFeet": [
+          164,
+          171
+        ],
+        "bounds": [
+          32,
+          47,
+          157,
+          184
+        ]
+      },
+      {
+        "capture": 23,
+        "rawSha256": "6e6b0437457562c46c60f2da8974e38211c9cfb79052df7f2320730989a56382",
+        "actorSlot": 22,
+        "nativeFeet": [
+          124,
+          171
+        ],
+        "bounds": [
+          31,
+          51,
+          159,
+          185
+        ]
+      }
+    ],
+    "limitations": "Attack/hurt use captured movement poses; dead uses last pose with runtime fade, not a separately captured original defeat animation."
+  }
+}

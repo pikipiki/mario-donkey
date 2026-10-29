@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "effects": {
+    "yoshi-jump": {
+      "soundId": 19,
+      "offset": 0.0,
+      "duration": 0.654875,
+      "peak": 7025
+    },
+    "yoshi-land": {
+      "soundId": 35,
+      "offset": 0.664875,
+      "duration": 0.4365625,
+      "peak": 5377
+    },
+    "yoshi-hit": {
+      "soundId": 32,
+      "offset": 1.1114375,
+      "duration": 0.3245625,
+      "peak": 6287
+    },
+    "yoshi-defeat": {
+      "soundId": 120,
+      "offset": 1.446,
+      "duration": 0.60484375,
+      "peak": 5172
+    }
+  },
+  "romSha256": "91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90",
+  "bankSha256": "a5869f1bf43d405ce1921c2b5cce7ea70f0c5c648d08e744f309adb6d5661888"
+}

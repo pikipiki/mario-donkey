@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "romSha256": "628147468c3539283197f58f03b94df49758a332831857481ea9cc31645f0527",
+  "rate": 32000,
+  "effects": {
+    "boss-hit": {
+      "soundId": 52,
+      "offset": 0.0,
+      "duration": 0.5265625,
+      "peak": 9882
+    },
+    "boss-throw": {
+      "soundId": 92,
+      "offset": 0.5365625,
+      "duration": 0.48959375,
+      "peak": 7112
+    },
+    "boss-land": {
+      "soundId": 21,
+      "offset": 1.03615625,
+      "duration": 1.49109375,
+      "peak": 11125
+    },
+    "boss-stomp": {
+      "soundId": 8,
+      "offset": 2.53725,
+      "duration": 0.27575,
+      "peak": 9937
+    },
+    "boss-laugh": {
+      "soundId": 99,
+      "offset": 2.823,
+      "duration": 0.75575,
+      "peak": 7260
+    },
+    "necky-defeat": {
+      "soundId": 103,
+      "offset": 3.58875,
+      "duration": 1.20509375,
+      "peak": 4675
+    }
+  },
+  "bankSha256": "f6b9606afcf10238ca6e66ed18e1fcc87e6d6fc7c4e8bfc9f97079532a9acf73",
+  "provenance": {
+    "core": "Mesen 2.2.1",
+    "driverEntry": 4472,
+    "driverLoop": 1542,
+    "sampleMap": 1256,
+    "samples": [
+      {
+        "id": 0,
+        "romOffset": 458752,
+        "length": 3637,
+        "loop": 0
+      },
+      {
+        "id": 1,
+        "romOffset": 462393,
+        "length": 5680,
+        "loop": 0
+      },
+      {
+        "id": 2,
+        "romOffset": 468077,
+        "length": 919,
+        "loop": 0
+      },
+      {
+        "id": 3,
+        "romOffset": 469000,
+        "length": 460,
+        "loop": 0
+      },
+      {
+        "id": 6,
+        "romOffset": 475198,
+        "length": 64,
+        "loop": 0
+      },
+      {
+        "id": 7,
+        "romOffset": 475266,
+        "length": 1270,
+        "loop": 1260
+      },
+      {
+        "id": 8,
+        "romOffset": 476540,
+        "length": 982,
+        "loop": 72
+      },
+      {
+        "id": 9,
+        "romOffset": 477526,
+        "length": 1333,
+        "loop": 0
+      },
+      {
+        "id": 10,
+        "romOffset": 478863,
+        "length": 874,
+        "loop": 747
+      },
+      {
+        "id": 11,
+        "romOffset": 479741,
+        "length": 1198,
+        "loop": 0
+      },
+      {
+        "id": 14,
+        "romOffset": 482492,
+        "length": 100,
+        "loop": 0
+      },
+      {
+        "id": 15,
+        "romOffset": 482596,
+        "length": 19,
+        "loop": 0
+      },
+      {
+        "id": 31,
+        "romOffset": 493537,
+        "length": 208,
+        "loop": 0
+      },
+      {
+        "id": 32,
+        "romOffset": 493749,
+        "length": 2845,
+        "loop": 0
+      },
+      {
+        "id": 33,
+        "romOffset": 496598,
+        "length": 1189,
+        "loop": 0
+      },
+      {
+        "id": 34,
+        "romOffset": 497791,
+        "length": 55,
+        "loop": 0
+      },
+      {
+        "id": 35,
+        "romOffset": 497850,
+        "length": 1873,
+        "loop": 0
+      },
+      {
+        "id": 36,
+        "romOffset": 499727,
+        "length": 460,
+        "loop": 0
+      },
+      {
+        "id": 37,
+        "romOffset": 500191,
+        "length": 550,
+        "loop": 0
+      },
+      {
+        "id": 68,
+        "romOffset": 532459,
+        "length": 442,
+        "loop": 0
+      },
+      {
+        "id": 38,
+        "romOffset": 500745,
+        "length": 352,
+        "loop": 0
+      },
+      {
+        "id": 39,
+        "romOffset": 501101,
+        "length": 640,
+        "loop": 0
+      },
+      {
+        "id": 40,
+        "romOffset": 501745,
+        "length": 1180,
+        "loop": 0
+      },
+      {
+        "id": 41,
+        "romOffset": 502929,
+        "length": 874,
+        "loop": 0
+      },
+      {
+        "id": 42,
+        "romOffset": 503807,
+        "length": 1009,
+        "loop": 0
+      },
+      {
+        "id": 43,
+        "romOffset": 504820,
+        "length": 1819,
+        "loop": 0
+      },
+      {
+        "id": 17,
+        "romOffset": 483973,
+        "length": 820,
+        "loop": 0
+      },
+      {
+        "id": 29,
+        "romOffset": 492942,
+        "length": 568,
+        "loop": 0
+      },
+      {
+        "id": 22,
+        "romOffset": 487580,
+        "length": 2629,
+        "loop": 0
+      },
+      {
+        "id": 54,
+        "romOffset": 516809,
+        "length": 1072,
+        "loop": 0
+      }
+    ]
+  }
+}

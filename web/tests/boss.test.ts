@@ -5,7 +5,7 @@ import {PROFILE as P,queueNativeSound,word,writeWord} from '../src/profile';
 function fixture(stage=0,kind:'goal'|'key'|'mini'|'final'='goal'){
  const w=new Uint8Array(0x20000),g=new Uint8Array(0x8000),boss=new StageBosses();w[P.mode]=P.gameplay;w[P.stage]=stage;w[0x379]=3;writeWord(g,P.baby,0x8000);writeWord(g,P.x,70);writeWord(g,P.y,160);writeWord(g,P.invincible,1);
  const slot=21,o=slot*4;writeWord(g,P.spriteState+o,0x10);writeWord(g,P.spriteId+o,kind==='goal'?0x0d:kind==='key'?0x14:kind==='mini'?0x13:0x134);writeWord(g,P.spriteX+o,200);writeWord(g,P.spriteY+o,176);if(kind==='final')writeWord(g,0x19d6+o,0x20);
- let frame=0;const tick=(egg=false)=>boss.update(w,g,++frame,egg,1);return {w,g,boss,slot,tick};
+ let frame=0;const tick=(egg=false)=>boss.update(w,g,++frame,egg);return {w,g,boss,slot,tick};
 }
 function win(f:ReturnType<typeof fixture>){for(let i=0;i<1800&&f.boss.state?.phase!=='exit';i++)f.tick(i%20===0);expect(f.boss.state?.phase).toBe('exit');}
 describe('a guardian gates the native level exit',()=>{
@@ -14,16 +14,16 @@ describe('a guardian gates the native level exit',()=>{
   writeWord(f.g,P.spriteX+f.slot*4,200);f.tick();expect(f.boss.state?.phase).toBe('intro');
   writeWord(f.g,P.x,225);for(let i=0;i<60;i++)f.tick();expect(f.boss.state?.hp).toBe(3);expect(f.w[P.mode]).toBe(P.gameplay);expect(f.boss.state?.phase).toBe('fight');
  });
- it.each(STAGE_BOSSES.map((spec,i)=>[spec.id,i] as const))('can beat %s with repeated real egg projectiles and no native ammo', (id,stage)=>{
+ it.each(STAGE_BOSSES.map((spec,i)=>[spec.id,i] as const))('can beat %s with confirmed native egg hits', (id,stage)=>{
   const f=fixture(stage);f.tick();expect(f.boss.state?.id).toBe(id);expect(f.boss.eggsUnlimited).toBe(true);expect(word(f.g,0x1df6)).toBe(0);
   win(f);expect(word(f.g,0x1df6)).toBe(0);expect(f.boss.state?.hp).toBe(0);expect(f.boss.eggsUnlimited).toBe(false);
   expect(f.boss.state!.ring!.x).toBeGreaterThanOrEqual(52);expect(f.boss.state!.ring!.x).toBeLessThanOrEqual(224);expect(f.boss.state!.ring!.y).toBeLessThanOrEqual(160);
  });
- it('only a projectile collision causes damage; a held fire button is not repeated damage',()=>{
+ it('only confirmed native egg hits cause damage and repeated contacts respect the hit cooldown',()=>{
   const f=fixture();for(let i=0;i<45;i++)f.tick();const s=f.boss.state!,hp=s.hp;
-  s.shots=[{x:5,y:5,vx:-310,vy:0,age:0,kind:'egg'}];f.tick();expect(s.hp).toBe(hp);
-  s.shots=[{x:s.x,y:s.y-20,vx:0,vy:0,age:0,kind:'egg'}];f.tick();expect(s.hp).toBe(hp-1);
-  for(let i=0;i<5;i++)f.tick();expect(s.hp).toBe(hp-1);expect(s.shots).toHaveLength(0);
+  f.tick();expect(s.hp).toBe(hp);f.tick(true);expect(s.hp).toBe(hp-1);
+  for(let i=0;i<5;i++)f.tick(true);expect(s.hp).toBe(hp-1);
+  expect(s.shots.every(p=>p.kind!=='egg')).toBe(true);
  });
  it('preserves the original goal after defeat and delegates victory to the ROM',()=>{
   const f=fixture();f.tick();expect(word(f.g,P.spriteX+f.slot*4)).toBe(200);win(f);f.tick();
@@ -52,8 +52,8 @@ describe('a guardian gates the native level exit',()=>{
  });
  it('cannot hurt the player on the fatal egg frame even when an enemy shot also hits',()=>{
   const f=fixture();for(let i=0;i<50;i++)f.tick();const s=f.boss.state!;s.hp=1;writeWord(f.g,P.invincible,0);
-  s.shots=[{x:75,y:170,vx:0,vy:0,age:0,kind:'nut'},{x:s.x,y:s.y-20,vx:0,vy:0,age:0,kind:'egg'}];
-  f.tick();expect(s.phase).toBe('dying');expect(word(f.g,P.invincible)).toBe(0);expect(f.boss.damageEvents).toBe(0);
+  s.shots=[{x:75,y:170,vx:0,vy:0,age:0,kind:'nut'}];
+  f.tick(true);expect(s.phase).toBe('dying');expect(word(f.g,P.invincible)).toBe(0);expect(f.boss.damageEvents).toBe(0);
  });
  it('never relocks a native castle ceremony when it advances stage or room',()=>{
   const f=fixture(3,'key');f.tick();win(f);const ring=f.boss.state!.ring!;writeWord(f.g,P.x,ring.x-12);writeWord(f.g,P.y,ring.y-16);f.tick();expect(f.boss.state?.phase).toBe('released');
@@ -85,7 +85,7 @@ describe('a guardian gates the native level exit',()=>{
   const f=fixture();for(let i=0;i<50;i++)f.tick();const s=f.boss.state!;writeWord(f.g,P.invincible,0);
   s.shots=[{x:75,y:170,vx:0,vy:0,age:0,kind:'nut'}];const result=f.tick();expect(result.sound).toBe('hurt');expect(word(f.g,P.invincible)).toBe(0xa0);expect(f.boss.nativeHitPending).toBe(true);
  });
- it('serializes progress and in-flight eggs, accepts old campaigns, rejects malformed metadata',()=>{
+ it('serializes progress and native encounter metadata, accepts old campaigns, rejects malformed metadata',()=>{
   const f=fixture();for(let i=0;i<50;i++)f.tick();f.tick(true);const a=new Adventure();a.guardian=f.boss.state;
   const saved=JSON.parse(JSON.stringify(a.serialize())),restored=new Adventure(saved),manager=new StageBosses();manager.restore(restored.guardian);
   expect(manager.state).toEqual(f.boss.state);expect(new Adventure({version:2}).guardian).toBeUndefined();

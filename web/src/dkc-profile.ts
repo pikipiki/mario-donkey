@@ -15,9 +15,11 @@ export function readDkcScene(w:Uint8Array){
  // $40 for the loaded/pending scene, falling back to $3E when $40 is zero.
  const selectedEntrance=word(w,DKC.entrance),level=word(w,DKC.loadedScene)||selectedEntrance,playerSlot=word(w,DKC.currentKong)===2?4:2;
  // Both entrance fields become the highlighted destination on a stable map.
+ // $32 is 1 at the bootstrap but remains 0 after a genuine native stage exit;
+ // the native overworld actor and zero-height projection identify both.
  // The native map setup creates OWSpr10/12 atslot0 and clears levelheight.
  const id=word(w,DKC.id+playerSlot),mapActor=word(w,DKC.id),height=word(w,DKC.height);
- const isMap=word(w,0x32)===1&&height===0&&(mapActor===0x10||mapActor===0x12);
+ const isMap=height===0&&(mapActor===0x10||mapActor===0x12);
  return {level,selectedEntrance,isMap,playing:!isMap&&height>0&&isDkcStageEntrance(level)&&(id===1||id===2),playerSlot,grounded:Boolean(word(w,0x12a5+playerSlot)&1),
   x:word(w,DKC.x+playerSlot),y:word(w,DKC.height)-word(w,DKC.y+playerSlot),
   cameraX:word(w,DKC.cameraX),cameraY:word(w,DKC.cameraY)-signed(word(w,0x887)),

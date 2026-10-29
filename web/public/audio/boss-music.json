@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "tracks": {
+    "dkc": {
+      "file": "boss-dkc.mp3",
+      "trackId": 21,
+      "romSha256": "628147468c3539283197f58f03b94df49758a332831857481ea9cc31645f0527",
+      "duration": 24.15,
+      "loopStart": 2.0,
+      "loopEnd": 24.0,
+      "repeatCorrelation": 0.9868348690138147,
+      "sha256": "c71492d06fa07a8945ae7e3fb280d56eccb95a8aeb1df3548c403765a024d6c8"
+    },
+    "k-rool": {
+      "file": "boss-k-rool.mp3",
+      "trackId": 24,
+      "romSha256": "628147468c3539283197f58f03b94df49758a332831857481ea9cc31645f0527",
+      "duration": 146.1759375,
+      "loopStart": 0,
+      "loopEnd": 146.1759375,
+      "repeatCorrelation": 0.51644614627967,
+      "sha256": "7aa904e70966a75c32bf1618445a5cca7f610908ef3964bcb1edaf0806d430ea"
+    },
+    "yoshi": {
+      "file": "boss-yoshi.mp3",
+      "trackId": 10,
+      "romSha256": "91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90",
+      "duration": 87.23,
+      "loopStart": 30.0,
+      "loopEnd": 87.08,
+      "repeatCorrelation": 0.9890225539303559,
+      "sha256": "14ac29cec0d45fdf0b19342c8a530661ffa87bc8108f3f587afdb5f965ba3a7f"
+    },
+    "yoshi-major": {
+      "file": "boss-yoshi-major.mp3",
+      "trackId": 12,
+      "romSha256": "91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90",
+      "duration": 60.83,
+      "loopStart": 20.0,
+      "loopEnd": 60.68,
+      "repeatCorrelation": 0.9422808894586978,
+      "sha256": "28969416da5efec5a592d23806c7d9e213496809d878bc08e7bc623871762594"
+    }
+  },
+  "provenance": "Original native SPC/DSP music, Mesen2.2.1 fixed32kHz PCM export; MP3 96kbps mono"
+}

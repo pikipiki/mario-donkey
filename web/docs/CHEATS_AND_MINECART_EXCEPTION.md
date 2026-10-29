@@ -1,4 +1,4 @@
-# Cheats réversibles et exception des wagonnets — 30 octobre 2026
+# Cheats réversibles et boss sur tous les stages DKC — 30 octobre 2026
 
 ## Menu
 
@@ -21,9 +21,11 @@ Yoshi : indicateurs0222..0269, dernier monde0216, six lignes de12 icônes030F..0
 
 DKC : les tables natives de correspondance des entrées et de connexion des cartes sont extraites de la ROM USARev2 vérifiée, dans `src/generated/dkc-unlock.json`. `scripts/extract-dkc-unlock.py` les régénère en vérifiant le SHA256 exact. Les indicateurs0583 sont ouverts ; les routes bidirectionnelles et icônes sont complétées dans les cachesFAFC/FC00 seulement sur la carte. FC00 est réutilisé par les bitmaps de bananes en niveau : il ne faut jamais l’écraser pendant une partie. Les tests vérifient les octets des tables contre la ROM, chaque arête et cette séparation de mémoire.
 
-## Exception des wagonnets
+## Correction de portée : tous les stages ont un boss Yoshi
 
-Mine Cart Carnage et Minecart Madness n’ont aucun boss ajouté, pour leurs11 entrées, checkpoints et bonus. Leurs gardiens d’anciennes sauvegardes sont abandonnés ; leurs sorties natives ne restent pas verrouillées. Le morceau natif4 peut reprendre si un ancien combat avait coupé la musique. Les autres38 niveaux conservent une rotation des7 gardiens, dans l’ordre des niveaux éligibles, sans répétition immédiate.
+La clarification utilisateur du30 octobre annule l’exclusion des wagonnets. Les40 stages DKC sont de nouveau inclus dans la rotation des7 boss Yoshi. Les entrées de checkpoint et de bonus partagent le boss de leur stage et ne font pas avancer la rotation. Les deux verrous natifs de sortie attendent la victoire aussi sur les stages de wagonnets. Pour ces stages, le gardien attend que le héros ait quitté son état natif de wagon2E et soit au sol avant d’apparaître. Aucun démontage forcé ni écriture de physique n’est ajouté. Un ancien gardien sauvegardé est conservé et réaffecté à la bonne rotation sans soigner sesPV.
+
+Les deux cheats et la séparation des sauvegardes restent identiques. Tests : rotation sur40 stages,11 alias de wagonnets, attente de la sortie du wagon/atterrissage, blocage de sortie avant victoire et libération après, reprise d’un gardien sauvegardé sans guérison. La traversée complète des rails sur téléphone reste à vérifier.
 
 ## Recette exécutée
 
@@ -35,6 +37,6 @@ Mine Cart Carnage et Minecart Madness n’ont aucun boss ajouté, pour leurs11 e
 4. Vérifier les empreintes des fichiers normaux, toujours identiques malgré les sauvegardes des deux jeux en mode cheat. Désactiver depuis Yoshi : retour au combat DKC224 sauvegardé avant l’activation. Le jeu reprend ensuite sa physique et peut immédiatement déplacer ou blesser le héros ; une lecture après reprise ne représente pas un arrêt sur image de la sauvegarde.
 5. Faire une seconde activation depuis une partie Yoshi normale : les6 onglets et toutes les icônes apparaissent automatiquement. Désactiver : les72 indicateurs de progression sont exactement identiques à ceux lus avant l’activation (12 valeurs1 dans ce bootstrap précis).
 
-Les fixtures et audits SHA256 sont DEV seulement. Les tests unitaires vérifient également les11 entrées de wagon sans gardien, leurs deux verrous de sortie désactivés, la reprise de musique et la capture fraîche après un autosave encore en cours.
+Les fixtures et audits SHA256 sont DEV seulement. La recette ci-dessus documente le lot précédent. Le nouveau lot rétablit les gardiens et leurs verrous sur les11 entrées de wagon ; la capture fraîche après un autosave reste couverte.
 
-Restent à faire : recette sur téléphones iPhone/Android physiques, partie prolongée dans les deux niveaux de wagonnets jusqu’à leur véritable sortie et campagne complète. La validation des sorties de wagonnets ici repose sur les garde-fous de la passerelle et les routines natives laissées libres, pas sur une traversée complète des rails. Quota au dernier contrôle56% restant ; seuil demandé10% non atteint, rapport Gemini actualisé malgré cela.
+Restent à faire : recette sur téléphones iPhone/Android physiques, partie prolongée dans les deux niveaux de wagonnets jusqu’à leur véritable sortie et campagne complète. Le déclenchement après démontage repose sur les états natifs observés et sur les tests de la passerelle, pas sur une traversée complète des rails. Quota au dernier contrôle56% restant ; seuil demandé10% non atteint, rapport Gemini actualisé malgré cela.

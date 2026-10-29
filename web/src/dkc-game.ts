@@ -1,5 +1,4 @@
 import{applyDkcCheats}from'./cheats';
-import{isDkcMinecartStage}from'./dkc-levels';
 import{DkcFlight}from'./dkc-flight';
 import{writeWord}from'./profile';
 import{DkcWater,dkcSwimming}from'./dkc-water';
@@ -125,12 +124,12 @@ export class DkcGame extends LiveGame{
   const exitSample={frame:m.functions.getFrameNum(),level:s.level,playing:s.playing,map:s.isMap,command:word(w,0x1e2b),states:[word(w,DKC.state+2),word(w,DKC.state+4)],animations:[word(w,0x16ad),word(w,0x16af)],hits:[word(w,DKC.hit+2),word(w,DKC.hit+4)],banana:pendingBossVictory(w),bananaStates:Array.from({length:23},(_,i)=>6+i*2).filter(slot=>word(w,DKC.id+slot)===0x74).map(slot=>({slot,state:word(w,DKC.state+slot)})),guardian:this.dkGuardian.state?{hp:this.dkGuardian.state.hp,phase:this.dkGuardian.state.phase}:undefined};
   const exitKey=JSON.stringify({...exitSample,frame:0});if(exitKey!==this.dkExitTraceKey){this.dkExitTraceKey=exitKey;this.dkExitTrace.push(exitSample);if(this.dkExitTrace.length>80)this.dkExitTrace.shift();}
   const bossResult=this.dkGuardian.update(w,m.functions.getFrameNum(),slot=>this.dkBossHooks?.isMapExit(w,slot)??false,pendingBossVictory(w),{rolling,visualReady:!this.dkGuardian.state||this.dkAtlas.guardianReady(this.dkGuardian.state.id)});
-  this.dkBossHooks?.sync(!isDkcMinecartStage(s.level)&&this.dkGuardian.state?.phase!=='released');
-  this.dkBossFinish?.sync(!isDkcMinecartStage(s.level)&&this.dkGuardian.state?.phase!=='released',Boolean(this.dkGuardian.state&&this.dkGuardian.state.phase!=='released'));
+  this.dkBossHooks?.sync(this.dkGuardian.state?.phase!=='released');
+  this.dkBossFinish?.sync(this.dkGuardian.state?.phase!=='released',Boolean(this.dkGuardian.state&&this.dkGuardian.state.phase!=='released'));
   const guardian=this.dkGuardian.state;if(guardian&&guardian.phase!=='released')void this.dkAtlas.prepareGuardian(guardian.id).catch(()=>this.dkStatus('Loading original boss animation…'));
   const musicPlaying=this.bossAudio.sync(this.audio,s.playing&&guardian?{world:'yoshi',id:guardian.id,phase:guardian.phase}:undefined);
   // Native music dispatch is performed by the guarded exit routine.
-  if(s.playing&&isDkcMinecartStage(s.level)){this.bossAudio.stop();this.dkBossHooks?.music(word(w,0x51d)!==0?'none':'resume',4);this.dkMusicHeld=false;}else if(musicPlaying&&guardian){
+  if(musicPlaying&&guardian){
    guardian.music??=word(w,0x523);this.dkBossHooks?.music('stop',guardian.music);this.dkMusicHeld=true;
   }else if(this.dkMusicHeld){
    if(s.playing&&guardian?.music!==undefined){this.dkBossHooks?.music('resume',guardian.music);if(word(w,0x51d)!==0)this.dkMusicHeld=false;}

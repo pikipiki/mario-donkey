@@ -1,4 +1,3 @@
-import{isDkcMinecartStage}from'../src/dkc-levels';
 import{it,expect}from'vitest';
 import{bossForStage,STAGE_BOSSES,yoshiStageOrdinal,validateGuardian}from'../src/boss';
 import{dkcStageOrdinal,DKC_STAGE_ORDER,dkcStageName}from'../src/dkc-levels';
@@ -16,9 +15,9 @@ it('assigns Yoshi extras after the main campaign and excludes menu slots',()=>{
  for(let world=0;world<6;world++){expect(yoshiStageOrdinal(world*12+8)).toBe(48+world);for(const menu of[9,10,11])expect(yoshiStageOrdinal(world*12+menu)).toBeUndefined();}
  for(const bad of[-1,72,1.2,NaN])expect(yoshiStageOrdinal(bad)).toBeUndefined();
 });
-it('cycles all seven Yoshi bosses across the38 eligible DKC stages, excluding rail courses',()=>{
+it('cycles all seven Yoshi bosses across all40 DKC stages, including rail courses',()=>{
  expect(DKC_STAGE_ORDER).toHaveLength(40);expect(new Set(DKC_STAGE_ORDER.map(dkcStageName)).size).toBe(40);
- const eligible=DKC_STAGE_ORDER.filter(id=>!isDkcMinecartStage(id));expect(eligible).toHaveLength(38);const ids=eligible.map((entrance,i)=>{expect(guardianForEntrance(entrance)?.id).toBe(YOSHI_GUARDIANS[i%7].id);return guardianForEntrance(entrance)!.id;});
+ const ids=DKC_STAGE_ORDER.map((entrance,i)=>{expect(guardianForEntrance(entrance)?.id).toBe(YOSHI_GUARDIANS[i%7].id);return guardianForEntrance(entrance)!.id;});
  for(let i=1;i<ids.length;i++)expect(ids[i]).not.toBe(ids[i-1]);for(let i=0;i+7<=ids.length;i++)expect(new Set(ids.slice(i,i+7)).size).toBe(7);
  expect(ids.slice(0,8)).toEqual(['burt','salvo','bigger-boo','milde','froggy','raphael','tap-tap','burt']);
 });
@@ -28,7 +27,7 @@ it('keeps checkpoints and bonus rooms on the same boss instead of advancing or r
  }
  for(const entrance of[0,33,52,94,108,166,210,211,235,236,237,238,244,250,NaN,1.5])expect(guardianForEntrance(entrance)).toBeUndefined();
 });
-it('spawns guardians at eligible doors or boss boundaries and leaves rail exits alone',()=>{
+it('spawns guardians at every campaign exit including rail courses',()=>{
  for(const [ordinal,entrance]of DKC_STAGE_ORDER.entries()){
   const arena=[224,225,226,227,228,229,104].includes(entrance);
   const w=new Uint8Array(0x20000);for(const[p,v]of[[DKC.height,512],[DKC.loadedScene,entrance],[DKC.entrance,entrance],[DKC.id+2,1],[DKC.x+2,140],[DKC.y+2,200],[DKC.id+6,arena?0x74:0x6a],[0x12a7,1],[DKC.x+6,250],[DKC.y+6,200]])writeWord(w,p,v);

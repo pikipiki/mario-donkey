@@ -17,7 +17,7 @@ describe('a guardian gates the native level exit',()=>{
  it.each(STAGE_BOSSES.map((spec,i)=>[spec.id,i] as const))('can beat %s with repeated real egg projectiles and no native ammo', (id,stage)=>{
   const f=fixture(stage);f.tick();expect(f.boss.state?.id).toBe(id);expect(f.boss.eggsUnlimited).toBe(true);expect(word(f.g,0x1df6)).toBe(0);
   win(f);expect(word(f.g,0x1df6)).toBe(0);expect(f.boss.state?.hp).toBe(0);expect(f.boss.eggsUnlimited).toBe(false);
-  expect(f.boss.state!.ring!.x).toBeGreaterThanOrEqual(52);expect(f.boss.state!.ring!.x).toBeLessThanOrEqual(208);expect(f.boss.state!.ring!.y).toBeLessThanOrEqual(160);
+  expect(f.boss.state!.ring!.x).toBeGreaterThanOrEqual(52);expect(f.boss.state!.ring!.x).toBeLessThanOrEqual(224);expect(f.boss.state!.ring!.y).toBeLessThanOrEqual(160);
  });
  it('only a projectile collision causes damage; a held fire button is not repeated damage',()=>{
   const f=fixture();for(let i=0;i<45;i++)f.tick();const s=f.boss.state!,hp=s.hp;
@@ -25,15 +25,35 @@ describe('a guardian gates the native level exit',()=>{
   s.shots=[{x:s.x,y:s.y-20,vx:0,vy:0,age:0,kind:'egg'}];f.tick();expect(s.hp).toBe(hp-1);
   for(let i=0;i<5;i++)f.tick();expect(s.hp).toBe(hp-1);expect(s.shots).toHaveLength(0);
  });
- it('restores the original goal near the hero only after defeat and delegates victory to the ROM',()=>{
+ it('preserves the original goal after defeat and delegates victory to the ROM',()=>{
   const f=fixture();f.tick();expect(word(f.g,P.spriteX+f.slot*4)).toBe(200);win(f);f.tick();
   const ring=f.boss.state!.ring!;expect(ring.y+48).toBe(word(f.g,P.y)); // native next Yoshi must spawn at ground height, never inside the floor
   expect(word(f.g,P.spriteX+f.slot*4)).toBe(ring.x-24);expect(word(f.g,P.spriteY+f.slot*4)).toBe(ring.y+64);
-  writeWord(f.g,P.x,ring.x+1);writeWord(f.g,P.y,ring.y-16);f.tick();expect(f.boss.state?.phase).toBe('released');
+  writeWord(f.g,P.x,ring.x+1);writeWord(f.g,P.y,ring.y-16);f.tick();expect(f.boss.state?.phase).toBe('exit');
   expect(f.w[P.mode]).toBe(P.gameplay);expect(word(f.g,0x19d6+f.slot*4)).toBe(0xffff); // native handler completes next frame
  });
- it('keeps the defeated boss exit in the hero screen after camera movement',()=>{
-  const f=fixture();f.tick();win(f);writeWord(f.w,P.cameraX,500);writeWord(f.g,P.x,570);f.tick();expect(f.boss.state?.phase).toBe('exit');expect(f.boss.state!.ring!.x).toBeGreaterThanOrEqual(544);expect(f.boss.state!.ring!.x).toBeLessThanOrEqual(712);
+ it('keeps native receiver coordinates fixed through camera movement and a restored save',()=>{
+  const f=fixture();f.tick();writeWord(f.w,P.cameraY,100);writeWord(f.g,P.y,260);for(let i=0;i<60;i++)f.tick();
+  f.boss.restore(f.boss.state);writeWord(f.w,P.cameraY,0);writeWord(f.g,P.y,160);win(f);
+  writeWord(f.w,P.cameraX,500);writeWord(f.g,P.x,570);f.tick();
+  expect(f.boss.state!.ring).toEqual({x:224,y:112});
+  expect(word(f.g,P.spriteX+f.slot*4)).toBe(200);expect(word(f.g,P.spriteY+f.slot*4)).toBe(176);
+ });
+ it('rearms rejected crossings and waits through Baby recovery for native victory',()=>{
+  const f=fixture();f.tick();win(f);const ring=f.boss.state!.ring!;
+  writeWord(f.g,P.x,ring.x+1);writeWord(f.g,P.y,ring.y);f.tick();expect(f.boss.state?.phase).toBe('exit');
+  writeWord(f.g,0x19d6+f.slot*4,1);writeWord(f.g,P.baby,0);f.tick();expect(word(f.g,0x19d6+f.slot*4)).toBe(1);
+  writeWord(f.g,P.baby,0x8000);f.tick();expect(word(f.g,0x19d6+f.slot*4)).toBe(0xffff);expect(f.boss.state?.phase).toBe('exit');
+  writeWord(f.g,0xac,0x14);f.tick();expect(f.boss.state?.phase).toBe('released');
+ });
+ it('retries legacy released metadata if the native goal was never accepted',()=>{
+  const f=fixture();f.tick();win(f);f.boss.state!.phase='released';f.boss.restore(f.boss.state);f.tick();expect(f.boss.state?.phase).toBe('exit');
+  f.w[P.mode]=P.victory;f.tick();expect(f.boss.state?.phase).toBe('released');
+ });
+ it('cannot hurt the player on the fatal egg frame even when an enemy shot also hits',()=>{
+  const f=fixture();for(let i=0;i<50;i++)f.tick();const s=f.boss.state!;s.hp=1;writeWord(f.g,P.invincible,0);
+  s.shots=[{x:75,y:170,vx:0,vy:0,age:0,kind:'nut'},{x:s.x,y:s.y-20,vx:0,vy:0,age:0,kind:'egg'}];
+  f.tick();expect(s.phase).toBe('dying');expect(word(f.g,P.invincible)).toBe(0);expect(f.boss.damageEvents).toBe(0);
  });
  it('never relocks a native castle ceremony when it advances stage or room',()=>{
   const f=fixture(3,'key');f.tick();win(f);const ring=f.boss.state!.ring!;writeWord(f.g,P.x,ring.x-12);writeWord(f.g,P.y,ring.y-16);f.tick();expect(f.boss.state?.phase).toBe('released');

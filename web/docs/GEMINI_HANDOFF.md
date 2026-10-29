@@ -1,3 +1,15 @@
+## 29 octobre 2026 — sortie après gardien et relais Bébé Mario
+
+- Signalement : Bébé Mario s’envole au franchissement du cercle, puis le stage reste bloqué. Le lancer vers le Yoshi suivant est natif ; le mod déplaçait les coordonnées utilisées par cette réception.
+- `boss.ts` conserve maintenant `nativeGoal` immuable dans les métadonnées de rencontre (champ optionnel compatible avec anciennes sauvegardes). Le cercle des stages ordinaires reste à sa position native, au lieu de suivre le héros/la caméra ; les autres types de sortie conservent leur portail. La hauteur de combat peut bouger sans déplacer le Yoshi receveur ni sa zone d’arrivée.
+- Franchir ne suffit plus à marquer `released` : attendre le mode victoire14 ou l’état joueur14. Chaque overlap valide réarme le vrai test de franchissement ; une frame refusée ou une récupération de Bébé ne consomme plus la sortie. Ancien `released` en gameplay sans goal actif est remis en `exit`.
+- Le boss ne peut plus appliquer de dégâts une fois l’œuf fatal reçu, même si un projectile ennemi touche dans la même boucle.
+- Preuve ROM EU : fichier12921 contrôle Bébé porté et deltaY[-112,-32) ;12AED pose le receveur àgoalY−16 ;12AE3 pose sonX àgoalX+0x168 (360px, différence avec USA +0x144) ;12BB6 attend le retour porté de Bébé. Source/disassembly + octets exacts, pas sortie REA (.sfc non supporté).
+- Recette native legacy isolée5192 : Very Gnawty vaincu par les projectiles du pont, cercle original(X3632/Y1712), saut au clavier, vrai GOAL, Bébé reçu par le Yoshi suivant, tableau natif des scores10points. ProtectionDEV pendant le combat uniquement, aucune modification native du succès ou du score. Capture `verification-goal-baby-score.png`.
+- 385 tests passent (34 fichiers), build TypeScript/Vite valide. Nouveaux cas : caméra verticale + restauration, franchissement refusé puis récupération, confirmation native, ancien released prématuré, œuf fatal et impact simultanés. Fixture DEV de tir attend les frames d’entrée et utilise une grâce normale renouvelée, sans 7FFF qui immobilisait le joueur natif.
+- Limite migrations : une ancienne sauvegarde déjà capturée DANS la cérémonie native bloquée peut conserver ses anciennes coordonnées déplacées. Les nouvelles coordonnées ne peuvent pas être reconstituées universellement à partir des anciennes métadonnées ; revenir à la carte/recommencer le stage avec la fonction existante si nécessaire. Ne pas annoncer une réparation rétroactive de toutes ces cérémonies.
+- Quota contrôlé :52% restant, seuil utilisateur10% non atteint. Rapport maintenu pour Gemini. Recette native et publication consignées dans outputs/verification-goal-baby.json.
+
 ## 29 octobre 2026 — portail vers le vrai Donkey Kong Country
 
 ### Résultat livré et architecture

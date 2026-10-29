@@ -239,11 +239,15 @@ $('test-goal').addEventListener('click',async()=>{
 
 $('test-boss-eggs').addEventListener('click',async()=>{
  if(dkcWorld||!debug||!game?.ready)return;resumeFromSettings();game.stop();
- for(let i=0;i<18;i++){
-  if(!game.eggsUnlimited||game.paused)break;
-  // DEV transition fixture: avoid an unattended rescue while checking endings.
-  game.gsu[0x1d6]=0xff;game.gsu[0x1d7]=0x7f;
-  controls.activate('egg',performance.now());await new Promise(r=>setTimeout(r,300));
+ // Let entrance / instruction frames settle, while protecting an unattended
+ // test without the huge invincibility value that also native-stuns Yoshi.
+ game.skipDialogue();
+ for(let i=0;i<120;i++){
+  if(game.paused)break;
+  if(game.wram[0x118]===0x13){game.gsu[0x1d6]=0x3f;game.gsu[0x1d7]=0;}
+  if(game.adventure.guardian?.phase==='exit')break;
+  if(game.eggsUnlimited&&i%3===0)controls.activate('egg',performance.now());
+  await new Promise(r=>setTimeout(r,100));
  }
  await new Promise(r=>setTimeout(r,1000));
  // Large native invincibility also suppresses movement: leave only the normal grace.

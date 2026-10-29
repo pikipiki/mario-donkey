@@ -1,4 +1,4 @@
-import {PROFILE as P,ROLL_TARGETS,freeSpriteGraphics,babyIsLost,canModifyJump,signed16,word,writeWord} from './profile';
+import {PROFILE as P,ROLL_TARGETS,freeSpriteGraphics,babyIsLost,canModifyJump,inGoal,signed16,word,writeWord} from './profile';
 import type {BossExitKind} from './boss-rom';
 export const STAGE_BOSSES=[
  {id:'gnawty',name:'Very Gnawty',width:58,height:52},
@@ -12,7 +12,7 @@ export const STAGE_BOSSES=[
 export type BossId=typeof STAGE_BOSSES[number]['id'];
 export type BossPhase='intro'|'fight'|'dying'|'exit'|'released';
 export interface Shot{x:number;y:number;vx:number;vy:number;age:number;kind:'egg'|'nut'|'crown'|'shock'}
-export interface GuardianSave {version:1;stage:number;room:string;id:BossId;kind:BossExitKind;slot:number;phase:BossPhase;hp:number;maxHp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;nextAttack:number;hitUntil:number;facing:number;ring?:{x:number;y:number};shots:Shot[]}
+export interface GuardianSave {version:1;stage:number;room:string;id:BossId;kind:BossExitKind;slot:number;phase:BossPhase;hp:number;maxHp:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;nextAttack:number;hitUntil:number;facing:number;ring?:{x:number;y:number};nativeGoal?:{x:number;y:number};shots:Shot[]}
 export function bossForStage(stage:number){return STAGE_BOSSES[Math.max(0,stage)%STAGE_BOSSES.length];}
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
@@ -23,6 +23,7 @@ export function validateGuardian(value:unknown):GuardianSave|undefined{
  if(s.version!==1||!Number.isInteger(s.stage)||s.stage<0||s.stage>=72||s.stage%12>8||typeof s.room!=='string'||s.room.length>100||!STAGE_BOSSES.some(b=>b.id===s.id)||!['goal','key','mini','final'].includes(s.kind)||!['intro','fight','dying','exit','released'].includes(s.phase))return;
  if(!Number.isInteger(s.slot)||s.slot<6||s.slot>=24||!Number.isInteger(s.hp)||!Number.isInteger(s.maxHp)||s.maxHp<1||s.maxHp>12||s.hp<0||s.hp>s.maxHp)return;
  if(![s.x,s.y,s.floor,s.elapsed,s.phaseTime,s.nextAttack,s.hitUntil,s.facing].every(finite)||s.x<0||s.x>4096||s.y<0||s.y>2304||s.floor<0||s.floor>2304||s.elapsed<0||s.elapsed>36000||s.phaseTime<0||s.phaseTime>36000)return;
+ if(s.nativeGoal&&(!finite(s.nativeGoal.x)||!finite(s.nativeGoal.y)||s.nativeGoal.x<0||s.nativeGoal.x>4096||s.nativeGoal.y<0||s.nativeGoal.y>2304))return;
  if(s.ring&&(!finite(s.ring.x)||!finite(s.ring.y)||s.ring.x<0||s.ring.x>4096||s.ring.y<0||s.ring.y>2304))return;
  if(!Array.isArray(s.shots)||s.shots.length>24||s.shots.some(p=>!p||!['egg','nut','crown','shock'].includes(p.kind)||![p.x,p.y,p.vx,p.vy,p.age].every(finite)||p.age<0||p.age>8||Math.abs(p.vx)>1000||Math.abs(p.vy)>1000))return;
  return structuredClone(s);
@@ -57,6 +58,10 @@ export class StageBosses {
    this.pause();return{};
   }
   if(stage%12>8)return{};
+  // Some native endings set the player goal state before changing game mode.
+  if(this.state&&inGoal(g)){this.state.phase='released';this.pause();return{};}
+  // Older versions consumed a crossing before the ROM had accepted it.
+  if(this.state?.kind==='goal'&&this.state.phase==='released')this.state.phase='exit';
   if(this.state&&(oldMode===0x26||this.state.phase!=='released'&&(this.state.stage!==stage||this.state.room!==room||this.lastLives!==undefined&&w[0x379]<this.lastLives)))this.clear();
   if(this.state&&this.state.phase!=='released'){
    const expected=this.state.kind==='goal'?0x0d:this.state.kind==='key'?0x14:this.state.kind==='mini'?0x13:0x134;
@@ -78,6 +83,7 @@ export class StageBosses {
      const maxHp=3+Math.floor(stage/12);
      const spawnX=playerX-cx<128?playerX-cx+100:playerX-cx-100;
      this.state={version:1,stage,room,id:spec.id,kind,slot,phase:'intro',hp:maxHp,maxHp,x:cx+clamp(spawnX,48,208),y:clamp(floor,cy+90,cy+videoHeight-8),floor:clamp(floor,cy+90,cy+videoHeight-8),elapsed:0,phaseTime:0,nextAttack:1.8,hitUntil:0,facing:-1,shots:[]};
+     if(kind==='goal')this.state.nativeGoal={x:word(g,P.spriteX+slot*4),y:word(g,P.spriteY+slot*4)};
      if(kind!=='goal'){
       // This is the held post-boss key / Bowser exit, after the original fight.
       // Its init has not run, so restore control only for the extra encounter.
@@ -101,7 +107,12 @@ export class StageBosses {
   const spec=STAGE_BOSSES.find(b=>b.id===s.id)!;
   if(s.phase==='released')return{};
   if(s.phase==='exit'){
-   if(!s.ring||s.ring.x<cx+44||s.ring.x>cx+212||s.ring.y<cy+56||s.ring.y>cy+videoHeight-56)s.ring=this.exitPoint(playerX,s.kind==='goal'?s.floor-32:playerY,cx,cy,videoHeight);
+   if(s.kind==='goal'){
+    // Preserve the native receiver's ground and landing area. Camera-following
+    // coordinates can leave the end-of-stage Baby Mario handoff waiting forever.
+    s.nativeGoal??={x:word(g,P.spriteX+s.slot*4),y:word(g,P.spriteY+s.slot*4)};
+    s.ring={x:s.nativeGoal.x+24,y:s.nativeGoal.y-64};
+   }else if(!s.ring||s.ring.x<cx+44||s.ring.x>cx+212||s.ring.y<cy+56||s.ring.y>cy+videoHeight-56)s.ring=this.exitPoint(playerX,playerY,cx,cy,videoHeight);
    if(s.kind==='goal'){
     writeWord(g,P.spriteX+s.slot*4,s.ring.x-24);writeWord(g,P.spriteY+s.slot*4,s.ring.y+64);
    }
@@ -110,6 +121,9 @@ export class StageBosses {
     if(s.kind==='goal'){
      // Let the original sign-crossing handler perform the real victory.
      writeWord(g,0x19d6+s.slot*4,0xffff);
+     // A ROM frame can still reject this overlap. Retry until its real goal
+     // state / victory mode acknowledges the handoff.
+     return{};
     }else if(s.kind==='mini'){writeWord(g,0xac,2);writeWord(g,0x1ae,1);}
     else if(s.kind==='key')writeWord(g,P.spriteState+s.slot*4,2); // original init, then native castle ceremony
     s.phase='released';s.shots=[];notice='Guardian defeated · Stage complete';
@@ -121,7 +135,7 @@ export class StageBosses {
   if(s.phase==='intro'){if(s.phaseTime>=.8){s.phase='fight';s.phaseTime=0;}else return{notice};}
   if(s.phase==='dying'){
    s.shots=[];
-   if(s.phaseTime>=.8){s.phase='exit';s.phaseTime=0;s.ring=this.exitPoint(playerX,s.kind==='goal'?s.floor-32:playerY,cx,cy,videoHeight);notice='Guardian defeated · Go through the exit ring';sound='victory';}
+   if(s.phaseTime>=.8){s.phase='exit';s.phaseTime=0;s.ring=s.kind==='goal'&&s.nativeGoal?{x:s.nativeGoal.x+24,y:s.nativeGoal.y-64}:this.exitPoint(playerX,playerY,cx,cy,videoHeight);notice='Guardian defeated · Go through the exit ring';sound='victory';}
    return{notice,sound};
   }
   if(s.phase==='fight'&&freshEgg&&s.shots.filter(p=>p.kind==='egg').length<8){
@@ -164,7 +178,7 @@ export class StageBosses {
   }
   if(s.phase==='fight')s.shots=remaining.slice(-20);else s.shots=[];
   if(s.phase==='fight'&&Math.abs(playerX+12-s.x)<spec.width/2+9&&playerY+28>s.y-spec.height&&playerY<s.y)playerHit=true;
-  if(playerHit&&word(g,P.invincible)===0){
+  if(s.phase==='fight'&&playerHit&&word(g,P.invincible)===0){
    // The native Baby Mario routine watches the $9f damage frame after $a0
    // invincibility is decremented. Keep its own bubble/timer/recovery code.
    writeWord(g,P.invincible,0xa0);writeWord(g,0xc0,8);writeWord(g,P.vy,0xfc00);writeWord(g,P.vx,s.x<playerX?0x200:0xfe00);this.hurtFrame=nativeFrame;this.damageEvents++;sound='hurt';

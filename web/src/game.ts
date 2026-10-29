@@ -1,3 +1,4 @@
+import{GoalHandoffRecovery,requestGoalReturn,type StalledGoal}from'./goal-recovery';
 import {SquawksCamera}from'./squawks-camera';
 import {TeamTag,drawTagContact}from'./team-tag';
 import {WORLD_PARTY_KEY,decodeWorldParty} from './world';
@@ -26,6 +27,7 @@ export type { Character } from './adventure';
 const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
 const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
 export class LiveGame {
+ private goalRecovery=new GoalHandoffRecovery();
  private previousRoll?:{x:number;y:number;room:string};
  private squawksCamera=new SquawksCamera();
  private bosses=new StageBosses();private bossHooks?:BossRomHooks;private nativeBossEggs?:NativeBossEggs;private eggFlights=new NativeEggFlights();
@@ -126,7 +128,7 @@ export class LiveGame {
   setNativeDrawing(this.emulator.Module.HEAPU8,this.drawSite,hide);this.hidden=hide;
  }
  mount(mount:Mount):void{const previous=this.adventure.mount;if(this.adventure.ride(mount)){if(previous!==mount&&isAnimalMount(mount)&&this.ready&&!this.paused&&this.wram[P.mode]===P.gameplay)this.animalAudio.play('animal-mount');this.animalSounds.reset();this.updateVisibility();this.changed();}}
- stop():void{this.previousRoll=undefined;this.teamTag.cancel();if(this.ready)this.squawksCamera.restore(this.gsu,this.room);this.bossAudio.pause();this.bosses.pause();this.eggFlights.reset();this.nativeBossEggs?.sync(false);this.animalAudio.stop();this.animalSounds.reset();this.controls.stop();this.mapConfirm.reset();this.jumpBoost.reset();this.flutterInput.reset();this.setInputs(new Set());}
+ stop():void{this.goalRecovery.reset();this.previousRoll=undefined;this.teamTag.cancel();if(this.ready)this.squawksCamera.restore(this.gsu,this.room);this.bossAudio.pause();this.bosses.pause();this.eggFlights.reset();this.nativeBossEggs?.sync(false);this.animalAudio.stop();this.animalSounds.reset();this.controls.stop();this.mapConfirm.reset();this.jumpBoost.reset();this.flutterInput.reset();this.setInputs(new Set());}
  setPaused(value:boolean):void{if(this.recovering||(!this.ready&&!value))return;this.stop();this.paused=value;if(!this.capturing)this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
  /** Native fade-out and overworld initialization; keeps completed-level progress. */
  goToMap():void{
@@ -171,6 +173,18 @@ export class LiveGame {
    throw error;
   }finally{m.toggleMainLoop(0);this.recovering=false;}
  }
+ /** Preserve an independent copy of a stalled saved ceremony, then let the
+  * original Baby Mario return and goal script finish the existing stage. */
+ private async recoverGoalHandoff(candidate:StalledGoal):Promise<void>{
+  if(this.recovering)return;this.recovering=true;const m=this.emulator.gameManager;
+  this.stop();
+  try{
+   await this.capture;await this.saving;await waitForNativePause(m);
+   const snapshot={state:new Uint8Array(m.getState()),adventure:structuredClone(this.adventure.serialize())};
+   await backupCampaign(snapshot,'goal-handoff');
+   if(requestGoalReturn(this.wram,this.gsu,candidate))this.onStatus('Finishing the stage · Baby Mario is returning to Yoshi…');
+  }finally{this.recovering=false;if(!this.paused)m.toggleMainLoop(1);}
+ }
  skipDialogue():void{this.skipUntil=performance.now()+5000;}
  async saveForWorldSwitch():Promise<void>{
   if(!this.ready)throw new Error('The game is not ready to change worlds.');
@@ -213,6 +227,8 @@ export class LiveGame {
  tick(now:number):void{
   if(!this.ready||this.paused||this.recovering||this.capturing)return;
   const g=this.gsu;
+  const stalled=this.goalRecovery.update(this.wram,g,this.emulator.gameManager.functions?.getFrameNum?.()??0);
+  if(stalled){void this.recoverGoalHandoff(stalled).catch(error=>this.onStatus((error as Error).message));return;}
   const rollActive=now<this.controls.rollUntil&&this.wram[P.mode]===P.gameplay&&!this.messageOpen&&!this.teamTag.swapping;
   if(rollActive)protectRoll(g,this.controls.rollUntil-now);
   if(this.bossHooks){

@@ -22,7 +22,7 @@ export async function writeCampaign(state:Uint8Array,data:AdventureData):Promise
 }
 
 /** Independent copy: normal autosaves never replace the pre-repair state. */
-export async function backupCampaign(campaign:Campaign):Promise<void>{
+export async function backupCampaign(campaign:Campaign,reason:'display-repair'|'goal-handoff'='display-repair'):Promise<void>{
  validateNativeState(campaign.state);
- await storeFile(KEY+'-before-display-repair',encodeCampaign(campaign.state,campaign.adventure));
+ await storeFile(KEY+'-before-'+reason,encodeCampaign(campaign.state,campaign.adventure));
 }

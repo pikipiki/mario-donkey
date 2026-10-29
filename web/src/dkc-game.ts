@@ -1,3 +1,4 @@
+import{nativeDkcMount,dkcSaddle}from'./dkc-mount';
 import{DkcFlutter}from'./dkc-flutter';
 import{DkcIdleVoice}from'./dkc-idle-voice';
 import{DkcCollectibleHooks,dkcCollectibleTargets,hitDkcCollectible}from'./dkc-collectibles';
@@ -145,7 +146,13 @@ export class DkcGame extends LiveGame{
   const throwing=now<this.combat.throwUntil,recoil=throwing?-this.controls.facing*2:0;
   const leaderY=poses.leader.y-s.cameraY+pad,leaderFacing=this.teamDamage.transitioning?s.facing:this.controls.facing;drawTagContact(c,x,leaderY-24,poses.contact);
   if(this.adventure.active==='mario')this.dkAtlas.drawMarioYoshi(c,this.teamTag.swapping?'jump':animation,x+recoil,leaderY,now-this.dkAnimationAt,leaderFacing);
-  else this.dkAtlas.draw(c,this.adventure.active,this.teamTag.swapping?'jump':animation,x+recoil,leaderY,now-this.dkAnimationAt,leaderFacing);
+  else{
+   const nativeMount=nativeDkcMount(this.wram),mount=nativeMount?.kind??this.adventure.mount;
+   const mounted=mount!=='foot',mx=nativeMount?nativeMount.x-s.cameraX:x,my=nativeMount?nativeMount.y-s.cameraY+pad:leaderY;
+   if(mounted&&!nativeMount){if(mount==='yoshi')this.dkAtlas.drawYoshi(c,animation,mx,my,now-this.dkAnimationAt,leaderFacing);else this.dkAtlas.draw(c,mount,animation,mx,my,now-this.dkAnimationAt,leaderFacing);}
+   const seat=mounted?dkcSaddle(mount,this.adventure.active):{x:0,y:0};
+   this.dkAtlas.draw(c,this.adventure.active,mounted?'ride':this.teamTag.swapping?'jump':animation,mx+recoil+seat.x*leaderFacing,my+seat.y,now-this.dkAnimationAt,leaderFacing);
+  }
   const t=this.combat.tongue;
   if(t)this.dkAtlas.drawTongue(c,t.x-s.cameraX,t.y-s.cameraY+pad,t.endX-s.cameraX,t.endY-s.cameraY+pad,1-(t.until-now)/150);
   for(const p of this.combat.shots)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,p.age*1000,true);

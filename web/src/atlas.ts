@@ -21,6 +21,11 @@ export class SpriteAtlas {
   const {cell,columns,origin}=a.manifest,frame=animation.start+(state==='jump'?Math.min(animation.frames-1,Math.floor(time*animation.fps/1000)):Math.floor(time*animation.fps/1000)%animation.frames);
   ctx.save();ctx.translate(Math.round(x),Math.round(y)-(rolling?16:0));if(facing<0)ctx.scale(-1,1);if(rolling)ctx.rotate(time/1000*Math.PI*6);ctx.imageSmoothingEnabled=false;ctx.drawImage(a.image,frame%columns*cell,Math.floor(frame/columns)*cell,cell,cell,-origin[0],-origin[1]+(rolling?16:0),cell,cell);ctx.restore();
  }
+ drawYoshi(ctx:CanvasRenderingContext2D,state:string,x:number,y:number,time:number,facing=1):void{
+  const a=this.marioYoshi,rolling=state==='roll',key=rolling?'walk':state,animation=a?.manifest.groups.yoshi?.[key]??a?.manifest.groups.yoshi?.idle;if(!a||!animation)return;
+  const{cell,columns,origin}=a.manifest,step=Math.floor(time*animation.fps/1000),frame=animation.start+(state==='jump'?Math.min(animation.frames-1,step):step%animation.frames);
+  ctx.save();ctx.translate(Math.round(x),Math.round(y)-(rolling?12:0));if(facing<0)ctx.scale(-1,1);if(rolling)ctx.rotate(time/1000*Math.PI*6);ctx.imageSmoothingEnabled=false;ctx.drawImage(a.image,frame%columns*cell,Math.floor(frame/columns)*cell,cell,cell,-origin[0],-origin[1]+(rolling?12:0),cell,cell);ctx.restore();
+ }
  drawEgg(ctx:CanvasRenderingContext2D,x:number,y:number,time=0,spin=false):void{
   if(!this.projectiles)return;const phase=spin?Math.floor(time/70)%4:0,index=[0,1,2,1][phase];
   ctx.save();ctx.translate(Math.round(x),Math.round(y));if(phase===3)ctx.scale(-1,1);ctx.imageSmoothingEnabled=false;ctx.drawImage(this.projectiles,index*16,0,16,16,-8,-8,16,16);ctx.restore();

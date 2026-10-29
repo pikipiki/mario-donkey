@@ -1,6 +1,6 @@
 ## 29 octobre 2026 — écrans corrompus après sauvegarde et réparation de l’affichage
 
-**Cette section remplace les anciennes affirmations de capture immédiate sûre. Publication non encore attestée dans ce document.** Validation finale : **303 tests passent**, build TypeScript/Vite réussi. Build testé : `index-BWmpcqlh.js`, SHA256 `d355f416eb4782c04a7500d5763fef3acd08baf3e16bac1ed9c9f2c07fa324cf`. À compléter après livraison : **[COMMIT]**, **[EMPREINTE PUBLIÉE]**. Preuves : `outputs/verification-reparation-reprise.json`, `outputs/verification-reparation-portrait.png`.
+**Cette section remplace les anciennes affirmations de capture immédiate sûre. Publication vérifiée sur https://mario-donkey.netlify.app/ : correctif `290c499`, bundle publié identique au build testé.** Validation finale : **303 tests passent**, build TypeScript/Vite réussi. Build testé : `index-BWmpcqlh.js`, SHA256 `d355f416eb4782c04a7500d5763fef3acd08baf3e16bac1ed9c9f2c07fa324cf`. HTML de production et SHA256 du JavaScript vérifiés après le push de `290c499`. Preuves : `outputs/verification-reparation-reprise.json`, `outputs/verification-reparation-portrait.png`.
 
 ### Défaut reproduit et changement de capture
 

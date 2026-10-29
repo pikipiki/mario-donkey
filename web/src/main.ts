@@ -1,4 +1,6 @@
 import './style.css';
+import {PipeAudio,travelThroughPipe} from './pipe';
+const pipeAudio=new PipeAudio();
 import {installGameTouchGuards} from './touch';
 import { Controls,type Button } from './controls';
 import { launch,primeAudio,waitForNativeFrames,waitForNativePause } from './engine';
@@ -37,7 +39,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   <aside class="controller" aria-label="Touch controls">
    <div class="stick-wrap"><div id="stick" class="stick" role="group" aria-label="Move in every direction"><div id="stick-nub" class="stick-nub"></div></div></div>
    <div class="hud-side"><div class="party-row"><div class="character-picker" role="group" aria-label="Choose a character">${CHARACTERS.map(char=>`<button data-character="${char}" class="character ${char==='violet'?'selected':''}" aria-pressed="${char==='violet'}">${char==='violet'||char==='pink'?`<span class="plush-portrait ${char}" aria-hidden="true"></span>`:`<img src="${base}art/portraits/${char}.png" alt="">`}<span>${({violet:'Violet',pink:'Pink',dk:'Donkey',diddy:'Diddy'})[char]}${char==='diddy'?'<small id="partner-status"></small>':''}</span></button>`).join('')}</div><label class="character-select"><span>Character</span><select id="character" aria-label="Choose a character">${CHARACTERS.map(char=>`<option value="${char}">${({violet:'PlushGoonk violet',pink:'PlushGoonk rose',dk:'Donkey',diddy:'Diddy'})[char]}</option>`).join('')}</select></label><label class="mount-picker"><span>Partner</span><select id="mount" aria-label="Choose a mount"><option value="foot">On foot</option><option value="yoshi">Yoshi</option></select></label></div>
-   <div class="action-pad"><button data-control="jump" class="jump-button"><span aria-hidden="true">↗</span><strong id="jump-label">Jump</strong><small id="jump-hint">normal jump</small></button><button data-control="roll" class="roll-button"><span aria-hidden="true">↻</span><strong>Roll</strong><small>attack</small></button><button id="world-portal" class="world-portal" hidden aria-label="Enter ${destinationLabel} world map"><span class="portal-icon" aria-hidden="true">?</span><strong>${destinationLabel}</strong><small>Change world</small></button><button data-control="tongue" class="tongue-button"><span aria-hidden="true">⌁</span><strong id="tongue-label">Tongue</strong><small id="tongue-hint">up: stick, then tap</small></button><button data-control="egg" class="egg-button"><span aria-hidden="true">◉</span><strong id="egg-label">Egg</strong><small id="egg-hint">throw · confirm · V</small></button></div></div>
+   <div class="action-pad"><button data-control="jump" class="jump-button"><span aria-hidden="true">↗</span><strong id="jump-label">Jump</strong><small id="jump-hint">normal jump</small></button><button data-control="roll" class="roll-button"><span aria-hidden="true">↻</span><strong>Roll</strong><small>attack</small></button><button id="world-portal" class="world-portal" hidden aria-label="Take the Mario pipe to ${destinationLabel} world map"><svg class="portal-icon" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><path fill="#174921" d="M8 12h24v28H8zM3 1h34v14H3z"/><path fill="#43ad39" d="M10 14h20v26H10zM5 3h30v10H5z"/><path fill="#a2ee69" d="M11 14h5v26h-5zM6 4h7v7H6z"/><path fill="#267b2c" d="M26 14h4v26h-4zM30 3h5v10h-5z"/><path fill="#d7ff99" d="M5 3h30v2H5z"/></svg><strong>${destinationLabel}</strong><small>Take the pipe</small></button><button data-control="tongue" class="tongue-button"><span aria-hidden="true">⌁</span><strong id="tongue-label">Tongue</strong><small id="tongue-hint">up: stick, then tap</small></button><button data-control="egg" class="egg-button"><span aria-hidden="true">◉</span><strong id="egg-label">Egg</strong><small id="egg-hint">throw · confirm · V</small></button></div></div>
   </aside>
  </section>
  <p id="status" class="status" role="status" aria-live="polite">Loading the game…</p>
@@ -84,7 +86,7 @@ $('play').addEventListener('click',async()=>{
  starting=true;$('welcome').hidden=true;$('loading').hidden=false;setStatus('Loading the SNES core…');
  try{const atlas=await SpriteAtlas.load();const emulator=await launch(rom,setStatus,dkcWorld?'Donkey Goonk DKC Rev2':'Kong Island');game=new (dkcWorld?DkcGame:LiveGame)(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty);game.autoSkip=$<HTMLInputElement>('auto-skip').checked;game.keepBabyOnScreen=$<HTMLInputElement>('baby-visibility').checked;await game.prepare();$('loading').hidden=true;
   for(const id of ['pause','skip','save','sound-quick','level-map','repair-display'])$<HTMLButtonElement>(id).disabled=false;
-  await game.unlockAudio().catch(()=>{});if(game.audio?.state!=='running')setStatus('Tap ♪ at the top to enable sound.');syncParty();
+  await game.unlockAudio().catch(()=>{});void pipeAudio.prepare(game.audio);if(game.audio?.state!=='running')setStatus('Tap ♪ at the top to enable sound.');syncParty();
  }catch(e){console.error('KONG_START_ERROR',e);setStatus((e as Error).message);$('loading').hidden=true;$('welcome').hidden=false;if(game){game.setPaused(true);$('play').textContent='Reload the page';$<HTMLButtonElement>('repair-display').disabled=!game.canRepairDisplay;}starting=false;}
 });
 function releaseUiFocus(target:EventTarget|null):void{const el=target instanceof HTMLElement?target:document.activeElement;if(el instanceof HTMLElement&&el.matches('button,select')&&!el.closest('dialog'))el.blur();}
@@ -99,12 +101,17 @@ function refreshButtons():void{
 }
 $('world-portal').addEventListener('click',async()=>{
  if(!game?.ready||!game.isMap||worldSwitchPending)return;
+ const audioUnlocked=game.unlockAudio().catch(()=>{});
  worldSwitchPending=true;const wasPaused=game.paused;pause(true);refreshButtons();
  setStatus(`Saving your adventure · Opening ${destinationLabel}…`);
  try{
-  await game.saveForWorldSwitch();await storeFile(WORLD_PARTY_KEY,encodeWorldParty(game.adventure.serialize()));
-  try{if(!new URLSearchParams(location.search).has('test'))localStorage.setItem(ACTIVE_WORLD_KEY,destination);}catch{}
-  location.replace(worldUrl(location.href,destination));
+  const currentGame=game;
+  await travelThroughPipe(async()=>{
+   await currentGame.saveForWorldSwitch();await storeFile(WORLD_PARTY_KEY,encodeWorldParty(currentGame.adventure.serialize()));
+  },async()=>{await audioUnlocked;await pipeAudio.play(currentGame.audio);},()=>{
+   try{if(!new URLSearchParams(location.search).has('test'))localStorage.setItem(ACTIVE_WORLD_KEY,destination);}catch{}
+   location.replace(worldUrl(location.href,destination));
+  });
  }catch(error){worldSwitchPending=false;pause(wasPaused);refreshButtons();setStatus(`The world could not be opened. ${(error as Error).message}`);}
  releaseUiFocus($('world-portal'));
 });

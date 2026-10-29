@@ -1,3 +1,11 @@
+## 29 octobre 2026 — tuyaux Mario entre les deux cartes
+
+- `main.ts/style.css` : le bouton de changement de monde montre maintenant le même vrai pictogramme de tuyau vert sur la carte Yoshi (destination Donkey Goonk) et sur la carte DKC (destination Yoshi’s Island), avec nom, focus clavier et activation native Espace/Entrée. SVG de 40px dessiné dans le code, pas image floue ni bloc?. Le portail reste limité aux cartes et occupe la place inutilisée de Roll.
+- `pipe.ts` : précharge42Ko PCM, réutilise le contexte WebAudio déjà déverrouillé de l’émulateur. Le clic relance ce contexte dans le geste utilisateur ; sauvegarde confirmée + métadonnées puis effet de tuyau entier avant `location.replace`. Navigation après onended, délai borné1,2s si onended ne vient pas. Téléchargement borné2s et erreur audio ne bloque pas le voyage. Double activation bloquée par worldSwitchPending. Aucune seconde instance SNES, aucun changement des sauvegardes séparées ni de la route iOS.
+- Vrai son Yoshi EU `$31` exporté hors ligne depuis la ROM locale : `scripts/extract-yoshi-pipe.py`, Mesen local2.2.1 dans un HOME temporaire, stop musique natifSPC `$F0`, CPU dans boucle privée pour transmettre le son surAPU2143. Fichier ROM264E2, signature `A93100AC4801C00D00D008AC06613007A9140022DE8500EEB4`, jeu source intact. PCM mono32kHz durée0,659s, pic5074, SHA256 `a2b523a7766566fe0092f9f87f58ef7989778c00d586c13a26685facfc779db6`. Manifeste `public/audio/mario-pipe.json`. Pas de mélange musical exporté ni son synthétique.
+- 390 tests passent (35fichiers), build TypeScript/Vite valide. 5 tests du tuyau vérifient ordre sauvegarde→son→navigation, attente effective de fin, absence de navigation en échec d’écriture, audio indisponible/suspendu, préchargement partagé/retry et timeout mobile.
+- Recette navigateur et publication : voir outputs/verification-tuyaux.json et captures portrait390×844 /paysage844×390. Les captures desktop à dimensions mobiles ne prouvent ni le haut-parleur iPhone ni les performances matérielles ; essai téléphone physique reste à faire.
+
 ## 29 octobre 2026 — sortie après gardien et relais Bébé Mario
 
 - Signalement : Bébé Mario s’envole au franchissement du cercle, puis le stage reste bloqué. Le lancer vers le Yoshi suivant est natif ; le mod déplaçait les coordonnées utilisées par cette réception.

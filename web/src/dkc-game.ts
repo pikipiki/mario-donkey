@@ -1,3 +1,5 @@
+import{DkcCollectibleHooks,dkcCollectibleTargets,hitDkcCollectible}from'./dkc-collectibles';
+import{YoshiCombatAudio}from'./yoshi-combat-audio';
 import{DkcTeamDamage,initializeDkcTeam}from'./dkc-team-damage';
 import {DkcBossContact}from'./dkc-boss-contact';
 import {DkcNativeBossHitHooks,DkcDrumEncounter,dkcNativeBossTargets,hitDkcNativeBoss,type DkcNativeBossAttack}from'./dkc-native-boss-hit';
@@ -23,10 +25,11 @@ import{decodeDkcSave,encodeDkcSave,DKC_SAVE_KEY,DKC_MAP_KEY}from'./dkc-save';
 import{validateDkcNativeState}from'./snapshot';
 import{readDkcScene,dkcEnemies,killDkcEnemy}from'./dkc-profile';
 export class DkcGame extends LiveGame{
- private teamDamage=new DkcTeamDamage();private teamInitialized=false;
+ private dkCollectibles?:DkcCollectibleHooks;private yoshiCombatAudio=new YoshiCombatAudio();private teamDamage=new DkcTeamDamage();private teamInitialized=false;
  private dkNativeHits?:DkcNativeBossHitHooks;private dkDrum=new DkcDrumEncounter();private dkBossContact=new DkcBossContact();
  private combat=new DkcCombat();private dkGuardian=new DkcGuardian();private dkBossHooks?:DkcBossRomHooks;private dkBossFinish?:DkcBossFinishHooks;private dkMusicHeld=false;private dkLastSave=0;private dkSaving?:Promise<void>;private dkCapturing=false;private dkMap=false;private dkHeight=224;private dkFrame=0;private dkAnimation='';private dkAnimationAt=0;private dkStage='';private dkRoom?:number;
  constructor(emulator:Emulator,controls:Controls,private dkCanvas:HTMLCanvasElement,private dkAtlas:SpriteAtlas,private dkStatus:(message:string)=>void,private dkChanged:()=>void=()=>{}){super(emulator,controls,dkCanvas,dkAtlas,dkStatus,dkChanged);}
+ override async unlockAudio():Promise<void>{await super.unlockAudio();void this.yoshiCombatAudio.prepare(this.audio);}
  override get world():'yoshi'|'dkc'{return 'dkc';}
  override get isMap():boolean{return this.ready&&readDkcScene(this.wram).isMap;}
  override get canRepairDisplay():boolean{return this.ready;}
@@ -44,7 +47,7 @@ export class DkcGame extends LiveGame{
  override async prepare():Promise<void>{
   const m=this.emulator.gameManager;await this.unlockAudio().catch(()=>{});
   await waitForNativeFrames(m);this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000,false);
-  this.dkBossHooks=new DkcBossRomHooks(this.emulator.Module.HEAPU8);this.dkBossHooks.sync(true);this.dkBossFinish=new DkcBossFinishHooks(this.emulator.Module.HEAPU8);this.dkNativeHits=new DkcNativeBossHitHooks(this.emulator.Module.HEAPU8);m.toggleMainLoop(1);
+  this.dkBossHooks=new DkcBossRomHooks(this.emulator.Module.HEAPU8);this.dkBossHooks.sync(true);this.dkBossFinish=new DkcBossFinishHooks(this.emulator.Module.HEAPU8);this.dkNativeHits=new DkcNativeBossHitHooks(this.emulator.Module.HEAPU8);this.dkCollectibles=new DkcCollectibleHooks(this.emulator.Module.HEAPU8);m.toggleMainLoop(1);
   const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
   const saved=fresh?undefined:await readBeforeDeadline(loadFile(DKC_SAVE_KEY),4000);
   if(saved){const data=decodeDkcSave(saved);this.teamInitialized=data.teamInitialized===true;this.dkDrum.restore(data.drum);this.dkNativeHits.requestDrumDefeat(this.dkDrum.state?.defeatRequested?this.dkDrum.state.slot:null);m.loadState(data.state);await waitForNativeFrames(m);this.adventure=new Adventure(data.adventure);this.combat.restore(data.combat);this.dkGuardian.restore(data.guardian);}
@@ -60,7 +63,7 @@ export class DkcGame extends LiveGame{
   const savedGuardian=this.dkGuardian.state;this.dkMusicHeld=Boolean(savedGuardian?.phase==='released'&&savedGuardian.music!==undefined&&word(this.wram,0x51d)===0);
   configureOverlay(this.dkCanvas,this.dkHeight);this.dkRoom=readDkcScene(this.wram).level;this.ready=true;this.dkLastSave=performance.now();this.stop();m.toggleMainLoop(1);this.dkChanged();this.dkStatus(this.stageLabel);
  }
- override stop():void{this.teamTag.cancel();this.bossAudio.pause();this.dkGuardian.pause();this.animalAudio.stop();this.controls.stop();this.combat.resetClock();for(let b=0;b<12;b++)this.emulator.gameManager.simulateInput(0,b,0);}
+ override stop():void{this.teamTag.cancel();this.bossAudio.pause();this.dkGuardian.pause();this.animalAudio.stop();this.yoshiCombatAudio.stop();this.controls.stop();this.combat.resetClock();for(let b=0;b<12;b++)this.emulator.gameManager.simulateInput(0,b,0);}
  override setPaused(value:boolean):void{this.stop();this.paused=value;if(!this.dkCapturing)this.emulator.gameManager.toggleMainLoop(value?0:1);this.emulator.setVolume(value?0:1);if(value)void this.save().catch(e=>this.dkStatus((e as Error).message));else void this.unlockAudio();}
  override requestTeamSwap():boolean{if(!this.ready||this.paused||this.teamTag.swapping)return false;const s=readDkcScene(this.wram);if(s.isMap){this.adventure.swapTeam();this.dkChanged();return true;}if(!s.playing||!this.teamDamage.canTag(this.wram)||!s.grounded||word(this.wram,0x1029+s.playerSlot)>0xb||word(this.wram,0x1595+s.playerSlot)!==0)return false;this.controls.stop();for(let b=0;b<12;b++)this.emulator.gameManager.simulateInput(0,b,0);return this.teamTag.begin(this.adventure,{...s,facing:this.controls.facing});}
  override skipDialogue():void{if(!readDkcScene(this.wram).playing)this.controls.pulse(INPUT.start,performance.now());}
@@ -85,7 +88,7 @@ export class DkcGame extends LiveGame{
  }
  override tick(now:number):void{
   if(!this.ready||this.paused||this.dkCapturing)return;
-  const m=this.emulator.gameManager,w=this.wram,s=readDkcScene(w);
+  const m=this.emulator.gameManager,w=this.wram,s=readDkcScene(w);this.dkCollectibles?.sync(w);
   this.teamInitialized=initializeDkcTeam(w,this.teamInitialized);
   if(this.dkRoom!==s.level){this.dkRoom=s.level;this.dkBossContact.reset();this.combat.shots=[];this.combat.resetClock();}
   if(this.teamDamage.update(w,this.adventure)){this.teamTag.reset();this.controls.stop();this.dkChanged();}
@@ -97,7 +100,7 @@ export class DkcGame extends LiveGame{
   this.dkBossHooks?.sync(s.playing&&this.dkGuardian.state?.phase!=='released');
   this.dkBossFinish?.sync(this.dkGuardian.state?.phase!=='released');
   const guardian=this.dkGuardian.state;
-  const musicPlaying=this.bossAudio.sync(this.audio,s.playing&&guardian?{world:'yoshi',id:'burt',phase:guardian.phase}:undefined);
+  const musicPlaying=this.bossAudio.sync(this.audio,s.playing&&guardian?{world:'yoshi',id:guardian.id,phase:guardian.phase}:undefined);
   // Native music dispatch is performed by the guarded exit routine.
   if(musicPlaying&&guardian){
    guardian.music??=word(w,0x523);this.dkBossHooks?.music('stop',guardian.music);this.dkMusicHeld=true;
@@ -105,7 +108,7 @@ export class DkcGame extends LiveGame{
    if(s.playing&&guardian?.music!==undefined){this.dkBossHooks?.music('resume',guardian.music);if(word(w,0x51d)!==0)this.dkMusicHeld=false;}
    else{this.dkBossHooks?.music('none');this.dkMusicHeld=false;}
   }else this.dkBossHooks?.music('none');
-  if(bossResult.effect)this.bossAudio.effect(bossResult.effect,'burt');
+  if(bossResult.effect)this.bossAudio.effect(bossResult.effect,guardian?.id);
   if(bossResult.notice)this.dkStatus(bossResult.notice);
   const map=s.isMap;if(map&&!this.dkMap){this.combat.shots=[];this.combat.resetClock();void this.save();this.dkStatus(this.stageLabel);}this.dkMap=map;
   const next=new Set<number>();const move=this.controls.movement(now),vertical=this.controls.verticalAxis(now);
@@ -117,8 +120,8 @@ export class DkcGame extends LiveGame{
   for(let b=0;b<12;b++)m.simulateInput(0,b,next.has(b)?1:0);
   this.dkFrame=m.functions.getFrameNum();
   if(s.playing){
-   const result=this.combat.update(this.dkFrame,now,{x:s.x,y:s.y,facing:this.controls.facing},[...dkcEnemies(w),...dkcNativeBossTargets(w),...this.dkDrum.targets(w)],!this.teamTag.swapping&&this.controls.eggPressed(now),!this.teamTag.swapping&&now<this.controls.tongueUntil,this.controls.tongueUpPressed(now),target=>{if(target.slot===-1){const accepted=this.dkGuardian.hit();if(accepted)this.bossAudio.effect(this.dkGuardian.state?.phase==='dying'?'defeat':'hit','burt');return accepted;}if(target.nativeBoss)return this.hitNativeBoss(target,'egg');return killDkcEnemy(w,target.slot);},this.dkGuardian.target(),{unlimited:this.eggsUnlimited,down:vertical>0,direction:this.controls.tongueDirection(now)});
-   if(result.threw)this.animalAudio.play('enguarde-attack');
+   const result=this.combat.update(this.dkFrame,now,{x:s.x,y:s.y,facing:this.controls.facing},[...dkcEnemies(w),...dkcNativeBossTargets(w),...this.dkDrum.targets(w),...dkcCollectibleTargets(w)],!this.teamTag.swapping&&this.controls.eggPressed(now),!this.teamTag.swapping&&now<this.controls.tongueUntil,this.controls.tongueUpPressed(now),target=>{if(target.slot===-1){const accepted=this.dkGuardian.hit();if(accepted)this.bossAudio.effect(this.dkGuardian.state?.phase==='dying'?'defeat':'hit',this.dkGuardian.state?.id);return accepted;}if(target.collectible)return hitDkcCollectible(w,target);if(target.nativeBoss)return this.hitNativeBoss(target,'egg');return killDkcEnemy(w,target.slot);},this.dkGuardian.target(),{unlimited:this.eggsUnlimited,down:vertical>0,direction:this.controls.tongueDirection(now)});
+   if(result.aimed)this.yoshiCombatAudio.play('aim');if(result.tongued)this.yoshiCombatAudio.play('tongue');if(result.ate)this.yoshiCombatAudio.play('swallow');if(result.madeEgg)this.yoshiCombatAudio.play('make');if(result.threw)this.yoshiCombatAudio.play('throw');if(result.impacted)this.yoshiCombatAudio.play('impact');
    this.kills+=result.killed+Number(result.ate);if(result.ate){this.dkStatus('Enemy in mouth · Press Down to make an egg');this.dkChanged();}else if(result.madeEgg){this.dkStatus('Egg ready · Aim, then throw');this.dkChanged();}else if(result.threw)this.dkStatus('Egg thrown');
   }else{this.combat.shots=[];this.combat.resetClock();}
   if(this.dkStage!==this.stageLabel){this.dkStage=this.stageLabel;this.dkChanged();this.dkStatus(this.dkStage);}
@@ -134,17 +137,20 @@ export class DkcGame extends LiveGame{
   const poses=this.teamTag.poses({...s,facing:this.controls.facing},this.adventure),back=this.teamDamage.nativePartner(this.wram,this.adventure)??poses.partner;
   const backAnimation='animation'in back&&typeof back.animation==='string'?back.animation:animation;
   if(this.teamDamage.hasPartner(this.wram)){if(back.character==='mario')this.dkAtlas.drawMarioYoshi(c,backAnimation,back.x-s.cameraX,back.y-s.cameraY+pad,now-this.dkAnimationAt,back.facing);else this.dkAtlas.draw(c,back.character,backAnimation,back.x-s.cameraX,back.y-s.cameraY+pad,now-this.dkAnimationAt,back.facing);}
+  const throwing=now<this.combat.throwUntil,recoil=throwing?-this.controls.facing*2:0;
   const leaderY=poses.leader.y-s.cameraY+pad,leaderFacing=this.teamDamage.transitioning?s.facing:this.controls.facing;drawTagContact(c,x,leaderY-24,poses.contact);
-  if(this.adventure.active==='mario')this.dkAtlas.drawMarioYoshi(c,this.teamTag.swapping?'jump':animation,x,leaderY,now-this.dkAnimationAt,leaderFacing);
-  else this.dkAtlas.draw(c,this.adventure.active,this.teamTag.swapping?'jump':animation,x,leaderY,now-this.dkAnimationAt,leaderFacing);
+  if(this.adventure.active==='mario')this.dkAtlas.drawMarioYoshi(c,this.teamTag.swapping?'jump':animation,x+recoil,leaderY,now-this.dkAnimationAt,leaderFacing);
+  else this.dkAtlas.draw(c,this.adventure.active,this.teamTag.swapping?'jump':animation,x+recoil,leaderY,now-this.dkAnimationAt,leaderFacing);
   const t=this.combat.tongue;
   if(t)this.dkAtlas.drawTongue(c,t.x-s.cameraX,t.y-s.cameraY+pad,t.endX-s.cameraX,t.endY-s.cameraY+pad,1-(t.until-now)/150);
   for(const p of this.combat.shots)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,p.age*1000,true);
+  const launch=this.combat.launch;if(launch&&launch.until>now)this.dkAtlas.drawEggEffect(c,'smoke',launch.x-s.cameraX,launch.y-s.cameraY+pad,180-(launch.until-now));
+  for(const p of this.combat.impacts)this.dkAtlas.drawEggEffect(c,'smoke',p.x-s.cameraX,p.y-s.cameraY+pad,210-(p.until-now));
   const aim=this.combat.aiming;
-  if(aim){const ax=aim.endX-s.cameraX,ay=aim.endY-s.cameraY+pad;c.strokeStyle='#fff4ad';c.lineWidth=1;c.beginPath();c.arc(ax,ay,6,0,Math.PI*2);c.moveTo(ax-9,ay);c.lineTo(ax+9,ay);c.moveTo(ax,ay-9);c.lineTo(ax,ay+9);c.stroke();}
+  if(aim)this.dkAtlas.drawEggEffect(c,'reticle',aim.endX-s.cameraX,aim.endY-s.cameraY+pad,now);
   const drum=this.dkDrum.state;if(drum){c.fillStyle='#10201bea';c.fillRect(5,pad+5,246,24);c.fillStyle='#fff5d6';c.font='bold 9px sans-serif';c.fillText(`Dumb Drum · ${drum.hp}/${drum.maxHp}`,10,pad+16);c.fillStyle='#a5d96c';c.fillRect(10,pad+21,235*drum.hp/drum.maxHp,4);}
   drawDkcGuardian(c,this.dkAtlas,this.dkGuardian.state,s.cameraX,s.cameraY,pad);
   c.globalAlpha=1;
  }
- override diagnostics():Record<string,unknown>{return{bossFinish:this.dkBossFinish?.bases.map(base=>({base,hold:this.emulator.Module.HEAPU8[base+0x3bfbfe],banana:Array.from(this.emulator.Module.HEAPU8.slice(base+0x3f836c,base+0x3f8370))})),victory:pendingBossVictory(this.wram),nativeActors:Array.from({length:23},(_,i)=>6+i*2).map(slot=>({slot,id:word(this.wram,0xd45+slot),state:word(this.wram,0x1029+slot),hp:word(this.wram,0x14f9+slot),sub:word(this.wram,0x152d+slot),hit:word(this.wram,0x1595+slot)})).filter(a=>a.id),native:{mode:this.wram[0x32]|this.wram[0x33]<<8,scene:this.wram[0x40]|this.wram[0x41]<<8,process:this.wram[0x508]|this.wram[0x509]<<8,brightness:this.wram[0x51a],playerStates:[word(this.wram,0x102b),word(this.wram,0x102d)],teamInitialized:this.teamInitialized,playerIds:[this.wram[0xd45]|this.wram[0xd46]<<8,this.wram[0xd47]|this.wram[0xd48]<<8,this.wram[0xd49]|this.wram[0xd4a]<<8]},nativeMusic:{playing:word(this.wram,0x51d),song:word(this.wram,0x523),bank:word(this.wram,0x521)},nativeDrum:this.dkDrum.state,guardian:this.dkGuardian.state,bossAudio:{playing:this.bossAudio.playing,played:this.bossAudio.played,last:this.bossAudio.lastEffect},world:'dkc',...readDkcScene(this.wram),eggs:this.eggCount,mouth:this.combat.mouth,aiming:this.combat.aiming,tongue:this.combat.tongue,shots:this.combat.shots,kills:this.kills,enemies:dkcEnemies(this.wram),frame:this.dkFrame,paused:this.paused,audio:this.audio?.state,animalAudio:{ready:this.animalAudio.ready,played:this.animalAudio.played,last:this.animalAudio.lastEffect},teamSwap:this.teamTag.swapping,party:this.adventure.serialize()};}
+ override diagnostics():Record<string,unknown>{return{bossFinish:this.dkBossFinish?.bases.map(base=>({base,hold:this.emulator.Module.HEAPU8[base+0x3bfbfe],banana:Array.from(this.emulator.Module.HEAPU8.slice(base+0x3f836c,base+0x3f8370))})),victory:pendingBossVictory(this.wram),nativeActors:Array.from({length:23},(_,i)=>6+i*2).map(slot=>({slot,id:word(this.wram,0xd45+slot),state:word(this.wram,0x1029+slot),hp:word(this.wram,0x14f9+slot),sub:word(this.wram,0x152d+slot),hit:word(this.wram,0x1595+slot)})).filter(a=>a.id),native:{mode:this.wram[0x32]|this.wram[0x33]<<8,scene:this.wram[0x40]|this.wram[0x41]<<8,process:this.wram[0x508]|this.wram[0x509]<<8,brightness:this.wram[0x51a],playerStates:[word(this.wram,0x102b),word(this.wram,0x102d)],teamInitialized:this.teamInitialized,playerIds:[this.wram[0xd45]|this.wram[0xd46]<<8,this.wram[0xd47]|this.wram[0xd48]<<8,this.wram[0xd49]|this.wram[0xd4a]<<8]},nativeMusic:{playing:word(this.wram,0x51d),song:word(this.wram,0x523),bank:word(this.wram,0x521)},nativeDrum:this.dkDrum.state,guardian:this.dkGuardian.state,bossAudio:{playing:this.bossAudio.playing,played:this.bossAudio.played,last:this.bossAudio.lastEffect},yoshiCombatAudio:{ready:this.yoshiCombatAudio.ready,played:this.yoshiCombatAudio.played,last:this.yoshiCombatAudio.lastEffect},world:'dkc',...readDkcScene(this.wram),eggs:this.eggCount,mouth:this.combat.mouth,aiming:this.combat.aiming,tongue:this.combat.tongue,shots:this.combat.shots,kills:this.kills,enemies:dkcEnemies(this.wram),frame:this.dkFrame,paused:this.paused,audio:this.audio?.state,animalAudio:{ready:this.animalAudio.ready,played:this.animalAudio.played,last:this.animalAudio.lastEffect},teamSwap:this.teamTag.swapping,party:this.adventure.serialize()};}
 }

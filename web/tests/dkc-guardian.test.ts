@@ -32,3 +32,13 @@ describe('Burt crossover attacks use native DKC inputs safely',()=>{
  it('sweeps a fast barrel across the boss and consumes it once',()=>{const f=fight();writeWord(f.w,DKC.x+2,30);writeWord(f.w,DKC.id+8,0x23);writeWord(f.w,DKC.state+8,2);writeWord(f.w,DKC.x+8,100);writeWord(f.w,DKC.y+8,512-260);f.boss.update(f.w,2,()=>true);writeWord(f.w,DKC.x+8,260);f.boss.update(f.w,3,()=>true);expect(f.boss.state?.hp).toBe(5);for(let frame=4;frame<50;frame++)f.boss.update(f.w,frame,()=>true);expect(f.boss.state?.hp).toBe(5);});
  it('restores legacy three-hit saves without resetting progress, and preserves airborne world motion in new saves',()=>{const f=fight();const legacy={...f.boss.state!,hp:2};delete legacy.maxHp;delete legacy.motion;delete legacy.arenaLeft;delete legacy.arenaRight;f.boss.restore(legacy);expect(f.boss.state?.hp).toBe(2);expect(f.boss.state?.motion).toBe('windup');f.boss.state!.motion='jump';f.boss.state!.vx=-25;f.boss.state!.vy=-100;f.boss.state!.y=240;const saved=structuredClone(f.boss.state);f.boss.restore(saved);f.boss.update(f.w,600,()=>true);expect(f.boss.state?.x).toBe(saved?.x);expect(f.boss.state?.y).toBe(240);expect(f.boss.state?.vy).toBe(-100);});
 });
+
+it('never treats native exit animation as a victory over a living guardian',()=>{
+ for(const state of [0x1b,0x1c,0x1d,0x1e,0x1f,0x20,0x3c,0x3d]){const f=fixture();f.tick();const hp=f.boss.state!.hp;writeWord(f.w,DKC.state+2,state);const r=f.boss.update(f.w,10,()=>true);expect(f.boss.state?.phase).toBe('intro');expect(f.boss.state?.hp).toBe(hp);expect(r.notice).toContain('still alive');}
+});
+
+it('uses Salvo in world 2, migrates an unfinished legacy Burt save, and retains a completed exit',()=>{
+ const f=fixture();writeWord(f.w,DKC.entrance,217);f.boss.update(f.w,1,()=>true);expect(f.boss.state?.id).toBe('salvo');
+ const save={...f.boss.state!,id:'burt' as const,hp:4};f.boss.restore(save);expect(f.boss.state?.id).toBe('salvo');expect(f.boss.state?.hp).toBe(4);
+ f.boss.restore({...save,phase:'released',hp:0});expect(f.boss.state?.phase).toBe('released');expect(f.boss.state?.id).toBe('burt');
+});

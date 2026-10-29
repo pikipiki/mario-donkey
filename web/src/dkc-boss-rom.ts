@@ -24,8 +24,9 @@ function stub(target:number):Uint8Array{
  const branch=(opcode:number,to:string)=>{emit(opcode,0);branches.push({at:bytes.length-1,label:to});};
  emit(0x22,0x80,0xf8,0xfb); // Existing native music dispatcher preserves the ABI.
  emit(0x08,0xc2,0x30,0x48,0xda,0x5a); // Preserve actor iteration registers and flags.
- // An entered door owns its native ceremony, including restored checkpoints.
- emit(0xa6,0x82,0xbd,0x29,0x10);branch(0xd0,'pass');
+ // Pending guardians also hold an already-entered map door. Native actor
+ // state is not proof that the added fight was won (including old saves).
+ // Once released, the original routine owns the entire native ceremony.
  emit(0xaf,0x7e,0xf8,0xfb);branch(0xf0,'pass');
  emit(0xa5,0x3e,0xc9,0,1);branch(0xb0,'pass');emit(0x0a,0xaa,0xbf,2,0xd1,0x81,0x89,0x20,0x0c);branch(0xd0,'pass');
  emit(0xa6,0x82,0xbd,0x75,0x13);branch(0xd0,'destination');emit(0xad,0x65,5);

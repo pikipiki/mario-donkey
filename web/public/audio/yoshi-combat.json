@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "effects": {
+    "aim": {
+      "soundId": 26,
+      "offset": 0.0,
+      "duration": 0.27196875,
+      "peak": 4110
+    },
+    "throw": {
+      "soundId": 32,
+      "offset": 0.28196875,
+      "duration": 0.8680625,
+      "peak": 16273
+    },
+    "tongue": {
+      "soundId": 62,
+      "offset": 1.16003125,
+      "duration": 0.27353125,
+      "peak": 7611
+    },
+    "swallow": {
+      "soundId": 20,
+      "offset": 1.4435625,
+      "duration": 0.48396875,
+      "peak": 7411
+    },
+    "make": {
+      "soundId": 4,
+      "offset": 1.93753125,
+      "duration": 0.65875,
+      "peak": 9017
+    },
+    "impact": {
+      "soundId": 31,
+      "offset": 2.60628125,
+      "duration": 0.06146875,
+      "peak": 12792
+    }
+  },
+  "romSha256": "91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90",
+  "bankSha256": "2a1d963663175d2c74a521955017648a895d3beb4efa7700dbf6fa4e109461e5"
+}

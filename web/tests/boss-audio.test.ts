@@ -5,7 +5,7 @@ function fixture(){
  const sources:any[]=[];
  const context={state:'running',currentTime:10,destination:{},decodeAudioData:vi.fn().mockResolvedValue({duration:40}),createBufferSource:vi.fn(()=>{const source={connect:vi.fn(),disconnect:vi.fn(),start:vi.fn(),stop:vi.fn(),loop:false,loopStart:0,loopEnd:0,onended:undefined};sources.push(source);return source;}),createGain:vi.fn(()=>({gain:{value:0},connect:vi.fn(),disconnect:vi.fn()}))};
  const meta={version:1,tracks:{dkc:{file:'boss-dkc.mp3',duration:30,loopStart:2,loopEnd:24},'k-rool':{file:'boss-k-rool.mp3',duration:30,loopStart:0,loopEnd:30},yoshi:{file:'boss-yoshi.mp3',duration:30,loopStart:1,loopEnd:28},'yoshi-major':{file:'boss-yoshi-major.mp3',duration:30,loopStart:0,loopEnd:30}}};
- const effects={version:1,effects:Object.fromEntries(['boss-hit','boss-throw','boss-stomp','boss-land','boss-laugh','necky-defeat','yoshi-jump','yoshi-land','yoshi-hit','yoshi-defeat'].map((name,i)=>[name,{offset:i,duration:.5}]))};
+ const effects={version:1,effects:Object.fromEntries(['boss-hit','boss-throw','boss-stomp','boss-land','boss-laugh','necky-defeat','yoshi-jump','yoshi-land','yoshi-hit','yoshi-defeat','salvo-hit','boo-hit','boss-hurt','boss-explode'].map((name,i)=>[name,{offset:i,duration:.5}]))};
  const fetcher=vi.fn(async(url:string)=>({ok:true,json:async()=>url.includes('boss-music.json')?meta:effects,arrayBuffer:async()=>new ArrayBuffer(4)}));vi.stubGlobal('fetch',fetcher);
  return {context:context as unknown as AudioContext,sources,fetcher};
 }
@@ -42,3 +42,7 @@ describe('original boss audio',()=>{
 });
 
 it('plays loaded hit FX even when the music loop has not loaded yet, while respecting pause',async()=>{const f=fixture(),audio=new BossAudio();await audio.prepare(f.context);f.context.createBufferSource=(()=>{const source={connect:()=>{},disconnect:()=>{},start:()=>{throw Error('music unavailable')},stop:()=>{}};return source;}) as unknown as AudioContext['createBufferSource'];expect(audio.sync(f.context,dkc)).toBe(false);Object.assign(f.context,{createBufferSource:()=>({connect:()=>{},disconnect:()=>{},start:()=>{},stop:()=>{}})});expect(audio.effect('hit','gnawty')).toBe(true);audio.pause();expect(audio.effect('hit','gnawty')).toBe(false);});
+
+it.each([['salvo','salvo-hit'],['bigger-boo','boo-hit'],['milde','boss-hurt'],['raphael','boss-hurt'],['tap-tap','boss-hurt']])('plays the native %s hurt cue then the Yoshi boss explosion',async(id,cue)=>{
+ const f=fixture(),audio=new BossAudio();await audio.prepare(f.context,'yoshi',id);audio.sync(f.context,{world:'yoshi',id,phase:'fight'});expect(audio.effect('hit',id)).toBe(true);expect(audio.lastEffect).toBe(cue);expect(audio.effect('defeat',id)).toBe(true);expect(audio.lastEffect).toBe('boss-explode');
+});

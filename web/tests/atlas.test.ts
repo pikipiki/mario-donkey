@@ -29,3 +29,14 @@ it('loops Squawks wingbeats throughout a long flight instead of freezing the las
  a.draw(c,'squawks','jump',100,120,2500);
  expect(c.drawImage).toHaveBeenLastCalledWith(a.image,192,0,96,96,-48,-80,96,96);
 });
+
+it('routes generic Mario selection to the native Mario plus Yoshi atlas',()=>{
+ const {a,c}=fixture(),image={} as HTMLImageElement;
+ a.marioYoshi={image,manifest:{cell:64,columns:16,origin:[32,56],groups:{'mario-yoshi':{idle:{start:0,frames:3,fps:6}}}}};
+ a.draw(c,'mario','idle',80,150,0,-1);expect(c.drawImage).toHaveBeenCalledWith(image,0,0,64,64,-32,-56,64,64);expect(c.scale).toHaveBeenCalledWith(-1,1);
+});
+it('draws native reticle palettes and each smoke pose without vector replacements',()=>{
+ const {a,c}=fixture();a.combatArt={} as HTMLImageElement;
+ a.drawEggEffect(c,'reticle',80,100,100);expect(c.drawImage).toHaveBeenLastCalledWith(a.combatArt,32,0,32,32,64,84,32,32);
+ for(let i=0;i<4;i++){a.drawEggEffect(c,'smoke',80,100,i*50);expect(c.drawImage).toHaveBeenLastCalledWith(a.combatArt,(i+2)*32,0,32,32,64,84,32,32);}
+});

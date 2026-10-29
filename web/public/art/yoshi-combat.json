@@ -1,0 +1,192 @@
+{
+  "cell": 32,
+  "groups": {
+    "reticle": [
+      0,
+      1
+    ],
+    "smoke": [
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  "source": "Native EU egg reticle and projectile smoke OBJ; palette index0 transparent",
+  "captures": [
+    {
+      "captureSha256": "c999d0304b60bacab7a6e1ed5ce171e7c9416dfe85ca2ba5dd973301c5aacf74",
+      "objects": [
+        {
+          "index": 16,
+          "x": 190,
+          "y": 166,
+          "width": 8,
+          "height": 8,
+          "tile": 159,
+          "palette": 2,
+          "priority": 3,
+          "flip_x": false,
+          "flip_y": false
+        },
+        {
+          "index": 17,
+          "x": 198,
+          "y": 166,
+          "width": 8,
+          "height": 8,
+          "tile": 159,
+          "palette": 2,
+          "priority": 3,
+          "flip_x": true,
+          "flip_y": false
+        },
+        {
+          "index": 18,
+          "x": 190,
+          "y": 174,
+          "width": 8,
+          "height": 8,
+          "tile": 159,
+          "palette": 2,
+          "priority": 3,
+          "flip_x": false,
+          "flip_y": true
+        },
+        {
+          "index": 19,
+          "x": 198,
+          "y": 174,
+          "width": 8,
+          "height": 8,
+          "tile": 159,
+          "palette": 2,
+          "priority": 3,
+          "flip_x": true,
+          "flip_y": true
+        }
+      ]
+    },
+    {
+      "captureSha256": "93c1bbca6d341cbadf7f3ff8452a91ce72dc5395710a4ef8f9a8067c62dd6604",
+      "objects": [
+        {
+          "index": 16,
+          "x": 191,
+          "y": 161,
+          "width": 8,
+          "height": 8,
+          "tile": 159,
+          "palette": 1,
+          "priority": 3,
+          "flip_x": false,
+          "flip_y": false
+        },
+        {
+          "index": 17,
+          "x": 199,
+          "y": 161,
+          "width": 8,
+          "height": 8,
+          "tile": 159,
+          "palette": 1,
+          "priority": 3,
+          "flip_x": true,
+          "flip_y": false
+        },
+        {
+          "index": 18,
+          "x": 191,
+          "y": 169,
+          "width": 8,
+          "height": 8,
+          "tile": 159,
+          "palette": 1,
+          "priority": 3,
+          "flip_x": false,
+          "flip_y": true
+        },
+        {
+          "index": 19,
+          "x": 199,
+          "y": 169,
+          "width": 8,
+          "height": 8,
+          "tile": 159,
+          "palette": 1,
+          "priority": 3,
+          "flip_x": true,
+          "flip_y": true
+        }
+      ]
+    },
+    {
+      "captureSha256": "045b37f07b06f7dcef2f7f52d2fef73a988729e4436a71f5b3e1c763822bebf5",
+      "objects": [
+        {
+          "index": 35,
+          "x": 134,
+          "y": 149,
+          "width": 16,
+          "height": 16,
+          "tile": 227,
+          "palette": 3,
+          "priority": 2,
+          "flip_x": false,
+          "flip_y": false
+        }
+      ]
+    },
+    {
+      "captureSha256": "5d925dfa97cff3177c597ad28d89e1f0acbd350f6c9c761cb184c30754d00a7f",
+      "objects": [
+        {
+          "index": 37,
+          "x": 134,
+          "y": 149,
+          "width": 16,
+          "height": 16,
+          "tile": 229,
+          "palette": 3,
+          "priority": 2,
+          "flip_x": false,
+          "flip_y": false
+        }
+      ]
+    },
+    {
+      "captureSha256": "66742c94a5c4120272728e8a74fc629080ce9e716b2c9006747f654f0c110911",
+      "objects": [
+        {
+          "index": 35,
+          "x": 170,
+          "y": 160,
+          "width": 8,
+          "height": 8,
+          "tile": 226,
+          "palette": 3,
+          "priority": 2,
+          "flip_x": false,
+          "flip_y": false
+        }
+      ]
+    },
+    {
+      "captureSha256": "66742c94a5c4120272728e8a74fc629080ce9e716b2c9006747f654f0c110911",
+      "objects": [
+        {
+          "index": 38,
+          "x": 138,
+          "y": 153,
+          "width": 8,
+          "height": 8,
+          "tile": 88,
+          "palette": 3,
+          "priority": 2,
+          "flip_x": false,
+          "flip_y": false
+        }
+      ]
+    }
+  ]
+}

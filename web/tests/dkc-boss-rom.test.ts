@@ -55,10 +55,24 @@ describe('verified DKC native stage exit gating',()=>{
    }
   }
  });
- it('never relocks an entered normal or underwater door, including a resumed native ceremony',()=>{
+ it('holds entered map doors until defeat, then resumes the complete native ceremony',()=>{
+  const heap=rom.slice(),hooks=new DkcBossRomHooks(heap);
+  for(const pending of[true,false]){
+   hooks.sync(pending);
+   for(const[entry,target]of [[0x3f8398,0xb6c455],[0x3f8394,0xb6c3f1]])for(let slot=6;slot<0x34;slot+=2)for(const state of[0,1,2,0x1b,0x1d,0x3c,0x3d,0x100]){
+    expect(execute(heap,0,entry,slot,12,22,12,state)).toBe(pending?'held':target);
+    // Entered bonus/interior doors retain the native transition even pending.
+    expect(execute(heap,0,entry,slot,6,22,12,state)).toBe(target);
+   }
+  }
+ });
+ it('holds actual world-two stage exits including checkpoint entrances',()=>{
   const heap=rom.slice(),hooks=new DkcBossRomHooks(heap);hooks.sync(true);
-  for(const[entry,target]of [[0x3f8398,0xb6c455],[0x3f8394,0xb6c3f1]])for(let slot=6;slot<0x34;slot+=2)for(const state of[1,2,0x1b,0x1d,0x100]){
-   expect(execute(heap,0,entry,slot,12,22,12,state)).toBe(target);
+  // Exact native entrance IDs, not the distinct level IDs. Winky main=0xD9;
+  // 0x4F is its bonus room and must never be used as its main-world fixture.
+  const routes=[[0xd9,0x2e],[0xda,0x2e],[0x2e,7],[7,0x31],[0x15,0x31],[0x31,0x42],[0x3c,0x42],[0x42,0xe1],[0x58,0xe1]];
+  for(const[current,destination]of routes)for(const entry of[0x3f8398,0x3f8394])for(const state of[0,1]){
+   expect(execute(heap,0,entry,14,destination,current,22,state)).toBe('held');
   }
  });
  it('classifies the real Jungle exit destination12 and rejects room and invalid targets',()=>{

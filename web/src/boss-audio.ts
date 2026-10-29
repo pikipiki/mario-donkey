@@ -7,7 +7,7 @@ interface MusicManifest {version:1;tracks:Record<string,Track>}
 interface EffectManifest {version:1;effects:Record<string,Cue>}
 /** Select the donor game's actual boss theme, not the current world theme. */
 export function bossTrack(encounter:Pick<BossAudioEncounter,'world'|'id'>):string{
- return encounter.world==='dkc'?(encounter.id==='k-rool'?'k-rool':'dkc'):(encounter.id==='salvo'?'yoshi-major':'yoshi');
+ return encounter.world==='dkc'?(encounter.id==='k-rool'?'k-rool':'dkc'):(['salvo','milde','raphael'].includes(encounter.id)?'yoshi-major':'yoshi');
 }
 /** One music voice, at most four effects, and the emulator's existing iOS route.
  * sync() returns whether a theme is actually playing: only then suppress the
@@ -69,9 +69,10 @@ export class BossAudio {
  effect(kind:BossEffect,id=''):boolean{
   const world=this.key?.startsWith('yoshi:')?'yoshi':'dkc';
   const name=world==='yoshi'?(kind==='attack'?'yoshi-jump':kind==='hit'?'yoshi-hit':kind==='land'?'yoshi-land':'yoshi-defeat'):kind==='attack'?'boss-throw':kind==='hit'?'boss-hit':kind==='land'?'boss-land':kind==='laugh'?'boss-laugh':id==='necky'||id==='necky-snr'?'necky-defeat':'boss-stomp';
-  const bank=this.effectBanks.get(world),context=this.context,buffer=bank?.buffer,cue=bank?.cues[name];if(!this.effectsEnabled||!context||context.state!=='running'||!buffer||!cue||this.voices.size>=4)return false;
+  const donorCue=world==='yoshi'&&id&&id!=='burt'?(kind==='hit'?(id==='salvo'?'salvo-hit':id==='bigger-boo'?'boo-hit':'boss-hurt'):kind==='defeat'?'boss-explode':name):name;
+  const bank=this.effectBanks.get(world),context=this.context,buffer=bank?.buffer,cue=bank?.cues[donorCue];if(!this.effectsEnabled||!context||context.state!=='running'||!buffer||!cue||this.voices.size>=4)return false;
   if(context.currentTime-(this.recent.get(name)??-Infinity)<.09)return false;
-  try{const source=context.createBufferSource(),gain=context.createGain();source.buffer=buffer;gain.gain.value=.85;source.connect(gain);gain.connect(context.destination);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();gain.disconnect();};source.start(0,cue.offset,cue.duration);this.recent.set(name,context.currentTime);this.lastEffect=name;this.played++;return true;}catch{return false;}
+  try{const source=context.createBufferSource(),gain=context.createGain();source.buffer=buffer;gain.gain.value=.85;source.connect(gain);gain.connect(context.destination);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();gain.disconnect();};source.start(0,cue.offset,cue.duration);this.recent.set(name,context.currentTime);this.lastEffect=donorCue;this.played++;return true;}catch{return false;}
  }
  pause():void{
   this.effectsEnabled=false;

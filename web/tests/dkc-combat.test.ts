@@ -58,3 +58,16 @@ describe('original DKC bosses use eggs without becoming swallowable enemies',()=
  it('never swallows a native boss or turns it into ammunition',()=>{const c=new DkcCombat();let hits=0;expect(c.update(1,0,hero,[boss],false,true,false,()=>{hits++;return true;}).ate).toBe(false);expect(hits).toBe(0);expect(c.mouth).toBeUndefined();});
  it('refills during native invulnerability and consumes a real boss collision without an enemy kill',()=>{const c=new DkcCombat();c.update(1,0,hero,[],false,false,false,()=>true,undefined,{unlimited:true});expect(c.eggs).toBe(6);c.shots=[{x:60,y:100,vx:300,vy:0,age:0}];let hits=0;const r=c.update(2,16,hero,[boss],false,false,false,()=>{hits++;return true;},undefined,{unlimited:true});expect(hits).toBe(1);expect(r.killed).toBe(0);expect(c.shots).toEqual([]);expect(c.eggTrail).toHaveLength(6);});
 });
+
+it('collects an item by egg without eating it, making ammunition or counting an enemy kill',()=>{
+ const c=new DkcCombat(),item={...target,collectible:true};let hits=0;
+ expect(c.update(1,0,hero,[item],false,true,false,()=>{hits++;return true;}).ate).toBe(false);expect(hits).toBe(0);
+ c.shots=[{x:60,y:100,vx:300,vy:0,age:0}];const r=c.update(2,16,hero,[item],false,false,false,()=>{hits++;return true;});
+ expect(hits).toBe(1);expect(r.killed).toBe(0);expect(r.impacted).toBe(true);expect(c.mouth).toBeUndefined();expect(c.impacts).toHaveLength(1);
+});
+it('renders a launched egg for one frame even if an overlapping enemy accepts an immediate hit',()=>{
+ const c=new DkcCombat();c.eggs=1;c.update(1,0,hero,[],true,false,false,()=>true);c.update(2,16,hero,[],false,false,false,()=>true);
+ const overlap={...target,x:32,y:103};let hits=0;const r=c.update(3,32,hero,[overlap],true,false,false,()=>{hits++;return true;});
+ expect(r.threw).toBe(true);expect(hits).toBe(0);expect(c.shots).toHaveLength(1);expect(c.shots[0].age).toBe(0);expect(c.launch?.until).toBe(212);
+ c.update(4,48,hero,[overlap],false,false,false,()=>{hits++;return true;});expect(hits).toBe(1);expect(c.shots).toHaveLength(0);
+});

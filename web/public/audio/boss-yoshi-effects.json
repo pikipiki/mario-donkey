@@ -4,28 +4,52 @@
     "yoshi-jump": {
       "soundId": 19,
       "offset": 0.0,
-      "duration": 0.654875,
-      "peak": 7025
+      "duration": 0.6549375,
+      "peak": 10491
     },
     "yoshi-land": {
       "soundId": 35,
-      "offset": 0.664875,
-      "duration": 0.4365625,
-      "peak": 5377
+      "offset": 0.6649375,
+      "duration": 0.38953125,
+      "peak": 12418
     },
     "yoshi-hit": {
       "soundId": 32,
-      "offset": 1.1114375,
-      "duration": 0.3245625,
-      "peak": 6287
+      "offset": 1.06446875,
+      "duration": 0.87034375,
+      "peak": 16215
     },
     "yoshi-defeat": {
       "soundId": 120,
-      "offset": 1.446,
-      "duration": 0.60484375,
-      "peak": 5172
+      "offset": 1.9448125,
+      "duration": 0.604875,
+      "peak": 13080
+    },
+    "salvo-hit": {
+      "soundId": 59,
+      "offset": 2.5596875,
+      "duration": 0.39521875,
+      "peak": 10566
+    },
+    "boo-hit": {
+      "soundId": 121,
+      "offset": 2.96490625,
+      "duration": 0.30028125,
+      "peak": 14400
+    },
+    "boss-hurt": {
+      "soundId": 120,
+      "offset": 3.2751875,
+      "duration": 0.604875,
+      "peak": 13080
+    },
+    "boss-explode": {
+      "soundId": 116,
+      "offset": 3.8900625,
+      "duration": 1.20346875,
+      "peak": 20554
     }
   },
   "romSha256": "91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90",
-  "bankSha256": "a5869f1bf43d405ce1921c2b5cce7ea70f0c5c648d08e744f309adb6d5661888"
+  "bankSha256": "0833ab836e17c748ee6d8436fd0e6691fc3fa5ad302c5e171fd44eb9331054c0"
 }

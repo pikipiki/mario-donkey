@@ -1,0 +1,999 @@
+{
+  "cell": 192,
+  "columns": 8,
+  "origin": [
+    96,
+    176
+  ],
+  "groups": {
+    "froggy": {
+      "idle": {
+        "start": 0,
+        "frames": 3,
+        "fps": 8
+      },
+      "attack": {
+        "start": 0,
+        "frames": 3,
+        "fps": 8
+      },
+      "hurt": {
+        "start": 0,
+        "frames": 3,
+        "fps": 8
+      },
+      "windup": {
+        "start": 0,
+        "frames": 3,
+        "fps": 8
+      },
+      "rise": {
+        "start": 0,
+        "frames": 3,
+        "fps": 8
+      },
+      "fall": {
+        "start": 0,
+        "frames": 3,
+        "fps": 8
+      },
+      "land": {
+        "start": 0,
+        "frames": 3,
+        "fps": 8
+      },
+      "dead": {
+        "start": 2,
+        "frames": 1,
+        "fps": 1
+      }
+    },
+    "milde": {
+      "idle": {
+        "start": 3,
+        "frames": 7,
+        "fps": 8
+      },
+      "attack": {
+        "start": 3,
+        "frames": 7,
+        "fps": 8
+      },
+      "hurt": {
+        "start": 3,
+        "frames": 7,
+        "fps": 8
+      },
+      "windup": {
+        "start": 3,
+        "frames": 7,
+        "fps": 8
+      },
+      "rise": {
+        "start": 3,
+        "frames": 7,
+        "fps": 8
+      },
+      "fall": {
+        "start": 3,
+        "frames": 7,
+        "fps": 8
+      },
+      "land": {
+        "start": 3,
+        "frames": 7,
+        "fps": 8
+      },
+      "dead": {
+        "start": 9,
+        "frames": 1,
+        "fps": 1
+      }
+    },
+    "bigger-boo": {
+      "idle": {
+        "start": 10,
+        "frames": 8,
+        "fps": 8
+      },
+      "attack": {
+        "start": 10,
+        "frames": 8,
+        "fps": 8
+      },
+      "hurt": {
+        "start": 10,
+        "frames": 8,
+        "fps": 8
+      },
+      "windup": {
+        "start": 10,
+        "frames": 8,
+        "fps": 8
+      },
+      "rise": {
+        "start": 10,
+        "frames": 8,
+        "fps": 8
+      },
+      "fall": {
+        "start": 10,
+        "frames": 8,
+        "fps": 8
+      },
+      "land": {
+        "start": 10,
+        "frames": 8,
+        "fps": 8
+      },
+      "dead": {
+        "start": 17,
+        "frames": 1,
+        "fps": 1
+      }
+    },
+    "raphael": {
+      "idle": {
+        "start": 18,
+        "frames": 3,
+        "fps": 8
+      },
+      "attack": {
+        "start": 18,
+        "frames": 3,
+        "fps": 8
+      },
+      "hurt": {
+        "start": 18,
+        "frames": 3,
+        "fps": 8
+      },
+      "windup": {
+        "start": 18,
+        "frames": 3,
+        "fps": 8
+      },
+      "rise": {
+        "start": 18,
+        "frames": 3,
+        "fps": 8
+      },
+      "fall": {
+        "start": 18,
+        "frames": 3,
+        "fps": 8
+      },
+      "land": {
+        "start": 18,
+        "frames": 3,
+        "fps": 8
+      },
+      "dead": {
+        "start": 20,
+        "frames": 1,
+        "fps": 1
+      }
+    },
+    "tap-tap": {
+      "idle": {
+        "start": 21,
+        "frames": 6,
+        "fps": 8
+      },
+      "attack": {
+        "start": 21,
+        "frames": 6,
+        "fps": 8
+      },
+      "hurt": {
+        "start": 21,
+        "frames": 6,
+        "fps": 8
+      },
+      "windup": {
+        "start": 21,
+        "frames": 6,
+        "fps": 8
+      },
+      "rise": {
+        "start": 21,
+        "frames": 6,
+        "fps": 8
+      },
+      "fall": {
+        "start": 21,
+        "frames": 6,
+        "fps": 8
+      },
+      "land": {
+        "start": 21,
+        "frames": 6,
+        "fps": 8
+      },
+      "dead": {
+        "start": 26,
+        "frames": 1,
+        "fps": 1
+      }
+    },
+    "salvo": {
+      "idle": {
+        "start": 27,
+        "frames": 13,
+        "fps": 8
+      },
+      "attack": {
+        "start": 27,
+        "frames": 13,
+        "fps": 8
+      },
+      "hurt": {
+        "start": 27,
+        "frames": 13,
+        "fps": 8
+      },
+      "windup": {
+        "start": 27,
+        "frames": 13,
+        "fps": 8
+      },
+      "rise": {
+        "start": 27,
+        "frames": 13,
+        "fps": 8
+      },
+      "fall": {
+        "start": 27,
+        "frames": 13,
+        "fps": 8
+      },
+      "land": {
+        "start": 27,
+        "frames": 13,
+        "fps": 8
+      },
+      "dead": {
+        "start": 39,
+        "frames": 1,
+        "fps": 1
+      }
+    }
+  },
+  "provenance": {
+    "source": "Original Yoshi Island Europe ROM; native 4bpp tiles, CGRAM palettes and HDMA; no recolors or generated art",
+    "romSha256": "91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90",
+    "captureScript": "scripts/capture-yoshi-guardians.py",
+    "extractScript": "scripts/extract-yoshi-guardians.py",
+    "bosses": {
+      "froggy": {
+        "captureDirectory": "guardian-froggy-native-outside",
+        "nativeSpriteId": 23,
+        "fixture": "Room entry and observer invulnerability",
+        "layers": "OBJ",
+        "frames": [
+          {
+            "capture": 3,
+            "rawSha256": "f59ec5ca31db9e03ab56de83d5050a46fef37837bb853ea8807f813916ce8d42",
+            "actorSlot": 22,
+            "nativePosition": [
+              208,
+              180
+            ],
+            "sourceBounds": [
+              201,
+              174,
+              230,
+              197
+            ],
+            "nativePhase": 14,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 5,
+            "rawSha256": "b587f9d94e209004f1898c768d63cb7f893759314d7339affeaa35218d5a931d",
+            "actorSlot": 22,
+            "nativePosition": [
+              208,
+              180
+            ],
+            "sourceBounds": [
+              202,
+              175,
+              230,
+              197
+            ],
+            "nativePhase": 14,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 10,
+            "rawSha256": "fb0c693d50b9658f8855b186bc91fa573a8dd61f1e949d0696d0001914ba00bc",
+            "actorSlot": 22,
+            "nativePosition": [
+              157,
+              132
+            ],
+            "sourceBounds": [
+              149,
+              126,
+              179,
+              149
+            ],
+            "nativePhase": 15,
+            "nativeYSpeed": 256
+          }
+        ]
+      },
+      "milde": {
+        "captureDirectory": "guardian-milde-native-eu",
+        "nativeSpriteId": 210,
+        "fixture": "Room entry, safe observer coordinates and Kamek intro completion notification at EU1017; native mature Milde animation",
+        "layers": "BG2+OBJ",
+        "frames": [
+          {
+            "capture": 90,
+            "rawSha256": "d2181d1bdc5beeac9856f64aa1220cb8d2f757ea6a24c9b6a1a1c6b1606b8860",
+            "actorSlot": 1,
+            "nativePosition": [
+              97,
+              154
+            ],
+            "sourceBounds": [
+              43,
+              26,
+              166,
+              160
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 256
+          },
+          {
+            "capture": 95,
+            "rawSha256": "d0e589e0016922e81d456addcf355d2d7d054f447f29ea26194564de4f2875ee",
+            "actorSlot": 1,
+            "nativePosition": [
+              127,
+              155
+            ],
+            "sourceBounds": [
+              71,
+              26,
+              197,
+              159
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 256
+          },
+          {
+            "capture": 100,
+            "rawSha256": "8dacb1e84b573ba18a0d216a1ba94615563b1ee66cdc5383d5afa272392d3743",
+            "actorSlot": 1,
+            "nativePosition": [
+              157,
+              153
+            ],
+            "sourceBounds": [
+              102,
+              23,
+              226,
+              158
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 256
+          },
+          {
+            "capture": 105,
+            "rawSha256": "3ce3210aae853d405ad8f6a79a6f9f458e73bc02f9c2a67e86fe8aa7317e8d54",
+            "actorSlot": 1,
+            "nativePosition": [
+              184,
+              138
+            ],
+            "sourceBounds": [
+              133,
+              8,
+              252,
+              148
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 256
+          },
+          {
+            "capture": 130,
+            "rawSha256": "3aa80634547be5e8a30c1792a96ef6e29c4aff5f06852511e20f29d2b7520a2b",
+            "actorSlot": 1,
+            "nativePosition": [
+              134,
+              153
+            ],
+            "sourceBounds": [
+              83,
+              24,
+              202,
+              165
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 256
+          },
+          {
+            "capture": 135,
+            "rawSha256": "7fce42db0981b22a7167e8cdfcfa22c934ba05526a3c9b2026e0b7af03b4d829",
+            "actorSlot": 1,
+            "nativePosition": [
+              104,
+              154
+            ],
+            "sourceBounds": [
+              51,
+              25,
+              172,
+              162
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 256
+          },
+          {
+            "capture": 140,
+            "rawSha256": "5f661eac1c4ff9a572b25ef971006280b4c12afcd073d75d8a8675fc95fdc4b7",
+            "actorSlot": 1,
+            "nativePosition": [
+              75,
+              149
+            ],
+            "sourceBounds": [
+              23,
+              21,
+              145,
+              157
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 256
+          }
+        ]
+      },
+      "bigger-boo": {
+        "captureDirectory": "guardian-bigger-boo-native",
+        "nativeSpriteId": 22,
+        "fixture": "Room entry and observer invulnerability",
+        "layers": "BG2+OBJ",
+        "frames": [
+          {
+            "capture": 70,
+            "rawSha256": "80c1bb4ed89ce2adbba1738fe2a71d73601e84c96576a547bbc51c22d581f706",
+            "actorSlot": 23,
+            "nativePosition": [
+              64,
+              143
+            ],
+            "sourceBounds": [
+              61,
+              130,
+              85,
+              159
+            ],
+            "nativePhase": 7,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 72,
+            "rawSha256": "38f9b89ea4164f4af4647730371ee0132c3ebef47322f67ba20a8fe73f854b46",
+            "actorSlot": 23,
+            "nativePosition": [
+              64,
+              143
+            ],
+            "sourceBounds": [
+              61,
+              130,
+              85,
+              159
+            ],
+            "nativePhase": 7,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 74,
+            "rawSha256": "7ba8c46fef703c31f1fd4214671f2887eb31940f115154c981f2c907dbb9ed91",
+            "actorSlot": 23,
+            "nativePosition": [
+              64,
+              143
+            ],
+            "sourceBounds": [
+              61,
+              130,
+              85,
+              159
+            ],
+            "nativePhase": 7,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 76,
+            "rawSha256": "5af7531ab36916dde898a1f677b67c3572bc37a6e0401226eb2b0a5604fa4340",
+            "actorSlot": 23,
+            "nativePosition": [
+              64,
+              143
+            ],
+            "sourceBounds": [
+              57,
+              127,
+              89,
+              163
+            ],
+            "nativePhase": 7,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 78,
+            "rawSha256": "3c26d6e6cdd4561d3cb6dcab7194738911b4a8424d0dfb370c7ceba8fc23b15d",
+            "actorSlot": 23,
+            "nativePosition": [
+              65,
+              143
+            ],
+            "sourceBounds": [
+              58,
+              127,
+              90,
+              163
+            ],
+            "nativePhase": 7,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 80,
+            "rawSha256": "30fe07560687523d783c7dcb01ab21a7cf92379f13163e1ff8b65e5dea67a2b4",
+            "actorSlot": 23,
+            "nativePosition": [
+              65,
+              143
+            ],
+            "sourceBounds": [
+              54,
+              123,
+              94,
+              167
+            ],
+            "nativePhase": 7,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 82,
+            "rawSha256": "e3946a56d0fb934ad2dcfbe7008b1e49ab1d1a71d52ad1ca235eddaf8e284c7e",
+            "actorSlot": 23,
+            "nativePosition": [
+              65,
+              143
+            ],
+            "sourceBounds": [
+              51,
+              120,
+              97,
+              169
+            ],
+            "nativePhase": 7,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 84,
+            "rawSha256": "5c27443f98bec4aa9172e8d1f47dfb703ada299b09c016b63070a4b5159bd00b",
+            "actorSlot": 23,
+            "nativePosition": [
+              65,
+              143
+            ],
+            "sourceBounds": [
+              50,
+              119,
+              98,
+              170
+            ],
+            "nativePhase": 7,
+            "nativeYSpeed": 0
+          }
+        ]
+      },
+      "raphael": {
+        "captureDirectory": "guardian-raphael-native",
+        "nativeSpriteId": 12,
+        "fixture": "Room entry and observer invulnerability",
+        "layers": "OBJ",
+        "frames": [
+          {
+            "capture": 78,
+            "rawSha256": "a7171eae5842959b7798adaca6e584af732d857cbe4b4d516b0e932cbc4e2e58",
+            "actorSlot": 23,
+            "nativePosition": [
+              158,
+              110
+            ],
+            "sourceBounds": [
+              142,
+              95,
+              191,
+              142
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 65040
+          },
+          {
+            "capture": 79,
+            "rawSha256": "e3b9d5079ccebd11685a1d4ca7c5aa3e9bcce91f1ac417042b0e72e92f17e46d",
+            "actorSlot": 23,
+            "nativePosition": [
+              158,
+              94
+            ],
+            "sourceBounds": [
+              141,
+              78,
+              192,
+              125
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 65328
+          },
+          {
+            "capture": 80,
+            "rawSha256": "3f2fbbec7113e2cbbf7bb3d76ad64ddb0937a0795f6098e6410c915b216258b0",
+            "actorSlot": 23,
+            "nativePosition": [
+              158,
+              91
+            ],
+            "sourceBounds": [
+              140,
+              71,
+              190,
+              125
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 0
+          }
+        ]
+      },
+      "tap-tap": {
+        "captureDirectory": "guardian-tap-tap-native-fight",
+        "nativeSpriteId": 60,
+        "fixture": "Room entry and observer invulnerability",
+        "layers": "OBJ",
+        "frames": [
+          {
+            "capture": 30,
+            "rawSha256": "bfd28df262e02d969e4d17effb4764de1844f3d1ea07aefb6abc2cadad0945da",
+            "actorSlot": 20,
+            "nativePosition": [
+              195,
+              80
+            ],
+            "sourceBounds": [
+              171,
+              56,
+              235,
+              119
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 40,
+            "rawSha256": "37870c8ab84f63fb5f1914d243a61f8f7d37815afb89c47c1788f63a90bf0e59",
+            "actorSlot": 20,
+            "nativePosition": [
+              81,
+              80
+            ],
+            "sourceBounds": [
+              57,
+              60,
+              121,
+              122
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 60,
+            "rawSha256": "428f5b5b3142478eb53b1affe04d7c0f08c64028b94b405dfd14f79d6de96698",
+            "actorSlot": 20,
+            "nativePosition": [
+              182,
+              80
+            ],
+            "sourceBounds": [
+              158,
+              56,
+              222,
+              119
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 110,
+            "rawSha256": "c36735bf55135fd63dd7efa07d5d6e40d9fa057820e7cd3846342dd62f58d3c1",
+            "actorSlot": 20,
+            "nativePosition": [
+              112,
+              54
+            ],
+            "sourceBounds": [
+              86,
+              24,
+              150,
+              99
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 1024
+          },
+          {
+            "capture": 130,
+            "rawSha256": "cc694e09cfb47aef5f94077b1099320118ae97c009d17fec75e6b1deef6d84cf",
+            "actorSlot": 20,
+            "nativePosition": [
+              84,
+              80
+            ],
+            "sourceBounds": [
+              60,
+              58,
+              124,
+              120
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 0
+          },
+          {
+            "capture": 140,
+            "rawSha256": "edf7dba30b8f1ae4e850117d6b90a3f2e0984571b824b8f603111bc01dca5c7b",
+            "actorSlot": 20,
+            "nativePosition": [
+              195,
+              80
+            ],
+            "sourceBounds": [
+              173,
+              51,
+              237,
+              119
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 0
+          }
+        ]
+      },
+      "salvo": {
+        "captureDirectory": "guardian-salvo-native",
+        "nativeSpriteId": 45,
+        "fixture": "Room entry and observer invulnerability",
+        "layers": "BG2+OBJ",
+        "frames": [
+          {
+            "capture": 130,
+            "rawSha256": "c31af0e8acbd4f77251ae76a37d6343ef2c760be890f2b9904c6f8b93622452a",
+            "actorSlot": 23,
+            "nativePosition": [
+              111,
+              141
+            ],
+            "sourceBounds": [
+              62,
+              22,
+              178,
+              135
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 65169
+          },
+          {
+            "capture": 135,
+            "rawSha256": "6c686601bc4b261e869e97af4b420154b6803d096043e5530579bfaca006364c",
+            "actorSlot": 23,
+            "nativePosition": [
+              112,
+              165
+            ],
+            "sourceBounds": [
+              63,
+              42,
+              178,
+              157
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 593
+          },
+          {
+            "capture": 140,
+            "rawSha256": "15cf65b11ba6d51d2d5f3ad726d970beac77e6034c3e18d2684058852de6cbd9",
+            "actorSlot": 23,
+            "nativePosition": [
+              112,
+              165
+            ],
+            "sourceBounds": [
+              53,
+              67,
+              180,
+              158
+            ],
+            "nativePhase": 2,
+            "nativeYSpeed": 1265
+          },
+          {
+            "capture": 145,
+            "rawSha256": "8acd5e621707b0ca236b652131189c51b907640a0222f2528486a54cc432f91b",
+            "actorSlot": 23,
+            "nativePosition": [
+              118,
+              165
+            ],
+            "sourceBounds": [
+              63,
+              49,
+              182,
+              157
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 1265
+          },
+          {
+            "capture": 150,
+            "rawSha256": "ad8faab3b51e46b03494c935e9b17373bae0d2b0cee4f656897a501ede9f57d5",
+            "actorSlot": 23,
+            "nativePosition": [
+              93,
+              126
+            ],
+            "sourceBounds": [
+              37,
+              30,
+              164,
+              119
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 7
+          },
+          {
+            "capture": 155,
+            "rawSha256": "7538081fe4e9f0a1d375d4e22acd0220263182b7bbdaf601a8d3728723e777d0",
+            "actorSlot": 23,
+            "nativePosition": [
+              119,
+              165
+            ],
+            "sourceBounds": [
+              67,
+              55,
+              187,
+              157
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 967
+          },
+          {
+            "capture": 160,
+            "rawSha256": "cf426f961921617f5ea2ee527d7c5eff6607283978e46a8430c213ac81243ea2",
+            "actorSlot": 23,
+            "nativePosition": [
+              106,
+              165
+            ],
+            "sourceBounds": [
+              40,
+              63,
+              167,
+              157
+            ],
+            "nativePhase": 2,
+            "nativeYSpeed": 1287
+          },
+          {
+            "capture": 165,
+            "rawSha256": "b33ed4376ea8b3d96dac8020b084c490673f9f25f5b4211f0c495a4f54a66774",
+            "actorSlot": 23,
+            "nativePosition": [
+              99,
+              165
+            ],
+            "sourceBounds": [
+              29,
+              70,
+              161,
+              158
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 1287
+          },
+          {
+            "capture": 170,
+            "rawSha256": "af8c9c8d03baacad52fc9f8db0dcdaaf3cc0f38f02a1a0a789a23fd2a81908b8",
+            "actorSlot": 23,
+            "nativePosition": [
+              107,
+              134
+            ],
+            "sourceBounds": [
+              52,
+              35,
+              177,
+              127
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 65486
+          },
+          {
+            "capture": 175,
+            "rawSha256": "105f146090abb77a9b5ed21f5bf3c336b0fc987082369fb20753738dc4891aa2",
+            "actorSlot": 23,
+            "nativePosition": [
+              133,
+              165
+            ],
+            "sourceBounds": [
+              82,
+              50,
+              201,
+              157
+            ],
+            "nativePhase": 0,
+            "nativeYSpeed": 910
+          },
+          {
+            "capture": 180,
+            "rawSha256": "ea89af8693a13422c172f6d876457bc3b5b4be97585bb2d87e886e1bef5648d2",
+            "actorSlot": 23,
+            "nativePosition": [
+              114,
+              165
+            ],
+            "sourceBounds": [
+              55,
+              69,
+              183,
+              158
+            ],
+            "nativePhase": 2,
+            "nativeYSpeed": 1294
+          },
+          {
+            "capture": 185,
+            "rawSha256": "26225d992d51f1596a96131e5058c4e901ae8037f6c097927cf36545a2e5ab1c",
+            "actorSlot": 23,
+            "nativePosition": [
+              92,
+              165
+            ],
+            "sourceBounds": [
+              35,
+              68,
+              162,
+              158
+            ],
+            "nativePhase": 2,
+            "nativeYSpeed": 1294
+          },
+          {
+            "capture": 190,
+            "rawSha256": "c3475ddfe89916645bdd3be86b42f2a8aa2e63f0239eafc8fd1af774361c010e",
+            "actorSlot": 23,
+            "nativePosition": [
+              108,
+              165
+            ],
+            "sourceBounds": [
+              47,
+              66,
+              174,
+              158
+            ],
+            "nativePhase": 2,
+            "nativeYSpeed": 1294
+          }
+        ]
+      }
+    },
+    "limitations": "Froggy uses his original outside frog form (roomBF sprite17 subtype0D); the original battle inside his stomach is not recreated. Raphael uses original transformation poses, not a complete moon fight sequence. Original captured movement poses; no separately captured hurt/defeat sequences. Runtime hurt flash and defeat fade are adaptations. Motion ports are source-informed adaptations, not emulation of donor AI."
+  }
+}

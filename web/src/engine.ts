@@ -11,7 +11,7 @@ export interface GameManager {
  loadState(state: Uint8Array): void;
  functions: { getVideoDimensions(kind:string):number; getFrameNum(): number; setFastForwardRatio(value: number): void; toggleFastForward(value: number): void };
 }
-export interface Emulator { gameManager: GameManager; frontend?: {canvas: HTMLCanvasElement}; paused: boolean; togglePlaying(): void; setVolume(value: number): void; Module: CoreModule }
+export interface Emulator { webgl2Enabled?:boolean;supportsWebgl2?:boolean;gameManager: GameManager; frontend?: {canvas: HTMLCanvasElement}; paused: boolean; togglePlaying(): void; setVolume(value: number): void; Module: CoreModule }
 declare global { interface Window { EJS_emulator: Emulator; [key: `EJS_${string}`]: unknown } }
 export const INPUT={b:0,y:1,select:2,start:3,up:4,down:5,left:6,right:7,a:8} as const;
 export const iosDevice=()=>/iPad|iPhone|iPod|CriOS/.test(navigator.userAgent)||/iPad|iPhone|iPod/.test(navigator.platform)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -63,20 +63,55 @@ export async function waitForNativeFrames(manager:GameManager):Promise<void>{
  }
 }
 
+/** toggleMainLoop requests a pause; the native loop acknowledges it on its
+ * next iteration. The bundled runtime exposes no pause/Asyncify acknowledgement.
+ * Observe a quiet frame counter before serializing instead of capturing in the
+ * same JavaScript turn as the request. Leave the console paused on every path. */
+export async function waitForNativePause(manager:GameManager):Promise<void>{
+ manager.toggleMainLoop(0);
+ if(typeof manager.functions?.getFrameNum!=='function')throw new Error('The SNES pause could not be verified. Your previous save has been kept.');
+ let previous=manager.functions.getFrameNum();
+ if(!Number.isFinite(previous))throw new Error('The SNES pause could not be verified. Your previous save has been kept.');
+ const began=Date.now();let quietSince=began;
+ while(true){
+  await new Promise<void>(resolve=>setTimeout(resolve,16));
+  const now=Date.now(),current=manager.functions.getFrameNum();
+  if(!Number.isFinite(current))throw new Error('The SNES pause could not be verified. Your previous save has been kept.');
+  if(current!==previous){quietSince=now;previous=current;}
+  if(now-began>=2000)throw new Error('The SNES core did not pause. Your previous save has been kept.');
+  if(now-quietSince>=100)return;
+ }
+}
+
+/** loadState queues a native task. Do not expose probe memory or begin another
+ * probe until that task has run; otherwise its markers enter the next snapshot. */
+async function finishProbeRestore(manager:GameManager,state:Uint8Array):Promise<void>{
+ manager.loadState(state);
+ manager.toggleMainLoop(1);
+ try{await waitForNativeFrames(manager);}
+ finally{manager.toggleMainLoop(0);}
+}
+
 /** Some core builds apply cheats only on a native frame. Restore the complete
  * pre-probe save state before exposing the resolved memory to game logic. */
-export async function resolveMemory(manager:GameManager,address:number,offset:number,length:number):Promise<number>{
+export async function resolveMemory(manager:GameManager,address:number,offset:number,length:number,restoreAfterProbe=true):Promise<number>{
  const marker=new Uint8Array([0xd3,0x71,0x95,0x2b,0xe8,0x46,0xac,0x19]);
- const state=new Uint8Array(manager.getState());
+ const state=restoreAfterProbe?new Uint8Array(manager.getState()):undefined;let ran=false;
  try{
   marker.forEach((value,i)=>manager.setCheat(i,true,(address+i).toString(16).padStart(6,'0')+value.toString(16).padStart(2,'0')));
-  manager.toggleMainLoop(1);
+  // The bundled core normally applies PAR immediately. Keep the console
+  // paused whenever possible; no frame or state reload is then necessary.
+  try{
+   const base=findUnique(manager.Module.HEAPU8,marker)-offset;
+   if(base>=0&&base+length<=manager.Module.HEAPU8.length)return base;
+  }catch{}
+  ran=true;manager.toggleMainLoop(1);
   await waitForNativeFrames(manager);
   manager.toggleMainLoop(0);
   const pointer=findUnique(manager.Module.HEAPU8,marker),base=pointer-offset;
   if(base<0||base+length>manager.Module.HEAPU8.length)throw new Error('Memory region is out of range.');
   return base;
- }finally{manager.toggleMainLoop(0);manager.resetCheat();manager.loadState(state);}
+ }finally{manager.toggleMainLoop(0);manager.resetCheat();if(ran&&state)await finishProbeRestore(manager,state);}
 }
 
 export async function launch(rom: Uint8Array, onStatus: (text: string)=>void): Promise<Emulator> {
@@ -112,20 +147,23 @@ const DRAW_SIGNATURE=new Uint8Array([0xad,0x1a,0x61,0xf0,0x6e,0xad,0xae,0x61,0x0
 const HIDDEN_DRAW=new Uint8Array([0xa9,0,0]);
 /** A state-file copy may duplicate the ROM signature. Identify the live ROM by
  * a reversible CPU-address probe, restoring the state before gameplay resumes. */
-export async function resolveDrawing(manager:GameManager):Promise<number>{
+export async function resolveDrawing(manager:GameManager,restoreAfterProbe=true):Promise<number>{
  const heap=manager.Module.HEAPU8,candidates:number[]=[];
  for(let i=0;i<=heap.length-DRAW_SIGNATURE.length;i++)if(heap[i]===DRAW_SIGNATURE[0]&&DRAW_SIGNATURE.every((b,j)=>heap[i+j]===b))candidates.push(i);
  if(candidates.length===1)return candidates[0];
  if(!candidates.length)throw new Error('Yoshi’s draw routine was not found.');
- const saved=new Uint8Array(manager.getState());let pointer:number|undefined;
+ const saved=restoreAfterProbe?new Uint8Array(manager.getState()):undefined;let pointer:number|undefined,ran=false;
  try{
   HIDDEN_DRAW.forEach((b,i)=>manager.setCheat(100+i,true,(0x04faeb+i).toString(16).padStart(6,'0')+b.toString(16).padStart(2,'0')));
-  manager.toggleMainLoop(1);await waitForNativeFrames(manager);manager.toggleMainLoop(0);
+  const immediate=candidates.filter(p=>HIDDEN_DRAW.every((b,j)=>manager.Module.HEAPU8[p+j]===b));
+  if(immediate.length===1){pointer=immediate[0];return pointer;}
+  ran=true;manager.toggleMainLoop(1);await waitForNativeFrames(manager);manager.toggleMainLoop(0);
   const live=candidates.filter(p=>HIDDEN_DRAW.every((b,j)=>manager.Module.HEAPU8[p+j]===b));
   if(live.length!==1)throw new Error(`Yoshi’s draw routine is ambiguous: ${candidates.length} copies, ${live.length} modified.`);pointer=live[0];return pointer;
  }finally{
-  manager.toggleMainLoop(0);manager.resetCheat();manager.loadState(saved);
+  manager.toggleMainLoop(0);manager.resetCheat();
   if(pointer!==undefined)manager.Module.HEAPU8.set(DRAW_SIGNATURE.subarray(0,3),pointer);
+  if(ran&&saved)await finishProbeRestore(manager,saved);
  }
 }
 export function setNativeDrawing(heap:Uint8Array,pointer:number,hidden:boolean):void{

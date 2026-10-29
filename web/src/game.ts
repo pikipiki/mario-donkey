@@ -1,16 +1,17 @@
 import { nativeAudioContexts, resumeNativeAudio } from './audio';
 import { loadStartState } from './bootstrap';
+import {createRecoveryState} from './recovery';
 import { readBeforeDeadline } from './startup';
 import {breakTerrain,tileAddress,replaceTile} from './terrain';
 import { Controls } from './controls';
-import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing, waitForNativeFrames } from './engine';
+import { type Emulator, INPUT, primeAudio, resolveMemory, resolveDrawing, setNativeDrawing, waitForNativeFrames, waitForNativePause } from './engine';
 import { PROFILE as P, KONG_JUMP_HOLD_MS, SQUAWKS_FLIGHT_VELOCITY, squawksFlightVelocity, NativeJumpBoost, NativeFlutterInput, canModifyJump, canWriteVelocity, hideNativePlayer, absorbHit, keepBabyVisible, applyRoll, babyIsLost, dkcRun, inGoal, signed16, skipOpenDialogue, word, writeWord } from './profile';
 import { storeFile } from './storage';
 import { Adventure, type Character, type Mount } from './adventure';
 import { SpriteAtlas } from './atlas';
 import { configureOverlay } from './overlay';
 import {campaignStageLabel,isWorldMap,needsLevelReturn,MapConfirmInput} from './menu';
-import { type Campaign,readCampaign,writeCampaign } from './campaign';
+import { type Campaign,readCampaign,writeCampaign,backupCampaign } from './campaign';
 export type { Character } from './adventure';
 const sleep=(ms:number)=>new Promise<void>(r=>setTimeout(r,ms));
 const INITIAL='campaign-eu-map-v3-snes9x-2.0.2';
@@ -19,10 +20,11 @@ export class LiveGame {
  wramBase=0;gsuBase=0;ready=false;paused=false;kills=0;walls=0;adventure=new Adventure();autoSkip=false;
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
  private skipUntil=0;private lastSave=0;private saving?:Promise<void>;private queuedSave?:Campaign;private jumpSequence=0;private lastStage='';private wasFinishing=false;
- private mapConfirm=new MapConfirmInput();private jumpBoost=new NativeJumpBoost();private flutterInput=new NativeFlutterInput();
+ private originalCampaign?:Campaign;private loadedCampaign=false;private recovering=false;private capturing=false;private capture?:Promise<Campaign|undefined>;private lastCapture?:Campaign;private mapConfirm=new MapConfirmInput();private jumpBoost=new NativeJumpBoost();private flutterInput=new NativeFlutterInput();
  private videoHeight=239;
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
+ get canRepairDisplay():boolean{return (this.ready||this.loadedCampaign)&&[0,P.gameplay,0x26].includes(this.wram[P.mode]);}
  get eggCount():number{return Math.min(6,word(this.gsu,0x1df6)>>>1);}
  get messageOpen():boolean{return this.ready&&this.wram[P.mode]===P.gameplay&&this.wram[0xd11]!==0;}
  get aiming():boolean{return word(this.gsu,0xec)!==0;}
@@ -43,24 +45,29 @@ export class LiveGame {
   while(m.functions.getFrameNum()<5&&performance.now()-start<15000){if(m.functions.getFrameNum()<1)await this.unlockAudio().catch(()=>{});await sleep(30);}
   if(m.functions.getFrameNum()<1)throw new Error('The SNES core is not drawing. Try again.');
   m.toggleMainLoop(0);
-  try{this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000);this.gsuBase=await resolveMemory(m,0x7007e0,0x7e0,0x8000);this.drawSite=await resolveDrawing(m);}finally{m.toggleMainLoop(1);}
+  // These probes run only on the disposable title scene. The complete campaign
+  // or bootstrap is loaded once afterwards; never queue intermediate title restores.
+  try{this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000,false);this.gsuBase=await resolveMemory(m,0x7007e0,0x7e0,0x8000,false);this.drawSite=await resolveDrawing(m,false);}finally{m.toggleMainLoop(1);}
   const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
-  const campaign=fresh?undefined:await readBeforeDeadline(readCampaign().catch(e=>{console.warn('KONG_READ_ERROR',e);return undefined;}),4000);
+  const campaign=fresh?undefined:await readBeforeDeadline(readCampaign(),4000);
   if(campaign){
+   // Keep the verified disk bytes independent of a native restore that may
+   // leave RAM partially initialized. Recovery must not copy that damaged RAM.
+   this.originalCampaign={state:campaign.state.slice(),adventure:structuredClone(campaign.adventure)};
    this.onStatus('Resuming your saved game…');m.toggleMainLoop(0);
    try{
     m.loadState(campaign.state);
     this.stop();m.toggleMainLoop(1);
     // RetroArch queues load_state: the core must run before WRAM reflects it.
     await waitForNativeFrames(m);m.toggleMainLoop(0);
-    if(this.wram[P.mode]<=0x50){
-     this.adventure=new Adventure(campaign.adventure);
+    this.loadedCampaign=true;this.adventure=new Adventure(campaign.adventure);
+    if(this.wram[P.mode]>0&&this.wram[P.mode]<=0x50){
      // Start the saved native scene only after the bridge and partners are ready.
      // A held touch/key from the previous session must not survive the restore.
      this.stop();this.jumpSequence=this.controls.jumpSequence;
      this.finishBoot();return;
     }
-    throw new Error('Your saved game could not be restored. Reload the page to retry.');
+    throw new Error(this.canRepairDisplay?'The saved screen could not resume. Open ☰ → Repair display to rebuild the map and keep your progress.':'Your saved game could not be restored. Reload the page to retry.');
    }finally{m.toggleMainLoop(1);}
   }
   this.onStatus('Opening the stage selection…');
@@ -87,22 +94,71 @@ export class LiveGame {
  }
  mount(mount:Mount):void{if(this.adventure.ride(mount)){this.updateVisibility();this.changed();}}
  stop():void{this.controls.stop();this.mapConfirm.reset();this.jumpBoost.reset();this.flutterInput.reset();this.setInputs(new Set());}
- setPaused(value:boolean):void{this.stop();this.paused=value;this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
+ setPaused(value:boolean):void{if(this.recovering||(!this.ready&&!value))return;this.stop();this.paused=value;if(!this.capturing)this.emulator.gameManager.toggleMainLoop(value?0:1);if(value){this.emulator.setVolume(0);void this.save();}else void this.unlockAudio();}
  /** Native fade-out and overworld initialization; keeps completed-level progress. */
  goToMap():void{
   this.stop();this.wram[P.mode]=0x23;writeWord(this.wram,0x200,0x010f);
  }
+ /** Rebuild the native map graphics without resetting SRAM or stage progress.
+  * Keep a separate recovery copy before leaving the current position. */
+ async repairDisplay():Promise<void>{
+  if(this.recovering)return;
+  if(!this.canRepairDisplay)throw new Error('Wait for the level or world map, then try Repair display again.');
+  const m=this.emulator.gameManager;
+  this.recovering=true;this.stop();this.paused=true;m.toggleMainLoop(0);
+  let snapshot:Campaign|undefined,changed=false;
+  try{
+   await this.capture;await waitForNativePause(m);
+   const original=!this.ready?this.originalCampaign:undefined;
+   snapshot=original?{state:original.state.slice(),adventure:structuredClone(original.adventure)}:
+    {state:new Uint8Array(m.getState()),adventure:structuredClone(this.adventure.serialize())};
+   // Wait for any older autosave before making the independent recovery copy.
+   await this.saving;await backupCampaign(snapshot);
+   setNativeDrawing(this.emulator.Module.HEAPU8,this.drawSite,false);this.hidden=false;
+   this.onStatus('Rebuilding the world map…');
+   const clean=createRecoveryState(await loadStartState(),snapshot.state);
+   changed=true;m.loadState(clean);m.toggleMainLoop(1);await waitForNativeFrames(m);m.toggleMainLoop(0);
+   this.goToMap();m.toggleMainLoop(1);const started=performance.now();
+   do{
+    await waitForNativeFrames(m);
+    if(performance.now()-started>12000)throw new Error('The display could not be rebuilt. Your previous save has been kept.');
+   }while(this.wram[P.mode]!==0x26);
+   m.toggleMainLoop(0);this.adventure=new Adventure(snapshot.adventure);this.finishBoot();
+   this.onStatus('Display rebuilt · Select your level to start it again.');
+  }catch(error){
+   if(changed&&snapshot){
+    // Roll back rather than save an unfinished transition as the next resume.
+    m.loadState(snapshot.state);m.toggleMainLoop(1);
+    try{await waitForNativeFrames(m);}
+    catch{this.ready=false;throw new Error('The game could not be restored. Your save is kept. Reload the page to retry.');}
+    finally{m.toggleMainLoop(0);}
+    this.updateVisibility();
+   }
+   throw error;
+  }finally{m.toggleMainLoop(0);this.recovering=false;}
+ }
  skipDialogue():void{this.skipUntil=performance.now()+5000;}
  save():Promise<void>{
-  if(!this.ready)return Promise.resolve();const m=this.emulator.gameManager;
+  if(!this.ready||this.recovering||this.wram[P.mode]===0)return Promise.resolve();
+  if(!this.capture){
+   const pending=this.captureSave();this.capture=pending;
+   void pending.then(()=>{if(this.capture===pending)this.capture=undefined;});
+  }
+  return this.capture.then(snapshot=>{
+   if(snapshot&&snapshot!==this.lastCapture){this.lastCapture=snapshot;this.queuedSave=snapshot;}
+   return this.saving??(this.queuedSave?(this.saving=this.flushSaves()):Promise.resolve());
+  });
+ }
+ private async captureSave():Promise<Campaign|undefined>{
+  const m=this.emulator.gameManager;this.capturing=true;
   try{
-   // Capture immediately, including pagehide while an older autosave is writing.
-   // Queue only the latest snapshot, so a delayed write cannot lose that position.
-   m.toggleMainLoop(0);
-   try{this.queuedSave={state:new Uint8Array(m.getState()),adventure:structuredClone(this.adventure.serialize())};}
-   finally{if(!this.paused)m.toggleMainLoop(1);}
-  }catch(e){console.warn('KONG_SAVE_ERROR',e);return this.saving??Promise.resolve();}
-  return this.saving??(this.saving=this.flushSaves());
+   // toggleMainLoop only requests a stop. Serializing the still-running native
+   // iteration can save inconsistent CPU/graphics state, even with intact RAM.
+   await waitForNativePause(m);
+   if(!this.ready||this.recovering||this.wram[P.mode]===0)return;
+   return {state:new Uint8Array(m.getState()),adventure:structuredClone(this.adventure.serialize())};
+  }catch(error){this.lastSave=performance.now();console.warn('KONG_SAVE_ERROR',error);return;}
+  finally{this.capturing=false;if(!this.paused&&!this.recovering)m.toggleMainLoop(1);}
  }
  private async flushSaves():Promise<void>{
   try{
@@ -115,7 +171,7 @@ export class LiveGame {
   finally{this.saving=undefined;}
  }
  tick(now:number):void{
-  if(!this.ready||this.paused)return;
+  if(!this.ready||this.paused||this.recovering||this.capturing)return;
   const g=this.gsu;
   const goalHandoff=this.wram[P.mode]===P.gameplay&&inGoal(g);
   const finishing=goalHandoff||this.wram[P.mode]===P.victory;
@@ -209,5 +265,5 @@ export class LiveGame {
  }
  /** DEV fixture: real map16 wall in empty space ahead; no campaign fixture is shipped. */
  testWall():number{const g=this.gsu,x=(word(g,P.x)+48)&~15,y=word(g,P.y)&~15;let count=0;for(const dy of [0,16]){const address=tileAddress(g,x,y+dy);if(address!==undefined&&replaceTile(this.wram,g,x,y+dy,0x7b00,0xa022))count++;}return count;}
- diagnostics():Record<string,unknown>{return {mapMenu:{tab:this.wram[0x1119],state:this.wram[0x111a],tile:this.wram[0x1114],worldRaw:this.wram[0x218],stageRaw:this.wram[P.stage]},babyDetails:{mode:word(this.gsu,0x19d6),returning:word(this.wram,0xd9c),targetY:word(this.wram,0xdb4),x:word(this.gsu,0x10e2),y:word(this.gsu,0x1182),screenY:signed16(word(this.gsu,0x1182)-word(this.wram,P.cameraY)),vy:signed16(word(this.gsu,0x1222)),cameraY:word(this.wram,P.cameraY)},mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),rescueStars:word(this.wram,0x3b6),playerState:word(this.gsu,0xac),playerLock:word(this.gsu,0x1ae),spriteLock:word(this.gsu,0x1b0),goal:inGoal(this.gsu),contacts:word(this.gsu,0xfc),nativeVx:signed16(word(this.gsu,0xa8)),vx:signed16(word(this.gsu,P.vx)),vy:signed16(word(this.gsu,P.vy)),airborne:word(this.gsu,0xc0),flutter:word(this.gsu,0xd2),inputs:{axis:this.controls.runAxis(),jump:this.controls.jumpUntil,jumpHeld:this.controls.jumpHeld,roll:this.controls.rollUntil},kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.videoHeight,overlaySize:[this.overlay.width,this.overlay.height],frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),tongueRelative:{x:signed16(word(this.gsu,0x152)),y:signed16(word(this.gsu,0x154))},sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
+ diagnostics():Record<string,unknown>{return {renderer:this.emulator.webgl2Enabled?'WebGL2':'legacy',mapMenu:{tab:this.wram[0x1119],state:this.wram[0x111a],tile:this.wram[0x1114],worldRaw:this.wram[0x218],stageRaw:this.wram[P.stage]},babyDetails:{mode:word(this.gsu,0x19d6),returning:word(this.wram,0xd9c),targetY:word(this.wram,0xdb4),x:word(this.gsu,0x10e2),y:word(this.gsu,0x1182),screenY:signed16(word(this.gsu,0x1182)-word(this.wram,P.cameraY)),vy:signed16(word(this.gsu,0x1222)),cameraY:word(this.wram,P.cameraY)},mode:this.wram[P.mode].toString(16),stage:this.stageLabel,room:this.room,x:word(this.gsu,P.x),y:word(this.gsu,P.y),form:word(this.gsu,0xae),babyLost:babyIsLost(this.gsu),rescueStars:word(this.wram,0x3b6),playerState:word(this.gsu,0xac),playerLock:word(this.gsu,0x1ae),spriteLock:word(this.gsu,0x1b0),goal:inGoal(this.gsu),contacts:word(this.gsu,0xfc),nativeVx:signed16(word(this.gsu,0xa8)),vx:signed16(word(this.gsu,P.vx)),vy:signed16(word(this.gsu,P.vy)),airborne:word(this.gsu,0xc0),flutter:word(this.gsu,0xd2),inputs:{axis:this.controls.runAxis(),jump:this.controls.jumpUntil,jumpHeld:this.controls.jumpHeld,roll:this.controls.rollUntil},kills:this.kills,walls:this.walls,terrain:{queue:word(this.wram,0x9ef),terminator:word(this.wram,0x9f1),left:word(this.gsu,0xa4),top:word(this.gsu,0xa6),ahead:[0,16,32].map(d=>{const x=(word(this.gsu,P.x)+48)&~15,y=(word(this.gsu,P.y)+d)&~15;return {x,y,tile:word(this.wram,tileAddress(this.gsu,x,y)??0).toString(16)};})},party:this.adventure.serialize(),message:this.wram[0xd11],messageScript:word(this.gsu,0x406e),videoHeight:this.videoHeight,overlaySize:[this.overlay.width,this.overlay.height],frame:this.emulator.gameManager.functions.getFrameNum(),paused:this.paused,audio:this.audio?.state??'unavailable',nativeDrawHidden:this.hidden,dynamicTiles:word(this.gsu,0x1ecc),eggs:this.eggCount,aiming:this.aiming,eggState:word(this.gsu,0xde),mouth:word(this.gsu,0x150),ammo:word(this.gsu,0x16a),tongueRelative:{x:signed16(word(this.gsu,0x152)),y:signed16(word(this.gsu,0x154))},sprites:Array.from({length:24},(_,i)=>({slot:i,state:word(this.gsu,0xf00+i*4),id:word(this.gsu,0x1360+i*4),x:word(this.gsu,0x10e2+i*4),y:word(this.gsu,0x1182+i*4)})).filter(s=>s.state===0x10)};}
 }

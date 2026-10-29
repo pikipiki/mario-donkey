@@ -40,7 +40,7 @@ function fixture(){
  return {game,controls,manager,heap,emulator};
 }
 
-beforeEach(()=>{vi.clearAllMocks();vi.stubGlobal('location',{search:''});vi.mocked(writeCampaign).mockResolvedValue();vi.mocked(waitForNativePause).mockImplementation(async manager=>{manager.toggleMainLoop(0);});});
+beforeEach(()=>{const values=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v)});vi.clearAllMocks();vi.stubGlobal('location',{search:''});vi.mocked(writeCampaign).mockResolvedValue();vi.mocked(waitForNativePause).mockImplementation(async manager=>{manager.toggleMainLoop(0);});});
 afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();});
 
 describe('resume the saved native scene',()=>{

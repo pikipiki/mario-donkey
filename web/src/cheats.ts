@@ -1,3 +1,4 @@
+import{LifeCheat}from'./life-cheat';
 import type{GameWorld}from'./world';
 import{readDkcScene}from'./dkc-profile';
 import{writeWord}from'./profile';
@@ -7,6 +8,17 @@ export const CHEAT_PREFIX='all-stages-sandbox-v1::';
 const settingKey='kong-cheats-v1'+(import.meta.env.DEV&&typeof location!=='undefined'&&new URLSearchParams(location.search).get('test')==='1'?'-test':'');
 function readOptions():CheatOptions{try{const s=JSON.parse(localStorage.getItem(settingKey)??'null');return{infiniteLives:s?.infiniteLives===true,unlockStages:s?.unlockStages===true,...(s?.originWorld==='yoshi'||s?.originWorld==='dkc'?{originWorld:s.originWorld}:{})};}catch{return{infiniteLives:false,unlockStages:false};}}
 let options=readOptions();
+const ledgers=new Map<string,LifeCheat>();
+function legacyCheats():boolean{try{const key=settingKey+'-life-migration-v2',known=localStorage.getItem(key);if(known!==null)return known==='legacy';const legacy=localStorage.getItem(settingKey)!==null;localStorage.setItem(key,legacy?'legacy':'new');return legacy;}catch{return false;}}
+const legacyInstall=legacyCheats();
+function lifeLedger():LifeCheat{const key=cheatStorageKey(settingKey+'-lives-v2');let ledger=ledgers.get(key);if(!ledger){ledger=new LifeCheat(key,localStorage);ledgers.set(key,ledger);}return ledger;}
+export function cloneLifeCheatSandbox():void{const key=settingKey+'-lives-v2';localStorage.setItem(cheatStorageKey(key,true),localStorage.getItem(key)??'{}');ledgers.delete(cheatStorageKey(key,true));}
+export function bootLifeCheat(world:GameWorld,w:Uint8Array,hasSave:boolean):void{lifeLedger().boot(world,w,hasSave,legacyInstall,options.infiniteLives);}
+export function syncLifeCheat(world:GameWorld,w:Uint8Array):void{ledgers.get(cheatStorageKey(settingKey+'-lives-v2'))?.sync(world,w,options.infiniteLives);}
+const lifeReceipts=new WeakMap<Uint8Array,()=>void>();
+export function trackLifeSnapshot(state:Uint8Array,world:GameWorld,w:Uint8Array):void{const ledger=ledgers.get(cheatStorageKey(settingKey+'-lives-v2'));if(ledger)lifeReceipts.set(state,ledger.receipt(world,w));}
+export function confirmLifeSnapshot(state:Uint8Array):void{lifeReceipts.get(state)?.();lifeReceipts.delete(state);}
+
 export function cheatOptions():Readonly<CheatOptions>{return options;}
 /** Persist first: failed browser storage must never switch a save namespace. */
 export function setCheatOptions(next:CheatOptions):void{localStorage.setItem(settingKey,JSON.stringify(next));options={...next};}
@@ -17,7 +29,7 @@ export function cheatReloadUrl(href:string,world:GameWorld,openMap:boolean):stri
 /** Native EU debug unlock: 72 stage flags and six twelve-icon map rows.
  * Scores, current room/world and save-file IDs are left intact. */
 export function applyYoshiCheats(w:Uint8Array,s:Readonly<CheatOptions>=options):void{
- if(s.infiniteLives)writeWord(w,0x379,99);
+ if(s===options)syncLifeCheat('yoshi',w);else if(s.infiniteLives)writeWord(w,0x379,99);
  if(!s.unlockStages)return;
  w[0x216]=1;for(let i=0;i<72;i++){w[0x222+i]=1;w[0x30f+i]=i%12+1;}
 }
@@ -27,7 +39,7 @@ const nativeNodes=[...new Set(nativeRoutes.flat())];
 /** Exact USA Rev2 route graph and canonical-entrance table extracted from ROM.
  * FC00 is shared with level banana bitmaps: only edit route cache on a map! */
 export function applyDkcCheats(w:Uint8Array,s:Readonly<CheatOptions>=options):void{
- if(s.infiniteLives)writeWord(w,0x575,99);
+ if(s===options)syncLifeCheat('dkc',w);else if(s.infiniteLives)writeWord(w,0x575,99);
  if(!s.unlockStages)return;
  for(const node of nativeNodes)w[0x583+node]|=1;
  if(!readDkcScene(w).isMap)return;

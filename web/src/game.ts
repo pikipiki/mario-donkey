@@ -1,4 +1,4 @@
-import{applyYoshiCheats}from'./cheats';
+import{bootLifeCheat,syncLifeCheat,trackLifeSnapshot,confirmLifeSnapshot,applyYoshiCheats}from'./cheats';
 import{GoalDepartureHooks}from'./goal-departure';
 import{GoalHandoffRecovery,requestGoalReturn,type StalledGoal}from'./goal-recovery';
 import {SquawksCamera}from'./squawks-camera';
@@ -39,7 +39,7 @@ export class LiveGame {
  keepBabyOnScreen=true;
  wramBase=0;gsuBase=0;ready=false;paused=false;kills=0;walls=0;adventure=new Adventure();autoSkip=false;
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
- private skipUntil=0;private lastSave=0;private saving?:Promise<void>;private queuedSave?:Campaign;private jumpSequence=0;private lastStage='';private wasFinishing=false;
+ private livesBooted=false;private skipUntil=0;private lastSave=0;private saving?:Promise<void>;private queuedSave?:Campaign;private jumpSequence=0;private lastStage='';private wasFinishing=false;
  private originalCampaign?:Campaign;private loadedCampaign=false;private recovering=false;private capturing=false;private capture?:Promise<Campaign|undefined>;private lastCapture?:Campaign;private mapConfirm=new MapConfirmInput();private jumpBoost=new NativeJumpBoost();private flutterInput=new NativeFlutterInput();
  private videoHeight=239;
  private particles:Array<{x:number;y:number;until:number}>=[];
@@ -116,6 +116,7 @@ export class LiveGame {
   await storeFile(WORLD_PARTY_KEY,new Uint8Array()).catch(()=>{});
  }
  private finishBoot():void{
+  if(!this.livesBooted){bootLifeCheat('yoshi',this.wram,this.loadedCampaign);this.livesBooted=true;}
   applyYoshiCheats(this.wram);
   this.adventure.guardian=this.bosses.state;
   const h=this.emulator.gameManager.functions.getVideoDimensions('height');if(h>=224&&h<=256){this.videoHeight=h;this.topPadding=(h-224)>>1;}
@@ -196,6 +197,7 @@ export class LiveGame {
   if(!snapshot)throw new Error('The current game could not be saved. Stay here and try again.');
   await writeCampaign(snapshot.state,snapshot.adventure);
  }
+ refreshLifeCheat():void{if(this.ready)syncLifeCheat(this.world,this.wram);}
  save():Promise<void>{
   if(!this.ready||this.recovering||this.wram[P.mode]===0)return Promise.resolve();
   if(!this.capture){
@@ -214,7 +216,7 @@ export class LiveGame {
    // iteration can save inconsistent CPU/graphics state, even with intact RAM.
    await waitForNativePause(m);
    if(!this.ready||this.recovering||this.wram[P.mode]===0)return;
-   return {state:new Uint8Array(m.getState()),adventure:structuredClone(this.adventure.serialize())};
+   const state=new Uint8Array(m.getState());trackLifeSnapshot(state,'yoshi',this.wram);return {state,adventure:structuredClone(this.adventure.serialize())};
   }catch(error){this.lastSave=performance.now();console.warn('KONG_SAVE_ERROR',error);return;}
   finally{this.capturing=false;if(!this.paused&&!this.recovering)m.toggleMainLoop(1);}
  }
@@ -222,7 +224,7 @@ export class LiveGame {
   try{
    while(this.queuedSave){
     const snapshot=this.queuedSave;this.queuedSave=undefined;
-    try{await writeCampaign(snapshot.state,snapshot.adventure);this.lastSave=performance.now();}
+    try{await writeCampaign(snapshot.state,snapshot.adventure);confirmLifeSnapshot(snapshot.state);this.lastSave=performance.now();}
     catch(e){console.warn('KONG_SAVE_ERROR',e);}
    }
   }

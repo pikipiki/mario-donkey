@@ -1,4 +1,4 @@
-import{applyDkcCheats}from'./cheats';
+import{bootLifeCheat,trackLifeSnapshot,confirmLifeSnapshot,applyDkcCheats}from'./cheats';
 import{DkcFlight}from'./dkc-flight';
 import{writeWord}from'./profile';
 import{DkcWater,dkcSwimming}from'./dkc-water';
@@ -76,7 +76,7 @@ export class DkcGame extends LiveGame{
   }
   const party=decodeWorldParty(await readBeforeDeadline(loadFile(WORLD_PARTY_KEY),3000).catch(()=>undefined));
   if(party){this.adventure=new Adventure(party);await storeFile(WORLD_PARTY_KEY,new Uint8Array());}
-  applyDkcCheats(this.wram);this.teamInitialized=initializeDkcTeam(this.wram,this.teamInitialized);
+  bootLifeCheat('dkc',this.wram,Boolean(saved));applyDkcCheats(this.wram);this.teamInitialized=initializeDkcTeam(this.wram,this.teamInitialized);
   const height=m.functions.getVideoDimensions('height');if(height>=224&&height<=256)this.dkHeight=height;
   const savedGuardian=this.dkGuardian.state;this.dkMusicHeld=Boolean(savedGuardian?.phase==='released'&&savedGuardian.music!==undefined&&word(this.wram,0x51d)===0);
   configureOverlay(this.dkCanvas,this.dkHeight);this.dkRoom=readDkcScene(this.wram).level;this.ready=true;this.dkLastSave=performance.now();this.stop();m.toggleMainLoop(1);this.dkChanged();this.dkStatus(this.stageLabel);
@@ -92,7 +92,7 @@ export class DkcGame extends LiveGame{
  override goToMap():void{void this.returnToMap();}
  private async returnToMap():Promise<void>{
   const bytes=await loadFile(DKC_MAP_KEY);if(!bytes){this.dkStatus('Return through the native stage exit to reach the DKC map.');return;}
-  const saved=decodeDkcSave(bytes),m=this.emulator.gameManager;await this.save();await waitForNativePause(m);this.stop();m.loadState(saved.state);this.restoreBarrelInput();m.toggleMainLoop(1);await waitForNativeFrames(m);this.paused=false;this.combat.shots=[];this.dkGuardian.clear();this.dkDrum.reset();this.dkNativeHits?.requestDrumDefeat(null);this.dkBossContact.reset();this.dkBossHooks?.sync(false);this.dkBossFinish?.sync(false);this.bossAudio.stop();this.dkMusicHeld=false;this.dkStatus('Donkey Goonk · World map');
+  const saved=decodeDkcSave(bytes),m=this.emulator.gameManager,lives=word(this.wram,0x575);await this.save();await waitForNativePause(m);this.stop();m.loadState(saved.state);this.restoreBarrelInput();m.toggleMainLoop(1);await waitForNativeFrames(m);writeWord(this.wram,0x575,lives);this.refreshLifeCheat();this.paused=false;this.combat.shots=[];this.dkGuardian.clear();this.dkDrum.reset();this.dkNativeHits?.requestDrumDefeat(null);this.dkBossContact.reset();this.dkBossHooks?.sync(false);this.dkBossFinish?.sync(false);this.bossAudio.stop();this.dkMusicHeld=false;this.dkStatus('Donkey Goonk · World map');
  }
  override async repairDisplay():Promise<void>{await this.returnToMap();}
  override async saveForWorldSwitch():Promise<void>{if(!this.ready)throw new Error('The game is not ready.');if(this.dkSaving)await this.dkSaving;await this.save();}
@@ -103,8 +103,9 @@ export class DkcGame extends LiveGame{
    const m=this.emulator.gameManager;this.dkCapturing=true;
    try{
     await waitForNativePause(m);
-    const bytes=encodeDkcSave({state:new Uint8Array(m.getState()),adventure:this.adventure.serialize(),combat:this.combat.serialize(),teamInitialized:this.teamInitialized,guardian:this.dkGuardian.state,drum:this.dkDrum.serialize()??undefined});
-    await storeFile(DKC_SAVE_KEY,bytes);if(this.isMap)await storeFile(DKC_MAP_KEY,bytes);this.dkLastSave=performance.now();
+    const state=new Uint8Array(m.getState());trackLifeSnapshot(state,'dkc',this.wram);
+    const bytes=encodeDkcSave({state,adventure:this.adventure.serialize(),combat:this.combat.serialize(),teamInitialized:this.teamInitialized,guardian:this.dkGuardian.state,drum:this.dkDrum.serialize()??undefined});
+    await storeFile(DKC_SAVE_KEY,bytes);if(this.isMap)await storeFile(DKC_MAP_KEY,bytes);confirmLifeSnapshot(state);this.dkLastSave=performance.now();
    }finally{this.dkCapturing=false;if(!this.paused)m.toggleMainLoop(1);}
   })().finally(()=>{this.dkSaving=undefined;});return this.dkSaving;
  }

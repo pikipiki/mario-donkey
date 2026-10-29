@@ -94,3 +94,18 @@ html,body,#app{touch-action:none;-webkit-text-size-adjust:100%;text-size-adjust:
 
 @media(orientation:landscape) and (max-height:600px){.stick{max-width:clamp(64px,calc(100dvh - 190px),120px)}}
 @media(orientation:landscape) and (max-width:650px){.game-layout{grid-template-columns:100px minmax(0,1fr) 144px;gap:4px}.party-row{grid-template-columns:repeat(2,minmax(44px,1fr))}.character-picker{grid-column:1/-1}.topbar{width:100px}.action-pad{height:min(128px,100%)}}
+
+/* Keyboard legends belong to desktop landscape, never to touch/mobile layouts.
+   Attributes survive dynamic button labels, pause/resume and portal changes. */
+[data-shortcut]::after{display:none}
+@media (orientation:landscape) and (hover:hover) and (pointer:fine){
+ [data-shortcut]::after{content:attr(data-shortcut);display:block;flex-shrink:0;pointer-events:none;font-family:inherit;font-size:clamp(20px,2vw,26px);font-weight:900;line-height:1.1;letter-spacing:.02em;color:inherit}
+ .action-pad [data-shortcut]::after{margin-top:5px}
+ .stick-wrap{align-content:end;gap:10px}
+ .stick-wrap[data-shortcut]::after{color:#e6f6cb;text-align:center;white-space:nowrap;font-size:clamp(20px,2vw,26px)}
+ .party-row{grid-template-columns:minmax(0,1fr) 64px 44px}
+ #team-swap{gap:2px;min-height:72px}
+ #team-swap[data-shortcut]::after{font-size:22px}
+ #pause{align-content:center;font-size:18px;gap:0}
+ #pause[data-shortcut]::after{font-size:14px;letter-spacing:0}
+}

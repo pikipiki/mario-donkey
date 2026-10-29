@@ -3,7 +3,7 @@ const{bodyBoxes:bodies,effectCues:cues,endOffsets:offsets,timings}=runtime;
 import type{YoshiGuardianId}from'./yoshi-guardian-spec';
 /** Trimmed native PPU frames, sampled on the original EU 50Hz clock. */
 export interface GuardianFrame{x:number;y:number;w:number;h:number;dx:number;dy:number;duration:number}
-export interface GuardianClip{frames:GuardianFrame[];duration:number;loop?:boolean;scale?:number;opaque?:boolean}
+export interface GuardianClip{frames:GuardianFrame[];duration:number;loop?:boolean;scale?:number;opaque?:boolean;orientation?:{radians:number;dx:number;dy:number}}
 export interface GuardianContext extends Omit<GuardianFrame,'duration'>{layer:'behind'|'front';clips:string[]}
 export interface GuardianAnimationBank{presentation?:{departureLift?:{start:number;duration:number;dy:number}};context?:GuardianContext[];id:YoshiGuardianId;scale:number;clips:Record<string,GuardianClip>}
 export function guardianDamageStage(hp:number,maxHp=6):number{return Math.max(0,Math.min(5,Math.round((1-hp/maxHp)*6)));}

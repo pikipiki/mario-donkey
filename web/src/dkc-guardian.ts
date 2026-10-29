@@ -30,7 +30,7 @@ export function validateDkcGuardian(value:unknown):DkcGuardianSave|undefined{
 /** Request native damage, never replace death/partner/dismount/progression states. */
 export function requestDkcGuardianHit(w:Uint8Array):boolean{
  const s=readDkcScene(w),p=s.playerSlot,state=word(w,DKC.state+p);
- if(!s.playing||state>0x0b||word(w,DKC.hit+p)!==0||word(w,0x16d1+p-2)!==0)return false;
+ if(!s.playing||state>0x08||word(w,DKC.hit+p)!==0||word(w,0x16d1+p-2)!==0)return false;
  writeWord(w,DKC.hit+p,1);return true;
 }
 /** Burt guards the existing map exit; its coordinates and completion remain native. */
@@ -90,7 +90,7 @@ export class DkcGuardian{
   const dt=this.frame===undefined?0:Math.max(0,Math.min(.06,(frame-this.frame)/60));this.frame=frame;
   if(s.phase==='released')return{};
   // Native damage/cutscenes must finish without an advancing encounter clock.
-  if([0x0d,0x0e,0x1b,0x1d,0x3c,0x3d].includes(playerState))return{};
+  if([0x09,0x0a,0x0b,0x0d,0x0e,0x11,0x1b,0x1d,0x3c,0x3d].includes(playerState))return{};
   // Keep the full cinematic when a lazy animation bank is still downloading.
   // Native DKC continues; only the crossover actor clock waits.
   if(attack.visualReady===false)return{};
@@ -105,7 +105,7 @@ export class DkcGuardian{
   const effect=advanceYoshiGuardian(s,dt,scene.x,scene.facing);
   const target=this.target()!,playerX=scene.x,playerY=scene.y,top=target.y-target.height,prior=this.previousHero;
   this.previousHero={x:playerX,y:playerY};
-  const nativeState=word(w,DKC.state+scene.playerSlot),canAttack=nativeState<=0x0b&&word(w,DKC.hit+scene.playerSlot)===0;
+  const nativeState=word(w,DKC.state+scene.playerSlot),canAttack=nativeState<=0x08&&word(w,DKC.hit+scene.playerSlot)===0;
   const overlap=Math.abs(playerX-target.x)<target.width/2+14&&playerY>target.y-target.height&&playerY-30<target.y;
   const stomp=canAttack&&prior&&!scene.grounded&&scene.vy>0&&Math.abs(playerX-target.x)<target.width/2+12&&prior.y<=top+12&&playerY>=top-8&&playerY<=top+24;
   if((stomp||canAttack&&attack.rolling&&overlap)&&this.hit(playerX)){

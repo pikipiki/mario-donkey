@@ -1,5 +1,5 @@
 import{it,expect}from'vitest';
-import{DkcTeamDamage,initializeDkcTeam}from'../src/dkc-team-damage';
+import{DkcTeamDamage,initializeDkcTeam,dkcAvailableHeroes}from'../src/dkc-team-damage';
 import{Adventure,CHARACTERS}from'../src/adventure';
 import{DKC}from'../src/dkc-profile';
 import{writeWord}from'../src/profile';
@@ -12,3 +12,5 @@ it('never interprets an ordinary native Select swap, swimming handoff, map, or s
 
 it('seeds a new duo only on the map, preserves other native flags, and never revives a lost partner in play',()=>{const{w,p}=fixture();expect(initializeDkcTeam(w,false)).toBe(false);p(DKC.height,0);p(DKC.id,0x10);p(0x579,0x120);expect(initializeDkcTeam(w,false)).toBe(true);expect(w[0x579]).toBe(0x21);p(0x579,0x120);expect(initializeDkcTeam(w,true)).toBe(true);expect(w[0x579]).toBe(0x20);});
 it('passes the same relay after the native underwater hurt and swimming takeover',()=>{const{w,p,a,d}=fixture();p(DKC.state+2,0x3a);p(DKC.state+4,0xe);d.update(w,a);p(DKC.currentKong,2);p(DKC.state+4,0x2b);p(DKC.state+2,0x39);expect(d.update(w,a)).toBe(true);expect(a.active).toBe('pink');expect(d.nativePartner(w,a)).toMatchObject({character:'violet',animation:'walk'});});
+
+it('counts native remaining heroes through hurt, takeover, flee and final death',()=>{const{w,p}=fixture();expect(dkcAvailableHeroes(w)).toBe(2);p(DKC.state+2,0xd);p(DKC.state+4,0xe);expect(dkcAvailableHeroes(w)).toBe(1);p(DKC.state+2,9);p(DKC.state+4,0xa);expect(dkcAvailableHeroes(w)).toBe(1);p(DKC.state+2,0x54);p(DKC.state+4,1);expect(dkcAvailableHeroes(w)).toBe(1);p(DKC.state+2,0xc);p(DKC.state+4,0x11);expect(dkcAvailableHeroes(w)).toBe(0);});

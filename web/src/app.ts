@@ -102,8 +102,8 @@ $('mount').addEventListener('change',e=>{const select=e.target as HTMLSelectElem
 let worldSwitchPending=false,portalPreloaded=false;
 function refreshButtons():void{
  const carrying=game instanceof DkcGame&&game.carryingBarrel,stabbing=game instanceof DkcGame&&game.swimming&&game.aquaticMount==='enguarde';
- $('roll-label').textContent=carrying?'Throw':stabbing?'Stab':dkcWorld?'Roll / Pick up':'Roll';
- $('roll-hint').textContent=carrying?'tap again to throw':stabbing?'pierce enemies ahead':dkcWorld?'tap to take a barrel':'attack';
+ $('roll-label').textContent=carrying?'Throw':stabbing?'Charge':dkcWorld?'Roll / Pick up':'Roll';
+ $('roll-hint').textContent=carrying?'tap again to throw':stabbing?'charge and defeat enemies':dkcWorld?'tap to take a barrel':'attack';
  const map=Boolean(game?.ready&&game.isMap);
  if(map&&!portalPreloaded){portalPreloaded=true;void fetch(`${base}rom/${destination==='dkc'?'dkc-usa-rev2.sfc':'yoshi-eu.sfc'}`,{cache:'force-cache'}).then(r=>r.ok?r.arrayBuffer():undefined).catch(()=>{});}
  $<HTMLButtonElement>('team-swap').disabled=!game?.ready||Boolean(game?.paused)||Boolean(game?.teamSwapping)||worldSwitchPending;
@@ -156,7 +156,7 @@ $('team-close').addEventListener('click',closeTeam);teamDialog.addEventListener(
 $('team-apply').addEventListener('click',()=>{const first=$<HTMLSelectElement>('team-first').value as Character,second=$<HTMLSelectElement>('team-second').value as Character;if(!game?.configureTeam(first,second)){$('team-error').textContent='Choisis deux personnages différents.';return;}syncParty();closeTeam();setStatus(`${CHARACTER_NAMES[first]} + ${CHARACTER_NAMES[second]}`);});
 if(dkcWorld){
  $('skip').hidden=true;
- $('settings').querySelector('.sheet-hint')!.textContent='Choose a stage on the native Donkey Kong map with the stick, then tap Enter. In a stage, hold Jump to flutter on Yoshi or make a native Kong jump on foot and use Roll to attack. Underwater on Yoshi or Enguarde: hold Swim or Up to rise, Down to dive, and release to float. Enguarde spears fish ahead automatically; Stab / X extends the attack. For barrels: tap Roll / Pick up once to take and keep one; tap again to throw (keyboard X). Hold a stick direction while tapping Tongue to swallow that way; release the stick for straight ahead. Press Down to make an egg (up to six). Tap Eggs or press V once to aim and again to throw. Against bosses, six eggs follow you: tap once to aim, then again to throw along the reticle. C uses the tongue, X rolls, arrows move. Each world keeps its own local save; the green pipe on either map changes worlds with the same selected hero.';
+ $('settings').querySelector('.sheet-hint')!.textContent='Choose a stage on the native Donkey Kong map with the stick, then tap Enter. In a stage, hold Jump to flutter on Yoshi or make a native Kong jump on foot and use Roll to attack. Underwater on Yoshi or Enguarde: hold Swim or Up to rise, Down to dive, and release to float. Enguarde: Charge / X is the only charge-and-attack button. Swim / Space only rises; the stick steers. For barrels: tap Roll / Pick up once to take and keep one; tap again to throw (keyboard X). Hold a stick direction while tapping Tongue to swallow that way; release the stick for straight ahead. Press Down to make an egg (up to six). Tap Eggs or press V once to aim and again to throw. Against bosses, six eggs follow you: tap once to aim, then again to throw along the reticle. C uses the tongue, X rolls, arrows move. Each world keeps its own local save; the green pipe on either map changes worlds with the same selected hero.';
  for(const id of ['baby-visibility','auto-skip'])$(id).closest('label')!.setAttribute('hidden','');
  $('baby-visibility-hint').hidden=true;
  $('level-map').textContent='Leave stage · World map';

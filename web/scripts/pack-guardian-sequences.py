@@ -65,3 +65,7 @@ for folder in sorted(a.input.iterdir()):
 # produces Vite dev-server warnings; large PNG/clip banks remain lazy assets.
 runtime=a.output.resolve().parents[2]/'src/generated/guardian-runtime.json';runtime.parent.mkdir(parents=True,exist_ok=True)
 runtime.write_text(json.dumps({'timings':timings,'endOffsets':endOffsets,'effectCues':effectCues,'bodyBoxes':bodyBoxes},indent=2)+'\n')
+
+# Metadata-only upright idle correction; does not alter native PNG pixels.
+import subprocess,sys
+subprocess.run([sys.executable,str(Path(__file__).with_name('normalize-raphael-idle.py')),'--output',str(a.output)],check=True)

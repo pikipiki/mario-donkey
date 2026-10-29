@@ -21,7 +21,8 @@ export class SpriteAtlas {
   ctx.save();ctx.imageSmoothingEnabled=false;ctx.translate(Math.round(x),Math.round(y));ctx.scale(scale*mirror,scale);
   const draw=(f:{x:number;y:number;w:number;h:number;dx:number;dy:number},lift=0)=>{if(f.w&&f.h)ctx.drawImage(bank.image,f.x,f.y,f.w,f.h,f.dx,f.dy+lift,f.w,f.h);};
   for(const context of bank.manifest.context??[])if(context.layer==='behind'&&context.clips.includes(key))draw(context);
-  draw(frame,guardianFrameLift(bank.manifest,key,seconds));
+  ctx.save();if(clip.orientation){ctx.translate(clip.orientation.dx,clip.orientation.dy);ctx.rotate(clip.orientation.radians);}
+  draw(frame,guardianFrameLift(bank.manifest,key,seconds));ctx.restore();
   for(const context of bank.manifest.context??[])if(context.layer==='front'&&context.clips.includes(key))draw(context);
   ctx.restore();return true;
  }

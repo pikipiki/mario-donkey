@@ -60,3 +60,5 @@ it('does not let rapid eggs damage the native player, exit or guard state',()=>{
  const f=fixture();f.tick();Object.assign(f.boss.state!,{phase:'fight',elapsed:1});const before=f.w.slice();
  for(let i=0;i<100;i++)f.boss.hit();expect(f.boss.state!.hp).toBe(5);expect(f.boss.state!.phase).toBe('fight');expect(f.w).toEqual(before);
 });
+
+it.each([9,0xa,0xb,0xd,0xe,0x11])('never hits or advances boss motion during native loss/takeover state %i',state=>{const f=fixture();f.tick();Object.assign(f.boss.state!,{phase:'fight',elapsed:1,heroHitUntil:4});writeWord(f.w,DKC.state+2,state);const before=structuredClone(f.boss.state);expect(requestDkcGuardianHit(f.w)).toBe(false);f.boss.update(f.w,100,()=>true);expect(f.boss.state!.elapsed).toBe(before!.elapsed);expect(f.boss.state!.heroHitUntil).toBe(4);expect(word(f.w,DKC.hit+2)).toBe(0);});

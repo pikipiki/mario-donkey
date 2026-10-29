@@ -27,3 +27,7 @@ export class DkcTeamDamage{
  }
  get transitioning():boolean{return Boolean(this.pending&&!this.pending.committed);}
 }
+
+/** Count remaining native team members, including the incoming takeover hero.
+ * Outgoing flee/death states are already lost even before the slot is cleared. */
+export function dkcAvailableHeroes(w:Uint8Array):number{if(!readDkcScene(w).playing)return 0;return[2,4].filter(slot=>[1,2].includes(word(w,DKC.id+slot))&&![9,0xb,0xc,0xd,0x11,0x39,0x3a,0x54].includes(word(w,DKC.state+slot))).length;}

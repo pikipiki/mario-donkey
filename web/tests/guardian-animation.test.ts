@@ -78,3 +78,5 @@ it('settles a grounded boss injury after an airborne hit while leaving Boo and t
  for(const id of['burt','salvo','milde','tap-tap']as const){expect(guardianSettledY(id,120,190,0)).toBe(120);expect(guardianSettledY(id,120,190,.25)).toBe(155);expect(guardianSettledY(id,120,190,1)).toBe(190);}
  expect(guardianSettledY('bigger-boo',120,190,1)).toBe(120);expect(guardianSettledY('raphael',90,190,10)).toBe(90);
 });
+
+it('counter-rotates only Raphael idle tiers and keeps original native injury/death frames',()=>{const m=bank('raphael'),idle=m.clips['idle-0'];expect(idle.orientation?.radians).toBeCloseTo(-26*Math.PI*2/256);for(let i=0;i<6;i++)expect(m.clips[`idle-${i}`]).toEqual(idle);for(const key of['hurt-1','hurt-2','hurt-3','hurt-4','hurt-5','dead'])expect(m.clips[key].orientation).toBeUndefined();});

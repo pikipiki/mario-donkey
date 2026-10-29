@@ -1,3 +1,7 @@
+## Dernier correctif — Raphael et Enguarde (29 octobre 2026)
+
+Voir [RAPHAEL_AND_ENGUARDE_CHARGE.md](RAPHAEL_AND_ENGUARDE_CHARGE.md). Raphael droit avec collision correspondant au corps, protection suspendue pendant les fuites/relais natifs, compteur de héros. Le retour reproduit à5PV était une mort native du duo, pas une victoire ; ce comportement normal est conservé. Enguarde : une seule Charge/X offensive, Swim/Espace monte. 744 tests/66 fichiers et build réussis ; test privé du vrai combat et de sa sortie après défaite. Restent les téléphones physiques, la charge sous-marine en situation prolongée et la campagne complète. Aucun changement de format de sauvegarde.
+
 ## 29 octobre2026 — dégâts de roulade sous l’eau
 
 Les dégâts de roue sont rétablis dans DkcWater pour les héros/montures hors Enguarde : contact proche dans les deux sens, requête native20, animation roue pour le leader. Le déplacement reste au joystick et la nage/buoyance restent actives. Enguarde garde sa pointe directionnelle ; portage de tonneau supprime les dégâts de roulade. Compteur de kills corrigé pour les coups sans son de piqué. 731tests/66fichiers etbuild validés ; tests de dégâts, exclusions, animation et câblage DkcGame. Cette modification n’a pas eu de nouveau parcours navigateur natif ; le handler de mort marine utilisé a été vérifié lors de la recette Coral Capers précédente. Étatpublication dans outputs/dkc-water-roll-release.json.

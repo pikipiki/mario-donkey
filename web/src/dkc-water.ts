@@ -4,8 +4,8 @@ import{nativeDkcMount}from'./dkc-mount';import{word,writeWord}from'./profile';im
  * are mounted swim/stab states. Never adapt hurt, dismount or exit scripts. */
 export function dkcSwimming(w:Uint8Array):boolean{const s=readDkcScene(w);return s.playing&&word(w,0x32)===3&&[0x2b,0x30,0x4c,0x4d].includes(word(w,DKC.state+s.playerSlot));}
 export class DkcWater{
- stabUntil=0;private pressed=false;private depth?:{key:string;y:number};
- reset():void{this.stabUntil=0;this.pressed=false;this.depth=undefined;}
+ stabUntil=0;chargeUntil=0;chargeDirection:1|-1=1;private pressed=false;private depth?:{key:string;y:number};
+ reset():void{this.chargeUntil=0;this.stabUntil=0;this.pressed=false;this.depth=undefined;}
  update(w:Uint8Array,now:number,mount:Mount,jump:boolean,vertical:number,facing:number,attack:boolean):{swimming:boolean;stabbed:boolean;killed:number}{
   const s=readDkcScene(w);if(!dkcSwimming(w)||word(w,DKC.hit+s.playerSlot)){this.reset();return{swimming:false,stabbed:false,killed:0};}
   const native=nativeDkcMount(w),effective=native?.kind??mount;
@@ -21,12 +21,13 @@ export class DkcWater{
   }else this.depth=undefined;
   const fresh=attack&&!this.pressed;this.pressed=attack;
   if(effective!=='enguarde'){
-   this.stabUntil=0;let killed=0;
+   this.chargeUntil=0;this.stabUntil=0;let killed=0;
    if(attack)for(const e of dkcEnemies(w))if(Math.abs(e.x-s.x)<=e.width/2+26&&s.y>e.y-e.height-6&&s.y-32<e.y+6&&killDkcEnemy(w,e.slot))killed++;
    return{swimming:true,stabbed:false,killed};
   }
-  let stabbed=fresh;if(fresh)this.stabUntil=now+390;
-  const x=native?.x??s.x,y=native?.y??s.y,dir=facing<0?-1:1;
+  let stabbed=fresh;if(fresh){this.stabUntil=now+390;this.chargeUntil=now+300;this.chargeDirection=facing<0?-1:1;}
+  if(now<this.chargeUntil)writeWord(w,DKC.vx+s.playerSlot,(this.chargeDirection*0x400)&0xffff);
+  const x=native?.x??s.x,y=native?.y??s.y,dir=now<this.chargeUntil?this.chargeDirection:facing<0?-1:1;
   let killed=0;
   // Only native spear-vulnerable fish; Croctopus, Clambo, scenery and bosses
   // retain their original rules. Front/nose contact never covers the tail.

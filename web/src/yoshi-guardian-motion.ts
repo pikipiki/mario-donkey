@@ -6,7 +6,7 @@ export function advanceYoshiGuardian(s:BurtBody&{id:YoshiGuardianId;elapsed:numb
  if(s.id==='burt')return advanceBurt(s,dt,heroX);
  hydrateBurtMotion(s);s.motionTime!+=dt;
  if(s.id==='bigger-boo'){
-  const looking=(heroX<s.x&&facing>0)||(heroX>s.x&&facing<0);s.vx=looking?0:Math.sign(heroX-s.x)*30;s.x+=s.vx*dt;s.y=s.floor-40+Math.sin(s.elapsed*2)*12;s.motion='jump';s.vy=Math.cos(s.elapsed*2)*24;
+  const looking=(heroX<s.x&&facing>0)||(heroX>s.x&&facing<0);s.vx=looking?0:Math.sign(heroX-s.x)*30;s.x+=s.vx*dt;s.y=s.floor-90+Math.sin(s.elapsed*2)*12;s.motion='jump';s.vy=Math.cos(s.elapsed*2)*24;
  }else if(s.id==='raphael'){
   const centre=(s.arenaLeft!+s.arenaRight!)/2,radius=Math.min(65,(s.arenaRight!-s.arenaLeft!)/2);s.x=centre+Math.cos(s.elapsed*1.4)*radius;s.y=s.floor-45+Math.sin(s.elapsed*1.4)*35;s.motion='jump';s.vy=Math.cos(s.elapsed*1.4)*49;
  }else{

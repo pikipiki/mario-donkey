@@ -1,8 +1,30 @@
+import{guardianFrameLift,guardianFrameAt,type GuardianAnimationBank}from'./guardian-animation';
+import type{YoshiGuardianId}from'./yoshi-guardian-spec';
 export interface Animation {start:number;frames:number;fps:number}
 export interface AtlasManifest {cell:number;columns:number;origin:[number,number];groups:Record<string,Record<string,Animation>>}
 export interface PlushManifest {frames:Array<{x:number;y:number;w:number;h:number;ox:number;oy:number}>;groups:Record<string,number[]>}
 export class SpriteAtlas {
  constructor(public image:HTMLImageElement,public manifest:AtlasManifest,public plush?:{image:HTMLImageElement;manifest:PlushManifest},public bosses?:{image:HTMLImageElement;manifest:AtlasManifest},public yoshiBosses?:{image:HTMLImageElement;manifest:AtlasManifest},public projectiles?:HTMLImageElement,public marioYoshi?:{image:HTMLImageElement;manifest:AtlasManifest},public combatArt?:HTMLImageElement,public guardians?:{image:HTMLImageElement;manifest:AtlasManifest}){}
+ private guardianSequences=new Map<string,{image:HTMLImageElement;manifest:GuardianAnimationBank}>();
+ private guardianRetryAt=new Map<string,number>();
+ private guardianRequests=new Map<string,Promise<void>>();
+ prepareGuardian(id:YoshiGuardianId):Promise<void>{
+  const pending=this.guardianRequests.get(id);if(this.guardianSequences.has(id))return Promise.resolve();if(pending)return pending;if(Date.now()<(this.guardianRetryAt.get(id)??0))return Promise.resolve();
+  const base=`${import.meta.env.BASE_URL}art/guardian-sequences/${id}`;
+  const request=(async()=>{const response=await fetch(`${base}.json`);if(!response.ok)throw new Error(`Missing ${id} animation`);const manifest=await response.json()as GuardianAnimationBank;const image=new Image();image.src=`${base}.png`;await image.decode();this.guardianSequences.set(id,{image,manifest});if(this.guardianSequences.size>2){const oldest=this.guardianSequences.keys().next().value!;this.guardianSequences.delete(oldest);this.guardianRequests.delete(oldest);}})();
+  this.guardianRequests.set(id,request);request.catch(()=>{this.guardianRequests.delete(id);this.guardianRetryAt.set(id,Date.now()+5000);});return request;
+ }
+ guardianReady(id:YoshiGuardianId):boolean{return this.guardianSequences.has(id);}
+ drawGuardianSequence(ctx:CanvasRenderingContext2D,id:YoshiGuardianId,key:string,x:number,y:number,seconds:number,mirror=1):boolean{
+  const bank=this.guardianSequences.get(id);if(!bank)return false;const clip=bank.manifest.clips[key]??bank.manifest.clips[`idle-${key.split('-').at(-1)}`]??bank.manifest.clips[key.startsWith('hurt')?'hurt':'idle-0'];if(!clip)return false;
+  const frame=guardianFrameAt(clip,seconds);if(!frame)return true;const scale=bank.manifest.scale*(clip.scale??1);
+  ctx.save();ctx.imageSmoothingEnabled=false;ctx.translate(Math.round(x),Math.round(y));ctx.scale(scale*mirror,scale);
+  const draw=(f:{x:number;y:number;w:number;h:number;dx:number;dy:number},lift=0)=>{if(f.w&&f.h)ctx.drawImage(bank.image,f.x,f.y,f.w,f.h,f.dx,f.dy+lift,f.w,f.h);};
+  for(const context of bank.manifest.context??[])if(context.layer==='behind'&&context.clips.includes(key))draw(context);
+  draw(frame,guardianFrameLift(bank.manifest,key,seconds));
+  for(const context of bank.manifest.context??[])if(context.layer==='front'&&context.clips.includes(key))draw(context);
+  ctx.restore();return true;
+ }
  static async load():Promise<SpriteAtlas>{
   const b=import.meta.env.BASE_URL;
   const guardianImage=new Image();guardianImage.src=`${b}art/yoshi-guardians.png`;

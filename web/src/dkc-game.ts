@@ -1,3 +1,4 @@
+import{DkcBarrelControl,heldDkcBarrel}from'./dkc-barrel';
 import{nativeDkcMount,dkcSaddle}from'./dkc-mount';
 import{DkcFlutter}from'./dkc-flutter';
 import{DkcIdleVoice}from'./dkc-idle-voice';
@@ -30,7 +31,7 @@ import{readDkcScene,dkcEnemies,killDkcEnemy}from'./dkc-profile';
 export class DkcGame extends LiveGame{
  private dkFlutter=new DkcFlutter();private dkIdleVoice?:DkcIdleVoice;private dkCollectibles?:DkcCollectibleHooks;private yoshiCombatAudio=new YoshiCombatAudio();private teamDamage=new DkcTeamDamage();private teamInitialized=false;
  private dkNativeHits?:DkcNativeBossHitHooks;private dkDrum=new DkcDrumEncounter();private dkBossContact=new DkcBossContact();
- private combat=new DkcCombat();private dkGuardian=new DkcGuardian();private dkBossHooks?:DkcBossRomHooks;private dkBossFinish?:DkcBossFinishHooks;private dkMusicHeld=false;private dkLastSave=0;private dkSaving?:Promise<void>;private dkCapturing=false;private dkMap=false;private dkHeight=224;private dkFrame=0;private dkAnimation='';private dkAnimationAt=0;private dkStage='';private dkRoom?:number;
+ private dkBarrel=new DkcBarrelControl();private combat=new DkcCombat();private dkGuardian=new DkcGuardian();private dkBossHooks?:DkcBossRomHooks;private dkBossFinish?:DkcBossFinishHooks;private dkMusicHeld=false;private dkLastSave=0;private dkSaving?:Promise<void>;private dkCapturing=false;private dkMap=false;private dkHeight=224;private dkFrame=0;private dkAnimation='';private dkAnimationAt=0;private dkStage='';private dkRoom?:number;
  constructor(emulator:Emulator,controls:Controls,private dkCanvas:HTMLCanvasElement,private dkAtlas:SpriteAtlas,private dkStatus:(message:string)=>void,private dkChanged:()=>void=()=>{}){super(emulator,controls,dkCanvas,dkAtlas,dkStatus,dkChanged);}
  override async unlockAudio():Promise<void>{await super.unlockAudio();void this.yoshiCombatAudio.prepare(this.audio);}
  override get world():'yoshi'|'dkc'{return 'dkc';}
@@ -39,6 +40,10 @@ export class DkcGame extends LiveGame{
  override get eggsUnlimited():boolean{return this.dkGuardian.active||this.nativeBossPresent();}
  private nativeBossPresent():boolean{const w=this.wram,s=readDkcScene(w);if(!s.playing||![0xe0,0xe1,0xe2,0xe3,0xe4,0xe5,0x68].includes(s.level))return false;for(let slot=6;slot<0x34;slot+=2)if(word(w,0xd45+slot)===0x70&&[5,6,7,8,9,11].includes(word(w,0x1029+slot)))return true;return false;}
  private hitNativeBoss(target:DkcTarget,kind:DkcNativeBossAttack):boolean{if(this.dkDrum.state?.slot===target.slot){const ok=this.dkDrum.hit(this.wram,target,kind);if(ok)this.animalAudio.play('animal-hit');return ok;}return hitDkcNativeBoss(this.wram,target,kind);}
+ /** Private acceptance fixture: exercises the actual clock/exit hooks, not ROM clear flags. */
+ testGuardianFinalHit():boolean{if(!import.meta.env.DEV||!this.dkGuardian.state||this.dkGuardian.state.phase!=='fight')return false;this.dkGuardian.state.hp=1;this.dkGuardian.state.hitUntil=0;return this.dkGuardian.hit();}
+ private restoreBarrelInput():void{this.dkBarrel.reset();const held=this.dkBarrel.update(this.wram,this.controls.rollSequence,false);this.emulator.gameManager.simulateInput(0,INPUT.y,held?1:0);}
+ get carryingBarrel():boolean{return this.ready&&Boolean(heldDkcBarrel(this.wram));}
  override get eggCount():number{return this.combat.eggs;}
  override get messageOpen():boolean{return false;}
  override get aiming():boolean{return Boolean(this.combat.aiming);}
@@ -53,10 +58,10 @@ export class DkcGame extends LiveGame{
   this.dkBossHooks=new DkcBossRomHooks(this.emulator.Module.HEAPU8);this.dkBossHooks.sync(true);this.dkBossFinish=new DkcBossFinishHooks(this.emulator.Module.HEAPU8);this.dkNativeHits=new DkcNativeBossHitHooks(this.emulator.Module.HEAPU8);this.dkCollectibles=new DkcCollectibleHooks(this.emulator.Module.HEAPU8);this.dkIdleVoice=new DkcIdleVoice(this.emulator.Module.HEAPU8);m.toggleMainLoop(1);
   const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
   const saved=fresh?undefined:await readBeforeDeadline(loadFile(DKC_SAVE_KEY),4000);
-  if(saved){const data=decodeDkcSave(saved);this.teamInitialized=data.teamInitialized===true;this.dkDrum.restore(data.drum);this.dkNativeHits.requestDrumDefeat(this.dkDrum.state?.defeatRequested?this.dkDrum.state.slot:null);m.loadState(data.state);await waitForNativeFrames(m);this.adventure=new Adventure(data.adventure);this.combat.restore(data.combat);this.dkGuardian.restore(data.guardian);}
+  if(saved){const data=decodeDkcSave(saved);this.teamInitialized=data.teamInitialized===true;this.dkDrum.restore(data.drum);this.dkNativeHits.requestDrumDefeat(this.dkDrum.state?.defeatRequested?this.dkDrum.state.slot:null);m.loadState(data.state);this.restoreBarrelInput();await waitForNativeFrames(m);this.adventure=new Adventure(data.adventure);this.combat.restore(data.combat);this.dkGuardian.restore(data.guardian);}
   else{
    const r=await fetch(`${import.meta.env.BASE_URL}bootstrap/dkc-map-snes9x-2.0.2.state`);
-   if(r.ok&&!r.headers.get('content-type')?.includes('text/html')){const state=new Uint8Array(await r.arrayBuffer());validateDkcNativeState(state);m.loadState(state);await waitForNativeFrames(m);}
+   if(r.ok&&!r.headers.get('content-type')?.includes('text/html')){const state=new Uint8Array(await r.arrayBuffer());validateDkcNativeState(state);m.loadState(state);this.restoreBarrelInput();await waitForNativeFrames(m);}
    else throw new Error('The Donkey Goonk map could not be loaded. Reload to try again. Your saves are kept.');
   }
   const party=decodeWorldParty(await readBeforeDeadline(loadFile(WORLD_PARTY_KEY),3000).catch(()=>undefined));
@@ -66,14 +71,18 @@ export class DkcGame extends LiveGame{
   const savedGuardian=this.dkGuardian.state;this.dkMusicHeld=Boolean(savedGuardian?.phase==='released'&&savedGuardian.music!==undefined&&word(this.wram,0x51d)===0);
   configureOverlay(this.dkCanvas,this.dkHeight);this.dkRoom=readDkcScene(this.wram).level;this.ready=true;this.dkLastSave=performance.now();this.stop();m.toggleMainLoop(1);this.dkChanged();this.dkStatus(this.stageLabel);
  }
- override stop():void{this.dkFlutter.reset();this.teamTag.cancel();this.bossAudio.pause();this.dkGuardian.pause();this.animalAudio.stop();this.yoshiCombatAudio.stop();this.controls.stop();this.combat.resetClock();for(let b=0;b<12;b++)this.emulator.gameManager.simulateInput(0,b,0);}
+ override stop():void{
+  this.dkFlutter.reset();this.teamTag.cancel();this.bossAudio.pause();this.dkGuardian.pause();this.animalAudio.stop();this.yoshiCombatAudio.stop();this.controls.stop();this.combat.resetClock();
+  const keepBarrel=this.ready&&this.dkBarrel.update(this.wram,this.controls.rollSequence,false);
+  for(let b=0;b<12;b++)this.emulator.gameManager.simulateInput(0,b,b===INPUT.y&&keepBarrel?1:0);
+ }
  override setPaused(value:boolean):void{this.stop();this.paused=value;if(!this.dkCapturing)this.emulator.gameManager.toggleMainLoop(value?0:1);this.emulator.setVolume(value?0:1);if(value)void this.save().catch(e=>this.dkStatus((e as Error).message));else void this.unlockAudio();}
- override requestTeamSwap():boolean{if(!this.ready||this.paused||this.teamTag.swapping)return false;const s=readDkcScene(this.wram);if(s.isMap){this.adventure.swapTeam();this.dkChanged();return true;}if(!s.playing||!this.teamDamage.canTag(this.wram)||!s.grounded||word(this.wram,0x1029+s.playerSlot)>0xb||word(this.wram,0x1595+s.playerSlot)!==0)return false;this.controls.stop();for(let b=0;b<12;b++)this.emulator.gameManager.simulateInput(0,b,0);return this.teamTag.begin(this.adventure,{...s,facing:this.controls.facing});}
+ override requestTeamSwap():boolean{if(!this.ready||this.paused||this.teamTag.swapping)return false;const s=readDkcScene(this.wram);if(s.isMap){this.adventure.swapTeam();this.dkChanged();return true;}if(!s.playing||!this.teamDamage.canTag(this.wram)||!s.grounded||word(this.wram,0x1029+s.playerSlot)>0xb||word(this.wram,0x1595+s.playerSlot)!==0)return false;this.controls.stop();const keepBarrel=this.dkBarrel.update(this.wram,this.controls.rollSequence,false);for(let b=0;b<12;b++)this.emulator.gameManager.simulateInput(0,b,b===INPUT.y&&keepBarrel?1:0);return this.teamTag.begin(this.adventure,{...s,facing:this.controls.facing});}
  override skipDialogue():void{if(!readDkcScene(this.wram).playing)this.controls.pulse(INPUT.start,performance.now());}
  override goToMap():void{void this.returnToMap();}
  private async returnToMap():Promise<void>{
   const bytes=await loadFile(DKC_MAP_KEY);if(!bytes){this.dkStatus('Return through the native stage exit to reach the DKC map.');return;}
-  const saved=decodeDkcSave(bytes),m=this.emulator.gameManager;await this.save();await waitForNativePause(m);this.stop();m.loadState(saved.state);m.toggleMainLoop(1);await waitForNativeFrames(m);this.paused=false;this.combat.shots=[];this.dkGuardian.clear();this.dkDrum.reset();this.dkNativeHits?.requestDrumDefeat(null);this.dkBossContact.reset();this.dkBossHooks?.sync(false);this.dkBossFinish?.sync(false);this.bossAudio.stop();this.dkMusicHeld=false;this.dkStatus('Donkey Goonk · World map');
+  const saved=decodeDkcSave(bytes),m=this.emulator.gameManager;await this.save();await waitForNativePause(m);this.stop();m.loadState(saved.state);this.restoreBarrelInput();m.toggleMainLoop(1);await waitForNativeFrames(m);this.paused=false;this.combat.shots=[];this.dkGuardian.clear();this.dkDrum.reset();this.dkNativeHits?.requestDrumDefeat(null);this.dkBossContact.reset();this.dkBossHooks?.sync(false);this.dkBossFinish?.sync(false);this.bossAudio.stop();this.dkMusicHeld=false;this.dkStatus('Donkey Goonk · World map');
  }
  override async repairDisplay():Promise<void>{await this.returnToMap();}
  override async saveForWorldSwitch():Promise<void>{if(!this.ready)throw new Error('The game is not ready.');await this.save();}
@@ -97,12 +106,14 @@ export class DkcGame extends LiveGame{
   if(this.teamDamage.update(w,this.adventure)){this.teamTag.reset();this.controls.stop();this.dkChanged();}
   if(this.teamDamage.transitioning){this.teamTag.reset();this.controls.stop();}
   if(s.playing&&word(w,0x1029+s.playerSlot)<=0xb&&word(w,0x1595+s.playerSlot)===0){if(this.teamTag.update(m.functions.getFrameNum(),String(s.level),{...s,facing:this.controls.facing},this.adventure)){this.animalAudio.play('animal-hit');this.dkChanged();}}else this.teamTag.reset();
+  const barrelY=this.dkBarrel.update(w,this.controls.rollSequence,now<this.controls.rollUntil||now<(this.controls.extra.get(INPUT.y)??0));
+  const rolling=now<this.controls.rollUntil&&!this.dkBarrel.handling;
   const drum=this.dkDrum.sync(w,Math.min(4,Math.max(0,m.functions.getFrameNum()-this.dkFrame)));this.dkNativeHits?.requestDrumDefeat(drum?.defeatRequested?drum.slot:null);
-  this.dkBossContact.update(w,now<this.controls.rollUntil,[...dkcNativeBossTargets(w),...this.dkDrum.targets(w)],(target,kind)=>this.hitNativeBoss(target,kind));
-  const bossResult=this.dkGuardian.update(w,m.functions.getFrameNum(),slot=>this.dkBossHooks?.isMapExit(w,slot)??false,pendingBossVictory(w),{rolling:now<this.controls.rollUntil});
+  this.dkBossContact.update(w,rolling,[...dkcNativeBossTargets(w),...this.dkDrum.targets(w)],(target,kind)=>this.hitNativeBoss(target,kind));
+  const bossResult=this.dkGuardian.update(w,m.functions.getFrameNum(),slot=>this.dkBossHooks?.isMapExit(w,slot)??false,pendingBossVictory(w),{rolling,visualReady:!this.dkGuardian.state||this.dkAtlas.guardianReady(this.dkGuardian.state.id)});
   this.dkBossHooks?.sync(s.playing&&this.dkGuardian.state?.phase!=='released');
   this.dkBossFinish?.sync(this.dkGuardian.state?.phase!=='released');
-  const guardian=this.dkGuardian.state;
+  const guardian=this.dkGuardian.state;if(guardian&&guardian.phase!=='released')void this.dkAtlas.prepareGuardian(guardian.id).catch(()=>this.dkStatus('Loading original boss animation…'));
   const musicPlaying=this.bossAudio.sync(this.audio,s.playing&&guardian?{world:'yoshi',id:guardian.id,phase:guardian.phase}:undefined);
   // Native music dispatch is performed by the guarded exit routine.
   if(musicPlaying&&guardian){
@@ -114,17 +125,17 @@ export class DkcGame extends LiveGame{
   if(bossResult.effect)this.bossAudio.effect(bossResult.effect,guardian?.id);
   if(bossResult.notice)this.dkStatus(bossResult.notice);
   const map=s.isMap;if(map&&!this.dkMap){this.combat.shots=[];this.combat.resetClock();void this.save();this.dkStatus(this.stageLabel);}this.dkMap=map;
-  const next=new Set<number>();const move=this.controls.movement(now),vertical=this.controls.verticalAxis(now);
-  if(move)next.add(move<0?INPUT.left:INPUT.right);if(vertical)next.add(vertical<0?INPUT.up:INPUT.down);
-  if(this.controls.jumpPressed(now))next.add(INPUT.b);if(now<this.controls.rollUntil&&s.playing)next.add(INPUT.y);
+  const next=new Set<number>();const axis=this.controls.runAxis(),move=this.dkBarrel.handling?(axis<0?-1:axis>0?1:0):this.controls.movement(now),vertical=this.controls.verticalAxis(now);
+  if(move)next.add(move<0?INPUT.left:INPUT.right);if(vertical&&!(vertical>0&&this.dkBarrel.releasing))next.add(vertical<0?INPUT.up:INPUT.down);
+  if(this.controls.jumpPressed(now))next.add(INPUT.b);if(barrelY)next.add(INPUT.y);
   if(!s.playing&&(this.controls.eggPressed(now)||now<this.controls.tongueUntil))next.add(INPUT.b);
-  for(const[b,until]of this.controls.extra)if(now<until)next.add(b);
-  if(this.teamTag.swapping)next.clear();
+  for(const[b,until]of this.controls.extra)if(now<until&&(b!==INPUT.y||!s.playing))next.add(b);
+  if(this.teamTag.swapping){next.clear();if(barrelY&&this.carryingBarrel)next.add(INPUT.y);}
   for(let b=0;b<12;b++)m.simulateInput(0,b,next.has(b)?1:0);
   this.dkFrame=m.functions.getFrameNum();
-  if(this.dkFlutter.update(w,this.dkFrame,this.controls.jumpSequence,this.controls.jumpHeld,this.adventure.mount==='yoshi'&&!this.teamTag.swapping&&!this.teamDamage.transitioning&&now>=this.controls.rollUntil))this.yoshiCombatAudio.play('flutter');
+  if(this.dkFlutter.update(w,this.dkFrame,this.controls.jumpSequence,this.controls.jumpHeld,this.adventure.mount==='yoshi'&&!this.teamTag.swapping&&!this.teamDamage.transitioning&&!rolling))this.yoshiCombatAudio.play('flutter');
   if(s.playing){
-   const result=this.combat.update(this.dkFrame,now,{x:s.x,y:s.y,facing:this.controls.facing},[...dkcEnemies(w),...dkcNativeBossTargets(w),...this.dkDrum.targets(w),...dkcCollectibleTargets(w)],!this.teamTag.swapping&&this.controls.eggPressed(now),!this.teamTag.swapping&&now<this.controls.tongueUntil,this.controls.tongueUpPressed(now),target=>{if(target.slot===-1){const accepted=this.dkGuardian.hit();if(accepted)this.bossAudio.effect(this.dkGuardian.state?.phase==='dying'?'defeat':'hit',this.dkGuardian.state?.id);return accepted;}if(target.collectible)return hitDkcCollectible(w,target);if(target.nativeBoss)return this.hitNativeBoss(target,'egg');return killDkcEnemy(w,target.slot);},this.dkGuardian.target(),{unlimited:this.eggsUnlimited,down:vertical>0,direction:this.controls.tongueDirection(now)});
+   const result=this.combat.update(this.dkFrame,now,{x:s.x,y:s.y,facing:this.controls.facing},[...dkcEnemies(w),...dkcNativeBossTargets(w),...this.dkDrum.targets(w),...dkcCollectibleTargets(w)],!this.teamTag.swapping&&this.controls.eggPressed(now),!this.teamTag.swapping&&now<this.controls.tongueUntil,this.controls.tongueUpPressed(now),target=>{if(target.slot===-1){const accepted=this.dkGuardian.hit();if(accepted)this.bossAudio.effect('hit',this.dkGuardian.state?.id);return accepted;}if(target.collectible)return hitDkcCollectible(w,target);if(target.nativeBoss)return this.hitNativeBoss(target,'egg');return killDkcEnemy(w,target.slot);},this.dkGuardian.target(),{unlimited:this.eggsUnlimited,down:vertical>0,direction:this.controls.tongueDirection(now)});
    if(result.aimed)this.yoshiCombatAudio.play('aim');if(result.tongued)this.yoshiCombatAudio.play('tongue');if(result.ate)this.yoshiCombatAudio.play('swallow');if(result.madeEgg)this.yoshiCombatAudio.play('make');if(result.threw)this.yoshiCombatAudio.play('throw');if(result.impacted)this.yoshiCombatAudio.play('impact');
    this.kills+=result.killed+Number(result.ate);if(result.ate){this.dkStatus('Enemy in mouth · Press Down to make an egg');this.dkChanged();}else if(result.madeEgg){this.dkStatus('Egg ready · Aim, then throw');this.dkChanged();}else if(result.threw)this.dkStatus('Egg thrown');
   }else{this.combat.shots=[];this.combat.resetClock();}
@@ -136,7 +147,7 @@ export class DkcGame extends LiveGame{
   const c=this.dkCanvas.getContext('2d')!;c.clearRect(0,0,256,this.dkHeight);const brightness=this.wram[0x51a];if(!s.playing||(brightness&0x80))return;c.globalAlpha=(brightness&15)/15;
   const x=s.x-s.cameraX,y=s.y-s.cameraY,pad=(this.dkHeight-224)>>1;
   for(const p of this.combat.eggTrail)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,now);
-  const moving=Math.abs(this.controls.runAxis())>.1,rolling=now<this.controls.rollUntil;
+  const moving=Math.abs(this.controls.runAxis())>.1,rolling=now<this.controls.rollUntil&&!this.dkBarrel.handling;
   const animation=this.teamTag.swapping?'jump':rolling?'roll':this.dkFlutter.active?'flutter':!s.grounded?'jump':moving?'walk':'idle';if(this.dkAnimation!==animation){this.dkAnimation=animation;this.dkAnimationAt=now;}
   const poses=this.teamTag.poses({...s,facing:this.controls.facing},this.adventure),back=this.teamDamage.nativePartner(this.wram,this.adventure)??poses.partner;
   // The follower owns no attack: rolling belongs to the active hero only.

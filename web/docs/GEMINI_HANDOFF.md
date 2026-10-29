@@ -1,3 +1,21 @@
+## 29 octobre2026 — tonneau DKC au bouton, en deux appuis
+
+Le bouton Roll / Pick up (clavier X) prend un tonneau et conserve Y natif tant que le lien de portage est valide. Le deuxième appui relâche Y pour laisser le moteur DKC lancer ; le libellé devient Throw pendant le portage. Un appui rapide est accepté, aucun déplacement automatique/roulade/dégât de roue pendant le portage, Bas ne transforme pas le deuxième appui en dépôt. Pause/Stop/tape conservent la prise, et loadState restaure Y avant les premières frames. Dégâts/changement de héros natif/room effacent le verrou. Pas de réécriture des acteurs/ROM. Voir [DKC_BARREL_TOGGLE.md](DKC_BARREL_TOGGLE.md).
+
+701tests/63fichiers et build. Tests de logique + intégration simulateInput, pas de recette sur téléphone physique. Conserver aussi tout le lot animations des boss non encore committé du tour précédent ; publication à vérifier selon l'état Git et outputs.
+
+---
+
+## 29 octobre 2026 — animations originales des boss Yoshi dans DKC
+
+L'ancien port bouclait les poses de mouvement pendant hurt/dead et ouvrait la sortie après0,8s. Le nouveau lit des séquences natives propres aux7bosses, garde les6paliers de pantalon de Bélixo et attend toute sa défaite rouge/envol/rétrécissement9,48s. Salvo s'effondre et ses yeux s'échappent ; Boo grossit et éclate ; Milde se divise puis tous ses descendants disparaissent ; Raphael rapetisse et devient étoile/constellation avec lune ; TapTap s'enfonce dans sa lave. Froggy emploie sa véritable blessure interne en petite vue de gorge au-dessus de son corps, puis sa bouche/retour extérieur d'origine. Voir [NATIVE_GUARDIAN_ANIMATIONS.md](NATIVE_GUARDIAN_ANIMATIONS.md) pour durées, preuves ROM, commandes, reprise de sauvegarde et limites exactes.
+
+Les6HP du crossover et les mouvements/contacts DKC restent des adaptations : ne pas présenter ces graphismes comme l'exécution intégrale des7IA SuperFX. Milde terminal est une cinématique native capturée, pas une nouvelle vague interactive ; l'arène intérieure jouable de Froggy, caméra/terrain lunaire complets et wipes plein écran Salvo/Milde restent à porter. Les tests privés n'ont touché aucune sauvegarde utilisateur. Les nouveaux PNG/JSON sont chargés au boss rencontré, au plus2banques gardées ; pas de second émulateur au runtime ni de Rust nécessaire pour ce rendu Canvas.
+
+Validation :690tests/62fichiers et build réussis dans le dépôt réel. Les7banques ont été visualisées dans une prévisualisation privée (blessure interne de Froggy incluse).367posesBurt complètes vérifiées, aucune limite de capture touchée ;1705posesuniques au total selon le rapport graphique. Bélixo réel chargé devant la sortie DKC : sol corrigé465 contre ancien449, pause de défaite HP0 conservée àphaseTime0 et sauvegarde acceptée ; après reprise, message visible « Burt the Bashful defeated · Take the original stage exit ». La traversée jusqu’à la carte n’a pas été confirmée : l’outil navigateur a ensuite échoué (service de validation automatique à capacité). Ne pas présenter cela comme un parcours de fin de stage réussi. Publication et preuves dans outputs ; voir le rapport spécifique ci-dessus pour distinguer fixtures natives, tests unitaires et parcours interactif. Conserver les changements plus anciens et les limites documentées ci-dessous.
+
+---
+
 ## 29 octobre 2026 — Goonks assis sur les animaux dans DKC
 
 Le rendu DKC ignorait Adventure.mount : il ne dessinait que le héros à pied. Il dessine désormais la monture choisie avant le cavalier, en pose ride, avec siège propre à Rambi/Winky/Expresso/Enguarde/Squawks/Yoshi et sens miroir conservé. Le second héros continue de suivre à pied, sans copier la roulade ni la pose du cavalier. Les poses natives de blessure/fuite restent prioritaires.

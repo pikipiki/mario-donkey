@@ -1,3 +1,5 @@
+import{applyDkcCheats}from'./cheats';
+import{isDkcMinecartStage}from'./dkc-levels';
 import{DkcFlight}from'./dkc-flight';
 import{writeWord}from'./profile';
 import{DkcWater,dkcSwimming}from'./dkc-water';
@@ -75,7 +77,7 @@ export class DkcGame extends LiveGame{
   }
   const party=decodeWorldParty(await readBeforeDeadline(loadFile(WORLD_PARTY_KEY),3000).catch(()=>undefined));
   if(party){this.adventure=new Adventure(party);await storeFile(WORLD_PARTY_KEY,new Uint8Array());}
-  this.teamInitialized=initializeDkcTeam(this.wram,this.teamInitialized);
+  applyDkcCheats(this.wram);this.teamInitialized=initializeDkcTeam(this.wram,this.teamInitialized);
   const height=m.functions.getVideoDimensions('height');if(height>=224&&height<=256)this.dkHeight=height;
   const savedGuardian=this.dkGuardian.state;this.dkMusicHeld=Boolean(savedGuardian?.phase==='released'&&savedGuardian.music!==undefined&&word(this.wram,0x51d)===0);
   configureOverlay(this.dkCanvas,this.dkHeight);this.dkRoom=readDkcScene(this.wram).level;this.ready=true;this.dkLastSave=performance.now();this.stop();m.toggleMainLoop(1);this.dkChanged();this.dkStatus(this.stageLabel);
@@ -94,7 +96,7 @@ export class DkcGame extends LiveGame{
   const saved=decodeDkcSave(bytes),m=this.emulator.gameManager;await this.save();await waitForNativePause(m);this.stop();m.loadState(saved.state);this.restoreBarrelInput();m.toggleMainLoop(1);await waitForNativeFrames(m);this.paused=false;this.combat.shots=[];this.dkGuardian.clear();this.dkDrum.reset();this.dkNativeHits?.requestDrumDefeat(null);this.dkBossContact.reset();this.dkBossHooks?.sync(false);this.dkBossFinish?.sync(false);this.bossAudio.stop();this.dkMusicHeld=false;this.dkStatus('Donkey Goonk · World map');
  }
  override async repairDisplay():Promise<void>{await this.returnToMap();}
- override async saveForWorldSwitch():Promise<void>{if(!this.ready)throw new Error('The game is not ready.');await this.save();}
+ override async saveForWorldSwitch():Promise<void>{if(!this.ready)throw new Error('The game is not ready.');if(this.dkSaving)await this.dkSaving;await this.save();}
  override save():Promise<void>{
   if(!this.ready)return Promise.resolve();
   if(this.dkSaving)return this.dkSaving;
@@ -109,7 +111,7 @@ export class DkcGame extends LiveGame{
  }
  override tick(now:number):void{
   if(!this.ready||this.paused||this.dkCapturing)return;
-  const m=this.emulator.gameManager,w=this.wram,s=readDkcScene(w);this.dkCollectibles?.sync(w);this.dkIdleVoice?.sync(s.playing&&this.character!=='dk');
+  const m=this.emulator.gameManager,w=this.wram,s=readDkcScene(w);applyDkcCheats(w);this.dkCollectibles?.sync(w);this.dkIdleVoice?.sync(s.playing&&this.character!=='dk');
   this.teamInitialized=initializeDkcTeam(w,this.teamInitialized);
   if(this.dkRoom!==s.level){this.dkRoom=s.level;this.dkWater.reset();this.dkFlutter.reset();this.dkFlight.reset();this.dkBossContact.reset();this.combat.shots=[];this.combat.resetClock();}
   if(this.teamDamage.update(w,this.adventure)){this.teamTag.reset();this.controls.stop();this.dkChanged();}
@@ -123,12 +125,12 @@ export class DkcGame extends LiveGame{
   const exitSample={frame:m.functions.getFrameNum(),level:s.level,playing:s.playing,map:s.isMap,command:word(w,0x1e2b),states:[word(w,DKC.state+2),word(w,DKC.state+4)],animations:[word(w,0x16ad),word(w,0x16af)],hits:[word(w,DKC.hit+2),word(w,DKC.hit+4)],banana:pendingBossVictory(w),bananaStates:Array.from({length:23},(_,i)=>6+i*2).filter(slot=>word(w,DKC.id+slot)===0x74).map(slot=>({slot,state:word(w,DKC.state+slot)})),guardian:this.dkGuardian.state?{hp:this.dkGuardian.state.hp,phase:this.dkGuardian.state.phase}:undefined};
   const exitKey=JSON.stringify({...exitSample,frame:0});if(exitKey!==this.dkExitTraceKey){this.dkExitTraceKey=exitKey;this.dkExitTrace.push(exitSample);if(this.dkExitTrace.length>80)this.dkExitTrace.shift();}
   const bossResult=this.dkGuardian.update(w,m.functions.getFrameNum(),slot=>this.dkBossHooks?.isMapExit(w,slot)??false,pendingBossVictory(w),{rolling,visualReady:!this.dkGuardian.state||this.dkAtlas.guardianReady(this.dkGuardian.state.id)});
-  this.dkBossHooks?.sync(this.dkGuardian.state?.phase!=='released');
-  this.dkBossFinish?.sync(this.dkGuardian.state?.phase!=='released',Boolean(this.dkGuardian.state&&this.dkGuardian.state.phase!=='released'));
+  this.dkBossHooks?.sync(!isDkcMinecartStage(s.level)&&this.dkGuardian.state?.phase!=='released');
+  this.dkBossFinish?.sync(!isDkcMinecartStage(s.level)&&this.dkGuardian.state?.phase!=='released',Boolean(this.dkGuardian.state&&this.dkGuardian.state.phase!=='released'));
   const guardian=this.dkGuardian.state;if(guardian&&guardian.phase!=='released')void this.dkAtlas.prepareGuardian(guardian.id).catch(()=>this.dkStatus('Loading original boss animation…'));
   const musicPlaying=this.bossAudio.sync(this.audio,s.playing&&guardian?{world:'yoshi',id:guardian.id,phase:guardian.phase}:undefined);
   // Native music dispatch is performed by the guarded exit routine.
-  if(musicPlaying&&guardian){
+  if(s.playing&&isDkcMinecartStage(s.level)){this.bossAudio.stop();this.dkBossHooks?.music(word(w,0x51d)!==0?'none':'resume',4);this.dkMusicHeld=false;}else if(musicPlaying&&guardian){
    guardian.music??=word(w,0x523);this.dkBossHooks?.music('stop',guardian.music);this.dkMusicHeld=true;
   }else if(this.dkMusicHeld){
    if(s.playing&&guardian?.music!==undefined){this.dkBossHooks?.music('resume',guardian.music);if(word(w,0x51d)!==0)this.dkMusicHeld=false;}

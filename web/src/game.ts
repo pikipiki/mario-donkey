@@ -1,3 +1,4 @@
+import{applyYoshiCheats}from'./cheats';
 import{GoalDepartureHooks}from'./goal-departure';
 import{GoalHandoffRecovery,requestGoalReturn,type StalledGoal}from'./goal-recovery';
 import {SquawksCamera}from'./squawks-camera';
@@ -115,6 +116,7 @@ export class LiveGame {
   await storeFile(WORLD_PARTY_KEY,new Uint8Array()).catch(()=>{});
  }
  private finishBoot():void{
+  applyYoshiCheats(this.wram);
   this.adventure.guardian=this.bosses.state;
   const h=this.emulator.gameManager.functions.getVideoDimensions('height');if(h>=224&&h<=256){this.videoHeight=h;this.topPadding=(h-224)>>1;}
   configureOverlay(this.overlay,this.videoHeight);
@@ -228,6 +230,7 @@ export class LiveGame {
  }
  tick(now:number):void{
   if(!this.ready||this.paused||this.recovering||this.capturing)return;
+  applyYoshiCheats(this.wram);
   const g=this.gsu;
   this.goalDeparture?.sync(this.wram,g);
   const stalled=this.goalRecovery.update(this.wram,g,this.emulator.gameManager.functions?.getFrameNum?.()??0);

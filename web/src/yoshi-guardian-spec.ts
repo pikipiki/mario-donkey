@@ -1,4 +1,4 @@
-import{dkcStageOrdinal}from'./dkc-levels';
+import{dkcStageOrdinal,DKC_STAGE_ORDER,isDkcMinecartStage}from'./dkc-levels';
 /** Native DKC entrance IDs, including checkpoints, bonuses and boss arenas.
  * Stage labels come from DKC1 entrance definitions (also used by dkc-levels).
  * World order is Kongo / Monkey / Vine / Glacier / Kremkroc / Chimp / Galleon.
@@ -25,7 +25,7 @@ export const YOSHI_GUARDIANS:readonly YoshiGuardianSpec[]=[
 export function guardianForWorld(world:number):YoshiGuardianSpec|undefined{return Number.isInteger(world)?YOSHI_GUARDIANS[world-1]:undefined;}
 /** One different guardian for every campaign stage, then repeat after all seven.
  * Native boss stages count too; their crossover still follows the original fight. */
-export function guardianForEntrance(entrance:number):YoshiGuardianSpec|undefined{const index=dkcStageOrdinal(entrance);return index===undefined?undefined:YOSHI_GUARDIANS[index%YOSHI_GUARDIANS.length];}
+export function guardianForEntrance(entrance:number):YoshiGuardianSpec|undefined{const ordinal=dkcStageOrdinal(entrance);if(ordinal===undefined||isDkcMinecartStage(entrance))return;const index=DKC_STAGE_ORDER.slice(0,ordinal).filter(id=>!isDkcMinecartStage(id)).length;return YOSHI_GUARDIANS[index%YOSHI_GUARDIANS.length];}
 /** Salvo's native EU50Hz motion constants: source068A85 jumpFCE0;
  * acceleration10 and target x-speedC0 at068A68 / 0689E5. The native morph
  * and shrink state machine is a separate visual system, not recreated here. */

@@ -124,3 +124,5 @@ html,body,#app{touch-action:none;-webkit-text-size-adjust:100%;text-size-adjust:
  .action-pad button>span{font-size:20px}
 }
 @media (orientation:landscape) and (max-height:360px){.action-pad small{display:none}}
+
+.cheat-settings{border:1px solid #52676a;border-radius:14px;padding:12px 16px;margin:16px 0}.cheat-settings legend{font-weight:800;padding:0 8px}.cheat-settings .setting{min-height:48px;cursor:pointer}.cheat-settings input{width:26px;height:26px;accent-color:#cce995;flex-shrink:0}

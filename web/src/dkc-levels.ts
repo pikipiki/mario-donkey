@@ -9,3 +9,6 @@ const stageKey=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]/g,'');
 const STAGE_ORDINAL=new Map(DKC_STAGE_ORDER.map((entrance,index)=>[stageKey(dkcStageName(entrance)),index]));
 /** Zero-based whole-campaign index. Maps/interiors/token rooms have no boss. */
 export function dkcStageOrdinal(entrance:number):number|undefined{return Number.isInteger(entrance)?STAGE_ORDINAL.get(stageKey(dkcStageName(entrance))):undefined;}
+
+/** Both rail courses, with every checkpoint/bonus entrance sharing the name. */
+export function isDkcMinecartStage(entrance:number):boolean{return ['minecartcarnage','minecartmadness'].includes(stageKey(dkcStageName(entrance)));}

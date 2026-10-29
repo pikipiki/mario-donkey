@@ -1,3 +1,4 @@
+import{isDkcMinecartStage}from'./dkc-levels';
 import{guardianAnimationDuration,guardianDamageStage,guardianAnimationEnd,guardianDefeatCue,guardianBodyBounds,guardianCinematicAnchor}from'./guardian-animation';
 import{guardianForEntrance,YOSHI_GUARDIANS,type YoshiGuardianId}from'./yoshi-guardian-spec';
 import{advanceYoshiGuardian}from'./yoshi-guardian-motion';
@@ -9,7 +10,7 @@ import type{DkcBossVictory}from'./dkc-boss-finish';
 import type{DkcTarget}from'./dkc-combat';
 export interface DkcGuardianSave extends BurtMotion{version:1;level:number;slot:number;id:YoshiGuardianId;phase:'intro'|'fight'|'dying'|'released';hp:number;maxHp?:number;x:number;y:number;floor:number;elapsed:number;phaseTime:number;hitUntil:number;cameraX:number;cameraY:number;animationX?:number;animationY?:number;animationMirror?:1|-1;defeatFx?:boolean;music?:number;heroHitUntil?:number;exitKind?:'banana'|'krool'}
 export function validateDkcGuardian(value:unknown):DkcGuardianSave|undefined{
- const s=value as DkcGuardianSave|undefined;
+ const s=value as DkcGuardianSave|undefined;if(s&&isDkcMinecartStage(s.level))return;
  if(!s||s.version!==1||!YOSHI_GUARDIANS.some(spec=>spec.id===s.id)||!['intro','fight','dying','released'].includes(s.phase)||!Number.isInteger(s.level)||s.level<1||(s.level>0xe5&&s.level!==0xea)||!Number.isInteger(s.slot)||s.slot<6||s.slot>=0x34||s.slot%2||!Number.isInteger(s.hp)||s.hp<0||s.hp>6)return;
  if(s.animationMirror!==undefined&&s.animationMirror!==1&&s.animationMirror!==-1)return;
  if(s.defeatFx!==undefined&&typeof s.defeatFx!=='boolean')return;
@@ -55,7 +56,7 @@ export class DkcGuardian{
  }
  update(w:Uint8Array,frame:number,isMapExit:(slot:number)=>boolean,victory?:DkcBossVictory,attack:{rolling?:boolean;visualReady?:boolean}={}):{notice?:string;effect?:'attack'|'land'|'defeat'|'hit'}{
   const scene=readDkcScene(w),previous=this.state;
-  if(scene.isMap){this.clear();return{};}
+  if(scene.isMap||isDkcMinecartStage(scene.level)){this.clear();return{};}
   if(previous&&previous.level!==scene.level)this.clear();
   if(this.state&&this.state.phase!=='released'){const saved=this.state;if(saved.exitKind?(word(w,DKC.id+saved.slot)!==0x74):![0x6a,0x6b].includes(word(w,DKC.id+saved.slot)))this.clear();}
   if(!scene.playing){this.pause();return{};}

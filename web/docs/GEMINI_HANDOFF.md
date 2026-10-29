@@ -1,3 +1,7 @@
+## Dernier lot — cheats réversibles et exception des wagonnets (30 octobre)
+
+Voir [CHEATS_AND_MINECART_EXCEPTION.md](CHEATS_AND_MINECART_EXCEPTION.md). ☰ propose Vies illimitées et Tous les stages accessibles. Ce dernier utilise une copie IndexedDB séparée ; désactivation = sauvegarde normale et monde d’origine. Empreintes normales inchangées pendant le voyage DKC→Yoshi et restauration des72 indicateurs Yoshi vérifiées dans le navigateur. 779 tests/70 fichiers et build. Mine Cart Carnage/Minecart Madness (11 entrées) sans boss ajouté, sorties natives libérées ; rotation sur38 niveaux éligibles. Tables natives DKC extraites et testées contre la ROM. Aucune mémoire de routeFC00 modifiée dans les niveaux. Les recettes physiques et la traversée intégrale des rails restent à faire. Quota56%restant, seuil10%non atteint.
+
 ## Dernier lot — bonus animaux, vol Squawks et Raphael au sol
 
 Voir [ANIMAL_BONUS_AND_FLIGHT.md](ANIMAL_BONUS_AND_FLIGHT.md) : coordonnées des corps natifs dans les4bonus, collecte dorée par œuf avec hitbox16px, Raphael sans orbite flottante, vol maintenu Squawks et focus clavier aprèsDuo. 758 tests/68 fichiers et build, recette privée du bonus (compteur0→1) et du vol dans les mines. Les limites de téléphones physiques et de rails sont explicitement consignées. Conserver les formats de sauvegarde et les verrous de victoire du lot précédent.

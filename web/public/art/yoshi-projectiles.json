@@ -1,0 +1,51 @@
+{
+  "frames": {
+    "egg-upright": {
+      "x": 0,
+      "y": 0,
+      "w": 16,
+      "h": 16,
+      "tile": 128,
+      "palette": 0
+    },
+    "egg-diagonal": {
+      "x": 16,
+      "y": 0,
+      "w": 16,
+      "h": 16,
+      "tile": 130,
+      "palette": 0
+    },
+    "egg-flat": {
+      "x": 32,
+      "y": 0,
+      "w": 16,
+      "h": 16,
+      "tile": 132,
+      "palette": 0
+    },
+    "tongue-tip": {
+      "x": 48,
+      "y": 0,
+      "w": 8,
+      "h": 8,
+      "tile": 32,
+      "palette": 5
+    },
+    "tongue-body": {
+      "x": 64,
+      "y": 0,
+      "w": 8,
+      "h": 8,
+      "tile": 33,
+      "palette": 5
+    }
+  },
+  "provenance": {
+    "source": "EU original 4bpp OBJ tiles and CGRAM; no redrawing",
+    "romSha256": "91a4dc481c54b620cb3bccaffe5fa3f69db955ae600309414d18bb59307cba90",
+    "rawSha256": "4c34560e0a42d875945cf51876327e012890e1f5ca82812ef49b5f7d897b0f6a",
+    "tongueSource": "bank09 tongue_OAM_data_horiz $098555, tip $09849E palette5",
+    "eggPoses": "VRAM OBJ tiles80,82,84 palette0"
+  }
+}

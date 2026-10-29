@@ -2,14 +2,25 @@ export interface Animation {start:number;frames:number;fps:number}
 export interface AtlasManifest {cell:number;columns:number;origin:[number,number];groups:Record<string,Record<string,Animation>>}
 export interface PlushManifest {frames:Array<{x:number;y:number;w:number;h:number;ox:number;oy:number}>;groups:Record<string,number[]>}
 export class SpriteAtlas {
- constructor(public image:HTMLImageElement,public manifest:AtlasManifest,public plush?:{image:HTMLImageElement;manifest:PlushManifest},public bosses?:{image:HTMLImageElement;manifest:AtlasManifest},public yoshiBosses?:{image:HTMLImageElement;manifest:AtlasManifest}){}
+ constructor(public image:HTMLImageElement,public manifest:AtlasManifest,public plush?:{image:HTMLImageElement;manifest:PlushManifest},public bosses?:{image:HTMLImageElement;manifest:AtlasManifest},public yoshiBosses?:{image:HTMLImageElement;manifest:AtlasManifest},public projectiles?:HTMLImageElement){}
  static async load():Promise<SpriteAtlas>{
   const b=import.meta.env.BASE_URL;
+  const projectileImage=new Image();projectileImage.src=`${b}art/yoshi-projectiles.png`;
   const image=new Image(),plushImage=new Image(),bossImage=new Image(),yoshiBossImage=new Image();
   image.src=`${b}art/dkc-atlas.png`;plushImage.src=`${b}art/plush.png`;bossImage.src=`${b}art/dkc-bosses.png`;yoshiBossImage.src=`${b}art/yoshi-bosses.png`;
   async function json<T>(name:string):Promise<T>{const r=await fetch(`${b}art/${name}.json`);if(!r.ok)throw new Error('The original sprite atlas was not found.');return r.json() as Promise<T>;}
-  const [manifest,plushManifest,bossManifest,yoshiBossManifest]=await Promise.all([json<AtlasManifest>('dkc-atlas'),json<PlushManifest>('plush'),json<AtlasManifest>('dkc-bosses'),json<AtlasManifest>('yoshi-bosses'),yoshiBossImage.decode(),image.decode(),plushImage.decode(),bossImage.decode()]);
-  return new SpriteAtlas(image,manifest,{image:plushImage,manifest:plushManifest},{image:bossImage,manifest:bossManifest},{image:yoshiBossImage,manifest:yoshiBossManifest});
+  const [manifest,plushManifest,bossManifest,yoshiBossManifest]=await Promise.all([json<AtlasManifest>('dkc-atlas'),json<PlushManifest>('plush'),json<AtlasManifest>('dkc-bosses'),json<AtlasManifest>('yoshi-bosses'),yoshiBossImage.decode(),image.decode(),plushImage.decode(),bossImage.decode(),projectileImage.decode()]);
+  return new SpriteAtlas(image,manifest,{image:plushImage,manifest:plushManifest},{image:bossImage,manifest:bossManifest},{image:yoshiBossImage,manifest:yoshiBossManifest},projectileImage);
+ }
+ drawEgg(ctx:CanvasRenderingContext2D,x:number,y:number,time=0,spin=false):void{
+  if(!this.projectiles)return;const phase=spin?Math.floor(time/70)%4:0,index=[0,1,2,1][phase];
+  ctx.save();ctx.translate(Math.round(x),Math.round(y));if(phase===3)ctx.scale(-1,1);ctx.imageSmoothingEnabled=false;ctx.drawImage(this.projectiles,index*16,0,16,16,-8,-8,16,16);ctx.restore();
+ }
+ drawTongue(ctx:CanvasRenderingContext2D,x:number,y:number,endX:number,endY:number,progress:number):void{
+  if(!this.projectiles)return;const dx=endX-x,dy=endY-y,length=Math.hypot(dx,dy)*Math.sin(Math.max(0,Math.min(1,progress))*Math.PI);
+  ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.rotate(Math.atan2(dy,dx));ctx.imageSmoothingEnabled=false;
+  for(let at=0;at<length-4;at+=8)ctx.drawImage(this.projectiles,64,0,8,8,at,-4,Math.min(8,length-at),8);
+  ctx.drawImage(this.projectiles,48,0,8,8,length-4,-4,8,8);ctx.restore();
  }
  drawYoshiBoss(ctx:CanvasRenderingContext2D,state:string,x:number,y:number,time:number):void{
   const atlas=this.yoshiBosses,animation=atlas?.manifest.groups.burt?.[state]??atlas?.manifest.groups.burt?.idle;if(!atlas||!animation)return;

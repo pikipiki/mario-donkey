@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {Adventure} from '../src/adventure';
-import {currentWorld,worldUrl,encodeWorldParty,decodeWorldParty} from '../src/world';
+import {currentWorld,worldUrl,pipeArrival,encodeWorldParty,decodeWorldParty} from '../src/world';
 describe('world navigation',()=>{
  it('uses an explicit world ahead of remembered progress',()=>{
   expect(currentWorld('?world=yoshi','dkc')).toBe('yoshi');expect(currentWorld('?world=dkc','yoshi')).toBe('dkc');
@@ -27,3 +27,5 @@ describe('companions cross worlds without transplanting native progression',()=>
   expect(decodeWorldParty(undefined)).toBeUndefined();expect(decodeWorldParty(new TextEncoder().encode('{'))).toBeUndefined();expect(decodeWorldParty(new Uint8Array(32769))).toBeUndefined();expect(decodeWorldParty(new TextEncoder().encode('{"version":1}'))).toBeUndefined();
  });
 });
+
+it('pipe arrival auto-start marker is one-shot and never propagates a fresh-save override',()=>{const href=worldUrl('https://example.net/?fresh=1&test=1','dkc'),a=pipeArrival(href);expect(a.arrival).toBe(true);expect(new URL(a.cleanUrl).searchParams.get('world')).toBe('dkc');expect(new URL(a.cleanUrl).searchParams.has('fresh')).toBe(false);expect(pipeArrival(a.cleanUrl).arrival).toBe(false);});

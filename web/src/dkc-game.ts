@@ -11,7 +11,7 @@ import{decodeWorldParty,WORLD_PARTY_KEY}from'./world';
 import {DkcGuardian} from './dkc-guardian';
 import {DkcBossFinishHooks,pendingBossVictory} from './dkc-boss-finish';
 import {DkcBossRomHooks} from './dkc-boss-rom';
-import {drawDkcGuardian,drawDkcEgg} from './dkc-guardian-draw';
+import {drawDkcGuardian} from './dkc-guardian-draw';
 import {word} from './profile';
 import{DkcCombat}from'./dkc-combat';
 import{decodeDkcSave,encodeDkcSave,DKC_SAVE_KEY,DKC_MAP_KEY}from'./dkc-save';
@@ -99,9 +99,9 @@ export class DkcGame extends LiveGame{
   for(let b=0;b<12;b++)m.simulateInput(0,b,next.has(b)?1:0);
   this.dkFrame=m.functions.getFrameNum();
   if(s.playing){
-   const result=this.combat.update(this.dkFrame,now,{x:s.x,y:s.y,facing:this.controls.facing},dkcEnemies(w),this.controls.eggPressed(now),now<this.controls.tongueUntil,this.controls.tongueUpPressed(now),target=>{if(target.slot===-1){const accepted=this.dkGuardian.hit();if(accepted)this.bossAudio.effect(this.dkGuardian.state?.phase==='dying'?'defeat':'hit','burt');return accepted;}return killDkcEnemy(w,target.slot);},this.dkGuardian.target());
+   const result=this.combat.update(this.dkFrame,now,{x:s.x,y:s.y,facing:this.controls.facing},dkcEnemies(w),this.controls.eggPressed(now),now<this.controls.tongueUntil,this.controls.tongueUpPressed(now),target=>{if(target.slot===-1){const accepted=this.dkGuardian.hit();if(accepted)this.bossAudio.effect(this.dkGuardian.state?.phase==='dying'?'defeat':'hit','burt');return accepted;}return killDkcEnemy(w,target.slot);},this.dkGuardian.target(),{down:vertical>0,direction:this.controls.tongueDirection(now)});
    if(result.threw)this.animalAudio.play('enguarde-attack');
-   this.kills+=result.killed+Number(result.ate);if(result.ate){this.dkStatus('Enemy swallowed · Egg ready');this.dkChanged();}else if(result.threw)this.dkStatus('Egg thrown');
+   this.kills+=result.killed+Number(result.ate);if(result.ate){this.dkStatus('Enemy in mouth · Press Down to make an egg');this.dkChanged();}else if(result.madeEgg){this.dkStatus('Egg ready · Aim, then throw');this.dkChanged();}else if(result.threw)this.dkStatus('Egg thrown');
   }else{this.combat.shots=[];this.combat.resetClock();}
   if(this.dkStage!==this.stageLabel){this.dkStage=this.stageLabel;this.dkChanged();this.dkStatus(this.dkStage);}
   this.drawDkc(now,s);
@@ -110,17 +110,17 @@ export class DkcGame extends LiveGame{
  private drawDkc(now:number,s:ReturnType<typeof readDkcScene>):void{
   const c=this.dkCanvas.getContext('2d')!;c.clearRect(0,0,256,this.dkHeight);const brightness=this.wram[0x51a];if(!s.playing||(brightness&0x80))return;c.globalAlpha=(brightness&15)/15;
   const x=s.x-s.cameraX,y=s.y-s.cameraY,pad=(this.dkHeight-224)>>1;
-  for(const p of this.combat.eggTrail)drawDkcEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad);
+  for(const p of this.combat.eggTrail)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,now);
   const moving=Math.abs(this.controls.runAxis())>.1,rolling=now<this.controls.rollUntil;
   const animation=rolling?'roll':!s.grounded?'jump':moving?'walk':'idle';if(this.dkAnimation!==animation){this.dkAnimation=animation;this.dkAnimationAt=now;}
   this.dkAtlas.draw(c,this.adventure.active,animation,x,y+pad,now-this.dkAnimationAt,this.controls.facing);
   const t=this.combat.tongue;
-  if(t){c.strokeStyle='#ed6491';c.lineWidth=5;c.lineCap='round';c.beginPath();c.moveTo(t.x-s.cameraX,t.y-s.cameraY+pad);c.lineTo(t.endX-s.cameraX,t.endY-s.cameraY+pad);c.stroke();}
-  for(const p of this.combat.shots)drawDkcEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad);
+  if(t)this.dkAtlas.drawTongue(c,t.x-s.cameraX,t.y-s.cameraY+pad,t.endX-s.cameraX,t.endY-s.cameraY+pad,1-(t.until-now)/150);
+  for(const p of this.combat.shots)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,p.age*1000,true);
   const aim=this.combat.aiming;
   if(aim){const ax=aim.endX-s.cameraX,ay=aim.endY-s.cameraY+pad;c.strokeStyle='#fff4ad';c.lineWidth=1;c.beginPath();c.arc(ax,ay,6,0,Math.PI*2);c.moveTo(ax-9,ay);c.lineTo(ax+9,ay);c.moveTo(ax,ay-9);c.lineTo(ax,ay+9);c.stroke();}
   drawDkcGuardian(c,this.dkAtlas,this.dkGuardian.state,s.cameraX,s.cameraY,pad);
   c.globalAlpha=1;
  }
- override diagnostics():Record<string,unknown>{return{bossFinish:this.dkBossFinish?.bases.map(base=>({base,hold:this.emulator.Module.HEAPU8[base+0x3bfbfe],banana:Array.from(this.emulator.Module.HEAPU8.slice(base+0x3f836c,base+0x3f8370))})),victory:pendingBossVictory(this.wram),nativeActors:Array.from({length:23},(_,i)=>6+i*2).map(slot=>({slot,id:word(this.wram,0xd45+slot),state:word(this.wram,0x1029+slot)})).filter(a=>a.id),native:{mode:this.wram[0x32]|this.wram[0x33]<<8,scene:this.wram[0x40]|this.wram[0x41]<<8,process:this.wram[0x508]|this.wram[0x509]<<8,brightness:this.wram[0x51a],playerIds:[this.wram[0xd45]|this.wram[0xd46]<<8,this.wram[0xd47]|this.wram[0xd48]<<8,this.wram[0xd49]|this.wram[0xd4a]<<8]},nativeMusic:{playing:word(this.wram,0x51d),song:word(this.wram,0x523),bank:word(this.wram,0x521)},guardian:this.dkGuardian.state,bossAudio:{playing:this.bossAudio.playing,played:this.bossAudio.played,last:this.bossAudio.lastEffect},world:'dkc',...readDkcScene(this.wram),eggs:this.eggCount,shots:this.combat.shots,kills:this.kills,enemies:dkcEnemies(this.wram),frame:this.dkFrame,paused:this.paused,audio:this.audio?.state,party:this.adventure.serialize()};}
+ override diagnostics():Record<string,unknown>{return{bossFinish:this.dkBossFinish?.bases.map(base=>({base,hold:this.emulator.Module.HEAPU8[base+0x3bfbfe],banana:Array.from(this.emulator.Module.HEAPU8.slice(base+0x3f836c,base+0x3f8370))})),victory:pendingBossVictory(this.wram),nativeActors:Array.from({length:23},(_,i)=>6+i*2).map(slot=>({slot,id:word(this.wram,0xd45+slot),state:word(this.wram,0x1029+slot)})).filter(a=>a.id),native:{mode:this.wram[0x32]|this.wram[0x33]<<8,scene:this.wram[0x40]|this.wram[0x41]<<8,process:this.wram[0x508]|this.wram[0x509]<<8,brightness:this.wram[0x51a],playerIds:[this.wram[0xd45]|this.wram[0xd46]<<8,this.wram[0xd47]|this.wram[0xd48]<<8,this.wram[0xd49]|this.wram[0xd4a]<<8]},nativeMusic:{playing:word(this.wram,0x51d),song:word(this.wram,0x523),bank:word(this.wram,0x521)},guardian:this.dkGuardian.state,bossAudio:{playing:this.bossAudio.playing,played:this.bossAudio.played,last:this.bossAudio.lastEffect},world:'dkc',...readDkcScene(this.wram),eggs:this.eggCount,mouth:this.combat.mouth,aiming:this.combat.aiming,tongue:this.combat.tongue,shots:this.combat.shots,kills:this.kills,enemies:dkcEnemies(this.wram),frame:this.dkFrame,paused:this.paused,audio:this.audio?.state,party:this.adventure.serialize()};}
 }

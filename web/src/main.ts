@@ -7,7 +7,7 @@ import { launch,INPUT,primeAudio,waitForNativeFrames,waitForNativePause } from '
 import { LiveGame } from './game';
 import {DkcGame} from './dkc-game';
 import {patchDkcDrawing} from './dkc-profile';
-import {currentWorld,worldUrl,encodeWorldParty,WORLD_PARTY_KEY,ACTIVE_WORLD_KEY,DKC_ROM_SHA256} from './world';
+import {currentWorld,worldUrl,pipeArrival,encodeWorldParty,WORLD_PARTY_KEY,ACTIVE_WORLD_KEY,DKC_ROM_SHA256} from './world';
 import {isWorldTab,needsLevelReturn} from './menu';
 import { SpriteAtlas } from './atlas';
 import { ANIMALS,CHARACTERS,CHARACTER_NAMES,type Character,type Mount } from './adventure';
@@ -18,6 +18,7 @@ const base=import.meta.env.BASE_URL;
 let rememberedWorld:string|null=null;
 try{if(!new URLSearchParams(location.search).has('test'))rememberedWorld=localStorage.getItem(ACTIVE_WORLD_KEY);}catch{}
 const world=currentWorld(location.search,rememberedWorld),dkcWorld=world==='dkc';
+const arrival=pipeArrival(location.href);if(arrival.arrival)history.replaceState(null,'',arrival.cleanUrl);
 const destination=dkcWorld?'yoshi':'dkc',destinationLabel=dkcWorld?'Yoshi’s Island':'Donkey Goonk';
 const debug=import.meta.env.DEV&&new URLSearchParams(location.search).has('debug');
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
@@ -79,23 +80,26 @@ async function loadBundledRom():Promise<void>{
  const r=await fetch(url);if(!r.ok)throw new Error('Couldn’t load the game.');
  await acceptRom(new Uint8Array(await r.arrayBuffer()));
 }
-void loadBundledRom().catch(e=>setStatus((e as Error).message));
-$('play').addEventListener('click',async()=>{
+if(arrival.arrival){$('welcome').hidden=true;$('loading').hidden=false;setStatus('Travelling through the pipe…');}
+void loadBundledRom().then(()=>{if(arrival.arrival)void startGame();}).catch(e=>{setStatus((e as Error).message);$('loading').hidden=true;$('welcome').hidden=false;});
+async function startGame():Promise<void>{
  if(starting)return;if(game&&!game.ready){location.reload();return;}if(!rom){setStatus('The game is still loading…');return;}
  primeAudio();
  starting=true;$('welcome').hidden=true;$('loading').hidden=false;setStatus('Loading the SNES core…');
- try{const atlas=await SpriteAtlas.load();const emulator=await launch(rom,setStatus,dkcWorld?'Donkey Goonk DKC Rev2':'Kong Island');game=new (dkcWorld?DkcGame:LiveGame)(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty);game.autoSkip=$<HTMLInputElement>('auto-skip').checked;game.keepBabyOnScreen=$<HTMLInputElement>('baby-visibility').checked;await game.prepare();$('loading').hidden=true;
+ try{const atlas=await SpriteAtlas.load();const emulator=await launch(rom,setStatus,dkcWorld?'Donkey Goonk DKC Rev2':'Kong Island');emulator.gameManager.toggleMainLoop(1);game=new (dkcWorld?DkcGame:LiveGame)(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty);game.autoSkip=$<HTMLInputElement>('auto-skip').checked;game.keepBabyOnScreen=$<HTMLInputElement>('baby-visibility').checked;await game.prepare();if(arrival.arrival&&!game.isMap){game.goToMap();const began=performance.now();while(!game.isMap){if(performance.now()-began>15000)throw Error('The destination map could not be opened. Retry Play to resume your saved game.');await waitForNativeFrames(emulator.gameManager);}}$('loading').hidden=true;
   for(const id of ['pause','skip','save','sound-quick','level-map','repair-display'])$<HTMLButtonElement>(id).disabled=false;
   await game.unlockAudio().catch(()=>{});void pipeAudio.prepare(game.audio);if(game.audio?.state!=='running')setStatus('Tap ♪ at the top to enable sound.');syncParty();
  }catch(e){console.error('KONG_START_ERROR',e);setStatus((e as Error).message);$('loading').hidden=true;$('welcome').hidden=false;if(game){game.setPaused(true);$('play').textContent='Reload the page';$<HTMLButtonElement>('repair-display').disabled=!game.canRepairDisplay;}starting=false;}
-});
+}
+$('play').addEventListener('click',()=>{void startGame();});
 function releaseUiFocus(target:EventTarget|null):void{const el=target instanceof HTMLElement?target:document.activeElement;if(el instanceof HTMLElement&&el.matches('button,select')&&!el.closest('dialog'))el.blur();}
 document.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(b=>b.addEventListener('click',()=>{if(game)game.character=b.dataset.character as Character;releaseUiFocus(b);}));
 $('character').addEventListener('change',e=>{const select=e.target as HTMLSelectElement;if(game)game.character=select.value as Character;releaseUiFocus(select);});
 $('mount').addEventListener('change',e=>{const select=e.target as HTMLSelectElement;game?.stop();game?.mount(select.value as Mount);releaseUiFocus(select);});
-let worldSwitchPending=false;
+let worldSwitchPending=false,portalPreloaded=false;
 function refreshButtons():void{
  const map=Boolean(game?.ready&&game.isMap);
+ if(map&&!portalPreloaded){portalPreloaded=true;void fetch(`${base}rom/${destination==='dkc'?'dkc-usa-rev2.sfc':'yoshi-eu.sfc'}`,{cache:'force-cache'}).then(r=>r.ok?r.arrayBuffer():undefined).catch(()=>{});}
  $('world-portal').hidden=!map;$<HTMLButtonElement>('world-portal').disabled=worldSwitchPending;
  document.querySelector<HTMLElement>('[data-control="roll"]')!.hidden=map;
 }
@@ -138,7 +142,7 @@ $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenEle
 const settings=$<HTMLDialogElement>('settings');
 if(dkcWorld){
  $('skip').hidden=true;
- $('settings').querySelector('.sheet-hint')!.textContent='Choose a stage on the native Donkey Kong map with the stick, then tap Enter. In a stage, hold Jump for a native Kong jump and use Roll to attack. Tongue swallows a nearby enemy and creates one egg (up to six). Tap Eggs or press V to throw toward a nearby enemy. Against Burt, six eggs follow you: tap once to aim, then again to throw along the reticle. C uses the tongue, X rolls, arrows move. Each world keeps its own local save; the green pipe on either map changes worlds with the same selected hero.';
+ $('settings').querySelector('.sheet-hint')!.textContent='Choose a stage on the native Donkey Kong map with the stick, then tap Enter. In a stage, hold Jump for a native Kong jump and use Roll to attack. Aim the stick, release, then tap Tongue to swallow an enemy in that direction. Press Down to make an egg (up to six). Tap Eggs or press V once to aim and again to throw. Against Burt, six eggs follow you: tap once to aim, then again to throw along the reticle. C uses the tongue, X rolls, arrows move. Each world keeps its own local save; the green pipe on either map changes worlds with the same selected hero.';
  for(const id of ['baby-visibility','auto-skip'])$(id).closest('label')!.setAttribute('hidden','');
  $('baby-visibility-hint').hidden=true;
  $('level-map').textContent='Leave stage · World map';
@@ -216,10 +220,10 @@ function frame():void{
   const mapHint=returnToLevels?'back to the level grid':!dkcWorld&&isWorldTab(game.wram)?'selected world':'selected level';
   $('jump-label').textContent=map?mapLabel:'Jump';
   $('jump-hint').textContent=map?mapHint:dkcWorld?'native jump':game.adventure.mount==='yoshi'?'hold to flutter':game.adventure.mount==='squawks'?'hold to fly':'normal jump';
-  const up=controls.tongueAimingUp(now);$('tongue-label').textContent=up?'Tongue ↑':'Tongue';$('tongue-hint').textContent=dkcWorld?'eat an enemy':up?'aimed up':'up: stick, then tap';
+  const up=controls.tongueAimingUp(now);$('tongue-label').textContent=up?'Tongue ↑':'Tongue';$('tongue-hint').textContent=dkcWorld?'stick direction, then tap':up?'aimed up':'up: stick, then tap';
   const n=game.eggCount,aiming=game.aiming,unlimited=game.eggsUnlimited;
   $('egg-label').textContent=map?mapLabel:game.messageOpen?'OK':unlimited?(aiming?'Throw · ∞':'Aim · ∞'):aiming?'Throw':`Eggs · ${n}`;
-  $('egg-hint').textContent=map?mapHint:game.messageOpen?'confirm':unlimited?'aim, then throw / V':aiming?'press / V':n?(dkcWorld?'throw / V':'aim / V'):dkcWorld?'eat an enemy first':'Tongue then Down';
+  $('egg-hint').textContent=map?mapHint:game.messageOpen?'confirm':unlimited?'aim, then throw / V':aiming?'press / V':n?('aim, then throw / V'):'Tongue then Down';
  }
  if(debug&&game?.ready&&now-lastDiagnostic>500){$('diagnostic').textContent=JSON.stringify(game.diagnostics(),null,2);lastDiagnostic=now;}
  requestAnimationFrame(frame);

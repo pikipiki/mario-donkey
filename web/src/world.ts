@@ -10,7 +10,7 @@ export function currentWorld(search:string,lastWorld?:string|null):GameWorld{
  return lastWorld==='dkc'?'dkc':'yoshi';
 }
 export function worldUrl(href:string,target:GameWorld):string{
- const url=new URL(href);url.searchParams.set('world',target);return url.href;
+ const url=new URL(href);url.searchParams.set('world',target);url.searchParams.set('pipe','1');url.searchParams.delete('fresh');return url.href;
 }
 /** Transfer companions, never another game's room objects or exit guardian. */
 export function encodeWorldParty(data:AdventureData):Uint8Array{
@@ -25,3 +25,7 @@ export function decodeWorldParty(bytes:Uint8Array|undefined):AdventureData|undef
   const clean=new Adventure(data).serialize();clean.pickups=[];delete clean.guardian;return clean;
  }catch{return;}
 }
+
+/** Only a pipe journey auto-starts. Remove the marker before async work so a
+ * reload after a startup error cannot loop indefinitely. */
+export function pipeArrival(href:string):{arrival:boolean;cleanUrl:string}{const url=new URL(href),arrival=url.searchParams.get('pipe')==='1';url.searchParams.delete('pipe');return{arrival,cleanUrl:url.href};}

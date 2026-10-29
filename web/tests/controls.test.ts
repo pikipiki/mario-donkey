@@ -122,3 +122,5 @@ describe('visée de la langue vers le haut à un doigt',()=>{
   for(const action of ['egg','stop'] as const){const c=new Controls();c.setStick(0,-1,1000);c.releaseStick();c.activate(action,1100);c.activate('tongue',1200);expect(c.tongueUpPressed(1200)).toBe(false);}
  });
 });
+
+it('remembers diagonal tongue aim for one-finger play without keeping movement held',()=>{const c=new Controls();c.setStick(-1,-1,100);c.releaseStick();expect(c.runAxis()).toBe(0);c.activate('tongue',400);expect(c.tongueDirection(410)).toEqual({x:-1,y:-1});c.stop();c.activate('tongue',500);expect(c.tongueDirection(510)).toEqual({x:-1,y:0});});

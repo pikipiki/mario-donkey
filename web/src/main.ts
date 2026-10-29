@@ -34,7 +34,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   </aside>
  </section>
  <p id="status" class="status" role="status" aria-live="polite">Loading the game…</p>
- <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">On the map, Up selects the world tabs and Down returns to the levels. Levels ↓ also returns from the current world tab. Unlocked stages and worlds can be selected with Left/Right. Hold the stick to move. Release it to stop. Hold Jump to flutter on Yoshi; the Kongs on foot have a normal jump. Walking after release is optional: enable Keep walking below, then touch the center to stop. The roll keeps moving on its own. To grab Baby Mario above you: push the stick up, release, then tap Tongue within two seconds. An egg can also bring his bubble closer. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>Keep walking after release</span><input id="sticky" type="checkbox"></label><label class="setting"><span>Keep Baby Mario on screen</span><input id="baby-visibility" type="checkbox" checked aria-describedby="baby-visibility-hint"></label><p id="baby-visibility-hint" class="sheet-hint">Slows his bubble near the top edge. Turn off for the original flight. The countdown stays the same.</p><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><button id="level-map" class="sheet-button" disabled>Choose a level · World map</button><button id="repair-display" class="sheet-button" disabled>Repair display · Return to map</button><p class="sheet-hint">If the image is scrambled: rebuild the map. Completed stages and partners stay saved; the current stage starts again. A copy of the previous state is kept on this device.</p><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button><button id="test-audio">Check native audio signal (test)</button><button id="test-goal">Approach the 1-1 goal (test)</button></details></dialog>
+ <dialog id="settings" aria-labelledby="settings-title"><div class="sheet-heading"><h2 id="settings-title">At your pace.</h2><button id="close-settings" class="tool" aria-label="Close options">×</button></div><p class="sheet-hint">On the map, Up selects the world tabs and Down returns to the levels. Levels ↓ also returns from the current world tab. Unlocked stages and worlds can be selected with Left/Right. Hold the stick to move. Release it to stop. Hold Jump to flutter on Yoshi; the Kongs on foot have a normal jump. Walking after release is optional: enable Keep walking below, then touch the center to stop. The roll keeps moving on its own. To grab Baby Mario above you: push the stick up, release, then tap Tongue within two seconds. An egg can also bring his bubble closer. Egg: tap once to aim, again to throw, and tap it to confirm on-screen text. To make one: Tongue an enemy, then down on the stick. V aims, throws and confirms, arrow keys move.</p><label class="setting"><span>Keep walking after release</span><input id="sticky" type="checkbox"></label><label class="setting"><span>Keep Baby Mario on screen</span><input id="baby-visibility" type="checkbox" checked aria-describedby="baby-visibility-hint"></label><p id="baby-visibility-hint" class="sheet-hint">Slows his bubble near the top edge. Turn off for the original flight. The countdown stays the same.</p><label class="setting"><span>Skip instructions automatically</span><input id="auto-skip" type="checkbox"></label><button id="sound" class="sheet-button">♪ Enable game sound</button><button id="save" class="sheet-button" disabled>Save my game</button><button id="level-map" class="sheet-button" disabled>Choose a level · World map</button><button id="repair-display" class="sheet-button" disabled>Repair display · Return to map</button><p class="sheet-hint">If the image is scrambled: rebuild the map. Completed stages and partners stay saved; the current stage starts again. A copy of the previous state is kept on this device.</p><p class="sheet-hint">The campaign and your partners also save automatically on this device.</p><details><summary>More SNES buttons</summary><div class="native-buttons">${[['Y',1],['B',0],['A',8],['X',9],['L',10],['R',11],['Start',3],['Select',2]].map(([label,id])=>`<button data-native="${id}">${label}</button>`).join('')}</div><p class="sheet-hint">Keyboard: arrows, Space jump, X roll, C tongue, V egg or confirm, Esc pause.</p></details><details id="debug" ${debug?'':'hidden'}><summary>Development diagnostics</summary><pre id="diagnostic"></pre><button id="test-wall">Place a breakable wall (test)</button><button id="test-reset">Restart from the beginning (test)</button><button id="test-egg">Make a native egg (test)</button><button id="test-hit">Walk up to a Shy Guy</button><button id="test-roll">Roll into a Shy Guy</button><button id="test-dialogue">Open a native instruction (test)</button><button id="test-unlock">Unlock partners (test)</button><button id="test-audio">Check native audio signal (test)</button><button id="test-goal">Approach the 1-1 goal (test)</button><button id="test-boss-eggs">Fire boss eggs (test)</button><button id="test-castle">Enter original 1-4 boss room (test)</button><button id="test-burt-end">Run original Burt defeat sequence (test)</button></details></dialog>
 </main>`;
 installGameTouchGuards(document.querySelector<HTMLElement>('.shell')!);
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -169,9 +169,9 @@ function frame():void{
   $('jump-label').textContent=map?mapLabel:'Jump';
   $('jump-hint').textContent=map?mapHint:game.adventure.mount==='yoshi'?'hold to flutter':game.adventure.mount==='squawks'?'hold to fly':'normal jump';
   const up=controls.tongueAimingUp(now);$('tongue-label').textContent=up?'Tongue ↑':'Tongue';$('tongue-hint').textContent=up?'aimed up':'up: stick, then tap';
-  const n=game.eggCount,aiming=game.aiming;
-  $('egg-label').textContent=map?mapLabel:game.messageOpen?'OK':aiming?'Throw':`Eggs · ${n}`;
-  $('egg-hint').textContent=map?mapHint:game.messageOpen?'confirm':aiming?'press / V':n?'aim / V':'Tongue then Down';
+  const n=game.eggCount,aiming=game.aiming,unlimited=game.eggsUnlimited;
+  $('egg-label').textContent=map?mapLabel:game.messageOpen?'OK':unlimited?'Throw · ∞':aiming?'Throw':`Eggs · ${n}`;
+  $('egg-hint').textContent=map?mapHint:game.messageOpen?'confirm':unlimited?'assisted aim / V':aiming?'press / V':n?'aim / V':'Tongue then Down';
  }
  if(debug&&game?.ready&&now-lastDiagnostic>500){$('diagnostic').textContent=JSON.stringify(game.diagnostics(),null,2);lastDiagnostic=now;}
  requestAnimationFrame(frame);
@@ -201,4 +201,43 @@ $('test-goal').addEventListener('click',async()=>{
   pause(true);setStatus('Native goal approach loaded · Resume to test the ring.');
  }catch(e){setStatus((e as Error).message);}
  finally{for(const p of sites)heap.set(signature,p);}
+});
+
+$('test-boss-eggs').addEventListener('click',async()=>{
+ if(!debug||!game?.ready)return;resumeFromSettings();game.stop();
+ for(let i=0;i<18;i++){
+  if(!game.eggsUnlimited||game.paused)break;
+  // DEV transition fixture: avoid an unattended rescue while checking endings.
+  game.gsu[0x1d6]=0xff;game.gsu[0x1d7]=0x7f;
+  controls.activate('egg',performance.now());await new Promise(r=>setTimeout(r,300));
+ }
+ await new Promise(r=>setTimeout(r,1000));
+ // Large native invincibility also suppresses movement: leave only the normal grace.
+ game.gsu[0x1d6]=0x3f;game.gsu[0x1d7]=0;
+ pause(true);setStatus('Boss egg sequence finished · Inspect the guardian and exit.');
+});
+
+$('test-castle').addEventListener('click',async()=>{
+ if(!debug||!game?.ready)return;resumeFromSettings();game.goToMap();
+ const w=game.wram;w[0x218]=0;w[0x21a]=3;
+ w.set([0x3d,5,0x63,0],0x17e00);w[0x38e]=0;w[0x38f]=0;w[0x38c]=1;w[0x38d]=0;w[0x118]=0x0f;
+ const began=performance.now();while(w[0x118]!==0x13){if(performance.now()-began>15000){setStatus('Native castle load timed out.');return;}await waitForNativeFrames(game.emulator.gameManager);}
+ // Keep this isolated transition fixture alive while inspecting the scripts.
+ game.gsu[0x1d6]=0xff;game.gsu[0x1d7]=0x7f;
+ setStatus('Original Burt room · Native boss must be beaten before the guardian.');
+});
+
+$('test-burt-end').addEventListener('click',async()=>{
+ if(!debug||!game?.ready||game.wram[0x21a]!==3)return;resumeFromSettings();
+ const g=game.gsu,word=(a:number)=>g[a]|g[a+1]<<8;
+ for(let slot=6;slot<24;slot++){
+  const o=slot*4;if(word(0x1360+o)!==0x46||word(0xf00+o)!==0x10)continue;
+  // DEV-only: enter the real Burt post-damage state, not a fabricated key or
+  // completion. The original explosion must create its own boss key.
+  g[0x1a36+o]=0x48;g[0x1a37+o]=2;g[0x1978+o]=0x1f;g[0x1979+o]=0;
+  setStatus('Native Burt defeat running · Wait for the guardian.');
+  const began=performance.now();while(!game.eggsUnlimited){if(performance.now()-began>12000)return;await waitForNativeFrames(game.emulator.gameManager);}
+  pause(true);setStatus('Post-Burt guardian ready · Resume or fire the test eggs.');return;
+ }
+ setStatus('Burt is not active yet.');
 });

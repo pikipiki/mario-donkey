@@ -184,3 +184,9 @@ export function skipOpenDialogue(wram:Uint8Array,gsu:Uint8Array):boolean{
  if(wram[PROFILE.mode]!==PROFILE.gameplay||wram[0xd11]!==9)return false;
  writeWord(gsu,0x406e,2);return true;
 }
+
+/** EU push_sound_queue at ROM $005DE: byte entries, at most seven pending. */
+export function queueNativeSound(wram:Uint8Array,id:number):boolean{
+ const count=word(wram,0x57);if(count>6||!Number.isInteger(id)||id<0||id>255)return false;
+ wram[0x59+count]=id;writeWord(wram,0x57,count+1);return true;
+}

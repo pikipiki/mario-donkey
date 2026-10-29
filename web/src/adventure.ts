@@ -1,3 +1,4 @@
+import {validateGuardian,type GuardianSave} from './boss';
 export const ANIMALS=['rambi','winky','expresso','enguarde','squawks'] as const;
 export type Animal=typeof ANIMALS[number];
 export const CHARACTERS=['violet','pink','dk','diddy'] as const;
@@ -5,13 +6,15 @@ export type Character=typeof CHARACTERS[number];
 export type Mount='foot'|'yoshi'|Animal;
 export interface Pickup {id:string;room:string;kind:'barrel'|Animal;x:number;y:number;collected:boolean}
 interface Room {distance:number;crates:number;nextCrate:number;samples:Array<{x:number;y:number}>;last?:{x:number;y:number}}
-export interface AdventureData {version:2;characterSet?:1;active:Character;available:Character[];mount:Mount;animals:Animal[];pickups:Pickup[]}
+export interface AdventureData {version:2;characterSet?:1;active:Character;available:Character[];mount:Mount;animals:Animal[];pickups:Pickup[];guardian?:GuardianSave}
 const isAnimal=(x:unknown):x is Animal=>typeof x==='string'&&(ANIMALS as readonly string[]).includes(x);
 export class Adventure {
  active:Character='violet';available:Character[]=[...CHARACTERS];mount:Mount='foot';animals:Animal[]=[];pickups:Pickup[]=[];
+ guardian?:GuardianSave;
  private rooms=new Map<string,Room>();
  constructor(saved?:Partial<AdventureData>){
   if(saved?.version!==2)return;
+  this.guardian=validateGuardian(saved.guardian);
   this.available=[...CHARACTERS];
   this.active=saved.characterSet===1&&this.available.includes(saved.active!)?saved.active!:'violet';
   this.animals=[...new Set((saved.animals??[]).filter(isAnimal))];
@@ -48,5 +51,5 @@ export class Adventure {
   for(const p of hits){p.collected=true;if(p.kind==='barrel')this.available=[...CHARACTERS];else{if(!this.animals.includes(p.kind))this.animals.push(p.kind);this.mount=p.kind;}}
   return hits;
  }
- serialize():AdventureData{return {version:2,characterSet:1,active:this.active,available:this.available,mount:this.mount,animals:this.animals,pickups:this.pickups.slice(-512)};}
+ serialize():AdventureData{return {version:2,characterSet:1,active:this.active,available:this.available,mount:this.mount,animals:this.animals,pickups:this.pickups.slice(-512),...(this.guardian?{guardian:this.guardian}:{})};}
 }

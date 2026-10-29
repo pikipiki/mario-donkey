@@ -1,0 +1,352 @@
+{
+  "cell": 128,
+  "columns": 12,
+  "origin": [
+    64,
+    104
+  ],
+  "groups": {
+    "gnawty": {
+      "idle": {
+        "start": 0,
+        "frames": 7,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_VeryGnawty_Hop1",
+          "GFX_VeryGnawty_Hop2",
+          "GFX_VeryGnawty_Hop3",
+          "GFX_VeryGnawty_Hop4",
+          "GFX_VeryGnawty_Hop5",
+          "GFX_VeryGnawty_Hop6",
+          "GFX_VeryGnawty_Hop7"
+        ]
+      },
+      "attack": {
+        "start": 0,
+        "frames": 7,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_VeryGnawty_Hop1",
+          "GFX_VeryGnawty_Hop2",
+          "GFX_VeryGnawty_Hop3",
+          "GFX_VeryGnawty_Hop4",
+          "GFX_VeryGnawty_Hop5",
+          "GFX_VeryGnawty_Hop6",
+          "GFX_VeryGnawty_Hop7"
+        ]
+      },
+      "hurt": {
+        "start": 7,
+        "frames": 3,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_VeryGnawty_Hurt1",
+          "GFX_VeryGnawty_Hurt2",
+          "GFX_VeryGnawty_Hurt3"
+        ]
+      },
+      "dead": {
+        "start": 10,
+        "frames": 10,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_VeryGnawty_Dead1",
+          "GFX_VeryGnawty_Dead2",
+          "GFX_VeryGnawty_Dead3",
+          "GFX_VeryGnawty_Dead4",
+          "GFX_VeryGnawty_Dead5",
+          "GFX_VeryGnawty_Dead6",
+          "GFX_VeryGnawty_Dead7",
+          "GFX_VeryGnawty_Dead8",
+          "GFX_VeryGnawty_Dead9",
+          "GFX_VeryGnawty_Dead10"
+        ]
+      }
+    },
+    "necky": {
+      "idle": {
+        "start": 20,
+        "frames": 1,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_MasterNecky_Idle"
+        ]
+      },
+      "attack": {
+        "start": 20,
+        "frames": 1,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_MasterNecky_Idle"
+        ]
+      },
+      "hurt": {
+        "start": 21,
+        "frames": 5,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_MasterNecky_Hurt1",
+          "GFX_MasterNecky_Hurt2",
+          "GFX_MasterNecky_Hurt3",
+          "GFX_MasterNecky_Hurt4",
+          "GFX_MasterNecky_Hurt5"
+        ]
+      },
+      "dead": {
+        "start": 21,
+        "frames": 5,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_MasterNecky_Hurt1",
+          "GFX_MasterNecky_Hurt2",
+          "GFX_MasterNecky_Hurt3",
+          "GFX_MasterNecky_Hurt4",
+          "GFX_MasterNecky_Hurt5"
+        ]
+      }
+    },
+    "queen-b": {
+      "idle": {
+        "start": 26,
+        "frames": 9,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_QueenB_Fly1",
+          "GFX_QueenB_Fly2",
+          "GFX_QueenB_Fly3",
+          "GFX_QueenB_Fly4",
+          "GFX_QueenB_Fly5",
+          "GFX_QueenB_Fly6",
+          "GFX_QueenB_Fly7",
+          "GFX_QueenB_Fly8",
+          "GFX_QueenB_Fly9"
+        ]
+      },
+      "attack": {
+        "start": 26,
+        "frames": 9,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_QueenB_Fly1",
+          "GFX_QueenB_Fly2",
+          "GFX_QueenB_Fly3",
+          "GFX_QueenB_Fly4",
+          "GFX_QueenB_Fly5",
+          "GFX_QueenB_Fly6",
+          "GFX_QueenB_Fly7",
+          "GFX_QueenB_Fly8",
+          "GFX_QueenB_Fly9"
+        ]
+      },
+      "hurt": {
+        "start": 35,
+        "frames": 3,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_QueenB_Hurt1",
+          "GFX_QueenB_Hurt2",
+          "GFX_QueenB_Hurt3"
+        ]
+      },
+      "dead": {
+        "start": 38,
+        "frames": 9,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_QueenB_Dead1",
+          "GFX_QueenB_Dead2",
+          "GFX_QueenB_Dead3",
+          "GFX_QueenB_Dead4",
+          "GFX_QueenB_Dead5",
+          "GFX_QueenB_Dead6",
+          "GFX_QueenB_Dead7",
+          "GFX_QueenB_Dead8",
+          "GFX_QueenB_Dead9"
+        ]
+      }
+    },
+    "really-gnawty": {
+      "idle": {
+        "start": 47,
+        "frames": 7,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_VeryGnawty_Hop1",
+          "GFX_VeryGnawty_Hop2",
+          "GFX_VeryGnawty_Hop3",
+          "GFX_VeryGnawty_Hop4",
+          "GFX_VeryGnawty_Hop5",
+          "GFX_VeryGnawty_Hop6",
+          "GFX_VeryGnawty_Hop7"
+        ]
+      },
+      "attack": {
+        "start": 47,
+        "frames": 7,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_VeryGnawty_Hop1",
+          "GFX_VeryGnawty_Hop2",
+          "GFX_VeryGnawty_Hop3",
+          "GFX_VeryGnawty_Hop4",
+          "GFX_VeryGnawty_Hop5",
+          "GFX_VeryGnawty_Hop6",
+          "GFX_VeryGnawty_Hop7"
+        ]
+      },
+      "hurt": {
+        "start": 54,
+        "frames": 3,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_VeryGnawty_Hurt1",
+          "GFX_VeryGnawty_Hurt2",
+          "GFX_VeryGnawty_Hurt3"
+        ]
+      },
+      "dead": {
+        "start": 57,
+        "frames": 10,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_VeryGnawty_Dead1",
+          "GFX_VeryGnawty_Dead2",
+          "GFX_VeryGnawty_Dead3",
+          "GFX_VeryGnawty_Dead4",
+          "GFX_VeryGnawty_Dead5",
+          "GFX_VeryGnawty_Dead6",
+          "GFX_VeryGnawty_Dead7",
+          "GFX_VeryGnawty_Dead8",
+          "GFX_VeryGnawty_Dead9",
+          "GFX_VeryGnawty_Dead10"
+        ]
+      }
+    },
+    "dumb-drum": {
+      "idle": {
+        "start": 67,
+        "frames": 1,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_DumbDrum_Idle"
+        ]
+      },
+      "attack": {
+        "start": 68,
+        "frames": 1,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_DumbDrum_Dump"
+        ]
+      },
+      "hurt": {
+        "start": 69,
+        "frames": 1,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_DumbDrum_Dead"
+        ]
+      },
+      "dead": {
+        "start": 69,
+        "frames": 1,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_DumbDrum_Dead"
+        ]
+      }
+    },
+    "necky-snr": {
+      "idle": {
+        "start": 70,
+        "frames": 1,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_MasterNecky_Idle"
+        ]
+      },
+      "attack": {
+        "start": 70,
+        "frames": 1,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_MasterNecky_Idle"
+        ]
+      },
+      "hurt": {
+        "start": 71,
+        "frames": 5,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_MasterNecky_Hurt1",
+          "GFX_MasterNecky_Hurt2",
+          "GFX_MasterNecky_Hurt3",
+          "GFX_MasterNecky_Hurt4",
+          "GFX_MasterNecky_Hurt5"
+        ]
+      },
+      "dead": {
+        "start": 71,
+        "frames": 5,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_MasterNecky_Hurt1",
+          "GFX_MasterNecky_Hurt2",
+          "GFX_MasterNecky_Hurt3",
+          "GFX_MasterNecky_Hurt4",
+          "GFX_MasterNecky_Hurt5"
+        ]
+      }
+    },
+    "k-rool": {
+      "idle": {
+        "start": 76,
+        "frames": 4,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_KRool_Idle1",
+          "GFX_KRool_Idle2",
+          "GFX_KRool_Idle3",
+          "GFX_KRool_Idle4"
+        ]
+      },
+      "attack": {
+        "start": 80,
+        "frames": 7,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_KRool_Run1",
+          "GFX_KRool_Run2",
+          "GFX_KRool_Run3",
+          "GFX_KRool_Run4",
+          "GFX_KRool_Run5",
+          "GFX_KRool_Run6",
+          "GFX_KRool_Run7"
+        ]
+      },
+      "hurt": {
+        "start": 87,
+        "frames": 4,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_KRool_Hurt1",
+          "GFX_KRool_Hurt2",
+          "GFX_KRool_Hurt3",
+          "GFX_KRool_Hurt4"
+        ]
+      },
+      "dead": {
+        "start": 87,
+        "frames": 4,
+        "fps": 10,
+        "sourceFrames": [
+          "GFX_KRool_Hurt1",
+          "GFX_KRool_Hurt2",
+          "GFX_KRool_Hurt3",
+          "GFX_KRool_Hurt4"
+        ]
+      }
+    }
+  },
+  "romSha256": "628147468c3539283197f58f03b94df49758a332831857481ea9cc31645f0527"
+}

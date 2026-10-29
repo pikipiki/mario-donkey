@@ -40,3 +40,7 @@ npm run preview
 Netlify : base `web`, commande `npm ci && npm run build`, dossier publié `dist` relatif à cette base ; Node 22. Pour un dépôt ne contenant que ce dossier, laisser la base vide. `netlify.toml` fournit les réglages. Le résultat est statique : aucun serveur TypeScript n’est requis en production et aucune ROM n’est incluse. Le site n’est pas encore publié sur un compte Netlify.
 
 La campagne originale n’est pas restreinte au 1-1 ; tous les niveaux/bosses n’ont pas été testés manuellement. Les animaux héritent des pouvoirs et de la physique de Yoshi, avec quelques capacités additionnelles ; ils ne reproduisent pas intégralement le moteur DKC. Lire [le relais Gemini](docs/GEMINI_HANDOFF.md) pour les preuves et travaux restants.
+
+### DKC guardians at stage exits
+
+Each main/Extra stage cycles through the seven DKC1 guardians. Fortresses and castles keep their original boss first. During the added fight, tap **Throw · ∞** (or **V**) to fire an assisted-aim egg; eggs damage the guardian without consuming native inventory. Recover Baby Mario normally if hit. After victory, jump through the nearby exit ring to let the original game handle its score and progression. Encounter progress is included in the local campaign save. Boss movement is adapted in TypeScript with original DKC sprites; one SNES core runs Yoshi’s Island.

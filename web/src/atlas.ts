@@ -2,8 +2,22 @@ export interface Animation {start:number;frames:number;fps:number}
 export interface AtlasManifest {cell:number;columns:number;origin:[number,number];groups:Record<string,Record<string,Animation>>}
 export interface PlushManifest {frames:Array<{x:number;y:number;w:number;h:number;ox:number;oy:number}>;groups:Record<string,number[]>}
 export class SpriteAtlas {
- constructor(public image:HTMLImageElement,public manifest:AtlasManifest,public plush?:{image:HTMLImageElement;manifest:PlushManifest}){}
- static async load():Promise<SpriteAtlas>{const b=import.meta.env.BASE_URL;const image=new Image();image.src=`${b}art/dkc-atlas.png`;const [manifest]=await Promise.all([fetch(`${b}art/dkc-atlas.json`).then(r=>{if(!r.ok)throw new Error('The original sprite atlas was not found.');return r.json() as Promise<AtlasManifest>;}),image.decode()]);const plushImage=new Image();plushImage.src=`${b}art/plush.png`;const [plushManifest]=await Promise.all([fetch(`${b}art/plush.json`).then(r=>{if(!r.ok)throw new Error('The PlushGoonk animations were not found.');return r.json() as Promise<PlushManifest>;}),plushImage.decode()]);return new SpriteAtlas(image,manifest,{image:plushImage,manifest:plushManifest});}
+ constructor(public image:HTMLImageElement,public manifest:AtlasManifest,public plush?:{image:HTMLImageElement;manifest:PlushManifest},public bosses?:{image:HTMLImageElement;manifest:AtlasManifest}){}
+ static async load():Promise<SpriteAtlas>{
+  const b=import.meta.env.BASE_URL;
+  const image=new Image(),plushImage=new Image(),bossImage=new Image();
+  image.src=`${b}art/dkc-atlas.png`;plushImage.src=`${b}art/plush.png`;bossImage.src=`${b}art/dkc-bosses.png`;
+  async function json<T>(name:string):Promise<T>{const r=await fetch(`${b}art/${name}.json`);if(!r.ok)throw new Error('The original sprite atlas was not found.');return r.json() as Promise<T>;}
+  const [manifest,plushManifest,bossManifest]=await Promise.all([json<AtlasManifest>('dkc-atlas'),json<PlushManifest>('plush'),json<AtlasManifest>('dkc-bosses'),image.decode(),plushImage.decode(),bossImage.decode()]);
+  return new SpriteAtlas(image,manifest,{image:plushImage,manifest:plushManifest},{image:bossImage,manifest:bossManifest});
+ }
+ drawBoss(ctx:CanvasRenderingContext2D,group:string,state:string,x:number,y:number,time:number,facing=1):void{
+  const atlas=this.bosses,animation=atlas?.manifest.groups[group]?.[state]??atlas?.manifest.groups[group]?.idle;if(!atlas||!animation)return;
+  const {cell,columns,origin}=atlas.manifest,frame=animation.start+Math.floor(time*animation.fps/1000)%animation.frames;
+  ctx.save();ctx.translate(Math.round(x),Math.round(y));if(facing>0)ctx.scale(-1,1);ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(atlas.image,frame%columns*cell,Math.floor(frame/columns)*cell,cell,cell,-origin[0],-origin[1],cell,cell);ctx.restore();
+ }
+
  draw(ctx:CanvasRenderingContext2D,group:string,state:string,x:number,y:number,time:number,facing=1):void{
   if(group==='violet'||group==='pink'){
    if(!this.plush)return;

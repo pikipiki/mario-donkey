@@ -9,6 +9,8 @@ import {createRecoveryState} from '../src/recovery';
 import {waitForNativeFrames,waitForNativePause,type Emulator} from '../src/engine';
 import type {SpriteAtlas} from '../src/atlas';
 
+vi.mock('../src/boss-rom',()=>({BossRomHooks:class {sync(){}restore(){}}}));
+
 vi.mock('../src/campaign',()=>({readCampaign:vi.fn(),writeCampaign:vi.fn(),backupCampaign:vi.fn()}));
 vi.mock('../src/bootstrap',()=>({loadStartState:vi.fn()}));
 vi.mock('../src/recovery',()=>({createRecoveryState:vi.fn((_clean:Uint8Array,old:Uint8Array)=>{const result=old.slice();result[P.mode]=0x26;return result;})}));

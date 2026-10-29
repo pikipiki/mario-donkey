@@ -40,3 +40,9 @@ it('draws native reticle palettes and each smoke pose without vector replacement
  a.drawEggEffect(c,'reticle',80,100,100);expect(c.drawImage).toHaveBeenLastCalledWith(a.combatArt,32,0,32,32,64,84,32,32);
  for(let i=0;i<4;i++){a.drawEggEffect(c,'smoke',80,100,i*50);expect(c.drawImage).toHaveBeenLastCalledWith(a.combatArt,(i+2)*32,0,32,32,64,84,32,32);}
 });
+
+it('spins the active Mario plus Yoshi body around its centre for a roll, keeping its world position anchored',()=>{
+ const {a,c}=fixture();(c as unknown as{rotate:ReturnType<typeof vi.fn>}).rotate=vi.fn();const image={}as HTMLImageElement;
+ a.marioYoshi={image,manifest:{cell:64,columns:16,origin:[32,56],groups:{'mario-yoshi':{idle:{start:0,frames:3,fps:6},walk:{start:3,frames:5,fps:12}}}}};
+ a.drawMarioYoshi(c,'roll',80,150,100,-1);expect(c.translate).toHaveBeenCalledWith(80,134);expect(c.scale).toHaveBeenCalledWith(-1,1);expect(c.rotate).toHaveBeenCalledWith(.6*Math.PI);expect(c.drawImage).toHaveBeenCalledWith(image,256,0,64,64,-32,-40,64,64);
+});

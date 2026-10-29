@@ -1,3 +1,11 @@
+## 29 octobre 2026 — la roulade appartient au héros actif, pas au compagnon
+
+DKC : le compagnon héritait de la variable d’animation du leader. Mario+Yoshi n’avait pas de séquence roll dans son atlas, retombait sur idle, tandis que le compagnon recevait ses véritables images de roulade. Le rendu DKC utilise désormais une animation de suivi distincte (marche/saut/attente), tout en conservant les poses natives de blessure/fuite du partenaire. Seul le leader reçoit roll. Le rendu Mario+Yoshi fait tourner la pose originale autour du centre de son corps (pivot16px au-dessus des pieds,3tours/seconde), direction miroir conservée et ancrage de monde inchangé. Les dégâts/physique/tape/ordre du duo ne changent pas. Animation adaptée en Canvas, pas une nouvelle animation native SNES.
+
+Tests : quatre partenaires possibles derrière Yoshi, Yoshi partenaire derrière un autre leader, blessure/fuite native du compagnon, rotation/mirroring/ancrage du corps.665tests/59fichiers et build. Pas de nouvelle image, pas de second cœur, pas de sauvegarde modifiée. Navigateur privé5208 : vraie entrée Jungle avec Mario+Yoshi actif et Paingpaing derrière, X180ms, capture pendant la roulade : Yoshi/Mario tournent ensemble, Paingpaing conserve sa marche. Preuve outputs/dkc-yoshi-roll-leader.png. Rapport outputs synchronisé avec ce lot après publication.
+
+---
+
 ## 29 octobre 2026 — cris DK d’attente, flottement Yoshi dans DKC et direction de langue tenue
 
 Contrat utilisateur courant remplace l’ancienne visée à un doigt mémorisée2s : langue dans la direction effectivement tenue au déclenchement (8directions stick/clavier), sinon horizontalement dans le sens du héros. Relâcher le stick efface immédiatement la visée ; la direction d’une extension déjà partie reste fixée jusqu’à sa fin. controls.keyboardVertical suit les touches tenues, keyup efface aussi les impulsions Haut/Bas. Aucune direction de marche n’est ajoutée. Les tests rescue couvrent Haut+Langue tenu et langue horizontale après relâchement, sans modifier Baby ni les étoiles. Aides UI corrigées dans les deux mondes.

@@ -138,7 +138,9 @@ export class DkcGame extends LiveGame{
   const moving=Math.abs(this.controls.runAxis())>.1,rolling=now<this.controls.rollUntil;
   const animation=this.teamTag.swapping?'jump':rolling?'roll':this.dkFlutter.active?'flutter':!s.grounded?'jump':moving?'walk':'idle';if(this.dkAnimation!==animation){this.dkAnimation=animation;this.dkAnimationAt=now;}
   const poses=this.teamTag.poses({...s,facing:this.controls.facing},this.adventure),back=this.teamDamage.nativePartner(this.wram,this.adventure)??poses.partner;
-  const backAnimation='animation'in back&&typeof back.animation==='string'?back.animation:animation;
+  // The follower owns no attack: rolling belongs to the active hero only.
+  // Preserve native hurt/flee poses; a healthy companion follows on foot.
+  const backAnimation='animation'in back&&typeof back.animation==='string'?back.animation:this.teamTag.swapping?'jump':!s.grounded?'jump':moving||rolling?'walk':'idle';
   if(this.teamDamage.hasPartner(this.wram)){if(back.character==='mario')this.dkAtlas.drawMarioYoshi(c,backAnimation,back.x-s.cameraX,back.y-s.cameraY+pad,now-this.dkAnimationAt,back.facing);else this.dkAtlas.draw(c,back.character,backAnimation,back.x-s.cameraX,back.y-s.cameraY+pad,now-this.dkAnimationAt,back.facing);}
   const throwing=now<this.combat.throwUntil,recoil=throwing?-this.controls.facing*2:0;
   const leaderY=poses.leader.y-s.cameraY+pad,leaderFacing=this.teamDamage.transitioning?s.facing:this.controls.facing;drawTagContact(c,x,leaderY-24,poses.contact);

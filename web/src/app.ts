@@ -123,7 +123,7 @@ function refreshButtons():void{
  $<HTMLButtonElement>('team-swap').disabled=!game?.ready||Boolean(game?.paused)||Boolean(game?.teamSwapping)||worldSwitchPending;
  $<HTMLButtonElement>('team-config').disabled=!game?.ready||worldSwitchPending;
  $('world-portal').hidden=!map||Boolean(arena);$<HTMLButtonElement>('world-portal').disabled=worldSwitchPending;
- document.querySelector<HTMLElement>('[data-control="roll"]')!.hidden=map;
+ document.querySelector<HTMLElement>('[data-control="roll"]')!.hidden=map||Boolean(game instanceof DkcGame&&game.nativeMenu);
 }
 $('world-portal').addEventListener('click',async()=>{
  if(!game?.ready||!game.isMap||worldSwitchPending)return;
@@ -176,8 +176,8 @@ if(dkcWorld){
  for(const id of ['baby-visibility','auto-skip'])$(id).closest('label')!.setAttribute('hidden','');
  $('baby-visibility-hint').hidden=true;
  $('level-map').textContent='Leave stage · World map';
- $('repair-display').textContent='Return to the last map checkpoint';
- $('repair-display').nextElementSibling!.textContent='Returning to the map restarts the current stage attempt from the last map checkpoint. Your separate Yoshi adventure is kept.';
+ $('repair-display').textContent='Rebuild map · Repair display';
+ $('repair-display').nextElementSibling!.textContent='Rebuilds the Kongo Jungle map with clean graphics. Completed stages, lives and your duo are kept; unlocked worlds remain reachable. The current stage restarts. A backup is kept on this device.';
 }
 if(arena&&!arena.returning&&!dkcWorld){
  $('game-instructions').textContent='Original Yoshi’s Island battle. Froggy: let him swallow Yoshi, eat enemies, press Down to make eggs, then aim at the uvula. Raphael: jump, then use Attack ↓ to pound the stakes on the planet. Hold Jump to flutter. Your duo returns to DKC after the fight.';
@@ -260,16 +260,16 @@ function frame():void{
  }
  game?.tick(now);refreshButtons();
  if(game?.ready){
-  const map=game.isMap,returnToLevels=!dkcWorld&&needsLevelReturn(game.wram);
+  const nativeMenu=game instanceof DkcGame&&game.nativeMenu,map=game.isMap,returnToLevels=!dkcWorld&&needsLevelReturn(game.wram);
   const mapLabel=returnToLevels?'Levels ↓':'Enter';
   const mapHint=returnToLevels?'back to the level grid':!dkcWorld&&isWorldTab(game.wram)?'selected world':'selected level';
   const swimming=game instanceof DkcGame&&game.swimming&&['yoshi','enguarde'].includes(game.aquaticMount);
-  $('jump-label').textContent=map?mapLabel:swimming?'Swim ↑':game.adventure.mount==='squawks'?'Fly ↑':'Jump';
-  $('jump-hint').textContent=map?mapHint:swimming?'hold to rise · ↓ to dive':game.adventure.mount==='yoshi'?'hold to flutter':game.adventure.mount==='squawks'?'hold to fly':'normal jump';
+  $('jump-label').textContent=nativeMenu?'Start / Confirm':map?mapLabel:swimming?'Swim ↑':game.adventure.mount==='squawks'?'Fly ↑':'Jump';
+  $('jump-hint').textContent=nativeMenu?'continue / select a save':map?mapHint:swimming?'hold to rise · ↓ to dive':game.adventure.mount==='yoshi'?'hold to flutter':game.adventure.mount==='squawks'?'hold to fly':'normal jump';
   const up=controls.tongueAimingUp(now);$('tongue-label').textContent=up?'Tongue ↑':'Tongue';$('tongue-hint').textContent=up?'hold ↑ to aim up':'hold direction or straight ahead';
   const n=game.eggCount,aiming=game.aiming,unlimited=game.eggsUnlimited;
-  $('egg-label').textContent=map?mapLabel:game.messageOpen?'OK':unlimited?(aiming?'Throw · ∞':'Aim · ∞'):aiming?'Throw':`Eggs · ${n}`;
-  $('egg-hint').textContent=map?mapHint:game.messageOpen?'confirm':unlimited?'aim, then throw / V':aiming?'press / V':n?('aim, then throw / V'):'Tongue then Down';
+  $('egg-label').textContent=nativeMenu?'Start / Confirm':map?mapLabel:game.messageOpen?'OK':unlimited?(aiming?'Throw · ∞':'Aim · ∞'):aiming?'Throw':`Eggs · ${n}`;
+  $('egg-hint').textContent=nativeMenu?'continue / select a save':map?mapHint:game.messageOpen?'confirm':unlimited?'aim, then throw / V':aiming?'press / V':n?('aim, then throw / V'):'Tongue then Down';
  }
  if(debug&&game?.ready&&now-lastDiagnostic>500){const owner=parentAudioHost(window);$('diagnostic').textContent=JSON.stringify({...game.diagnostics(),cheats:{...cheatOptions(),lives:game.world==='dkc'?(game.wram[0x575]|game.wram[0x576]<<8):(game.wram[0x379]|game.wram[0x37a]<<8),yoshiFlags:Array.from(game.wram.slice(0x222,0x26a)),dkcFlags:Array.from(game.wram.slice(0x583,0x683))},audioOwner:{persistent:Boolean(owner),generation:owner?.generation,state:owner?.context?.state}},null,2);lastDiagnostic=now;}
  requestAnimationFrame(frame);

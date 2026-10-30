@@ -50,3 +50,6 @@ export function validateDkcNativeState(state:Uint8Array):void{blocks(state,false
 export function stateBlock(state:Uint8Array,name:string):Uint8Array{
  const block=blocks(state).get(name);if(!block)throw invalid();return block;
 }
+
+/** DKC has no SuperFX block; keep strict DKC validation for repair views. */
+export function dkcStateBlock(state:Uint8Array,name:string):Uint8Array{const block=blocks(state,false).get(name);if(!block)throw invalid();return block;}

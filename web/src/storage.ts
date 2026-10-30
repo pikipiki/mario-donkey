@@ -1,3 +1,4 @@
+import{arenaStorageKey}from'./native-arena';
 import{cheatStorageKey,sandboxEntries,CHEAT_PREFIX}from'./cheats';
 function database(): Promise<IDBDatabase> { return new Promise((resolve,reject)=>{
  const timeout=setTimeout(()=>reject(new Error('Local storage is unavailable.')),3000);
@@ -6,10 +7,10 @@ function database(): Promise<IDBDatabase> { return new Promise((resolve,reject)=
  request.onsuccess=()=>{clearTimeout(timeout);resolve(request.result)};request.onerror=()=>{clearTimeout(timeout);reject(request.error)};request.onblocked=()=>{clearTimeout(timeout);reject(new Error('Local storage is blocked.'))};
 }); }
 export async function storeFile(key: string, bytes: Uint8Array): Promise<void> {
- const actualKey=cheatStorageKey(key);const db=await database();try{await new Promise<void>((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put(bytes,actualKey);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});}finally{db.close();}
+ const actualKey=cheatStorageKey(arenaStorageKey(key));const db=await database();try{await new Promise<void>((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put(bytes,actualKey);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});}finally{db.close();}
 }
 export async function loadFile(key: string): Promise<Uint8Array|undefined> {
- const actualKey=cheatStorageKey(key);const db=await database();try{return await new Promise((resolve,reject)=>{const request=db.transaction('files').objectStore('files').get(actualKey);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}finally{db.close();}
+ const actualKey=cheatStorageKey(arenaStorageKey(key));const db=await database();try{return await new Promise((resolve,reject)=>{const request=db.transaction('files').objectStore('files').get(actualKey);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}finally{db.close();}
 }
 
 /** Atomic sandbox refresh. No normal save is overwritten or deleted. */

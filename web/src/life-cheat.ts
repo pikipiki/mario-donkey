@@ -21,7 +21,7 @@ export class LifeCheat{
   const pending=this.entries[world]?.restore;if(pending!==undefined)writeWord(w,address[world],pending);
   this.sync(world,w,enabled);
  }
- receipt(world:GameWorld,w:Uint8Array):()=>void{const captured=this.entries[world],value=word(w,address[world]);return()=>{const e=this.entries[world];if(e!==captured||e?.restore===undefined||value!==e.restore)return;const previous={...e};delete e.restore;try{this.persist();}catch(error){this.entries[world]=previous;throw error;}};}
+ receipt(world:GameWorld,w:Uint8Array):()=>void{const captured=this.entries[world],value=word(w,address[world]);return()=>{const e=this.entries[world];if(e!==captured||e?.restore===undefined)return;const previous={...e};e.normal=value;delete e.restore;try{this.persist();}catch(error){this.entries[world]=previous;throw error;}};}
  sync(world:GameWorld,w:Uint8Array,enabled:boolean,now=Date.now()):void{
   const e=this.entries[world];if(!e)return;
   if(enabled){

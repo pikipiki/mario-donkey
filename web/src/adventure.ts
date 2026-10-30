@@ -8,15 +8,15 @@ export const CHARACTER_NAMES:Readonly<Record<Character,string>>={violet:'Bobope'
 export type Mount='foot'|'yoshi'|Animal;
 export interface Pickup {id:string;room:string;kind:'barrel'|Animal;x:number;y:number;collected:boolean}
 interface Room {distance:number;crates:number;nextCrate:number;samples:Array<{x:number;y:number}>;last?:{x:number;y:number}}
-export interface AdventureData {version:2;characterSet?:1;active:Character;team?:[Character,Character];available:Character[];mount:Mount;animals:Animal[];pickups:Pickup[];guardian?:GuardianSave}
+export interface AdventureData {version:2;characterSet?:1;active:Character;team?:[Character,Character];available:Character[];mount:Mount;animals:Animal[];pickups:Pickup[];guardian?:GuardianSave;nativeArenaReceipt?:string}
 const isAnimal=(x:unknown):x is Animal=>typeof x==='string'&&(ANIMALS as readonly string[]).includes(x);
 export class Adventure {
  active:Character='violet';team:[Character,Character]=['violet','pink'];available:Character[]=[...CHARACTERS];mount:Mount='foot';animals:Animal[]=[];pickups:Pickup[]=[];
- guardian?:GuardianSave;
+ guardian?:GuardianSave;nativeArenaReceipt?:string;
  private rooms=new Map<string,Room>();
  constructor(saved?:Partial<AdventureData>){
   if(saved?.version!==2)return;
-  this.guardian=validateGuardian(saved.guardian);
+  this.guardian=validateGuardian(saved.guardian);if(typeof saved.nativeArenaReceipt==='string'&&/^[a-f0-9-]{36}$/.test(saved.nativeArenaReceipt))this.nativeArenaReceipt=saved.nativeArenaReceipt;
   this.available=[...CHARACTERS];
   this.active=saved.characterSet===1&&this.available.includes(saved.active!)?saved.active!:'violet';
   const pair=saved.team;if(Array.isArray(pair)&&pair.length===2&&pair[0]!==pair[1]&&pair.every(c=>this.available.includes(c))&&pair.includes(this.active))this.team=[pair[0],pair[1]];else this.team=[this.active,this.active==='violet'?'pink':'violet'];
@@ -58,5 +58,5 @@ export class Adventure {
   for(const p of hits){p.collected=true;if(p.kind==='barrel')this.available=[...CHARACTERS];else{if(!this.animals.includes(p.kind))this.animals.push(p.kind);this.ride(p.kind);}}
   return hits;
  }
- serialize():AdventureData{return {version:2,characterSet:1,active:this.active,team:this.team.includes(this.active)?[...this.team]:[this.active,this.partner],available:this.available,mount:this.mount,animals:this.animals,pickups:this.pickups.slice(-512),...(this.guardian?{guardian:this.guardian}:{})};}
+ serialize():AdventureData{return {version:2,characterSet:1,active:this.active,team:this.team.includes(this.active)?[...this.team]:[this.active,this.partner],available:this.available,mount:this.mount,animals:this.animals,pickups:this.pickups.slice(-512),...(this.guardian?{guardian:this.guardian}:{}),...(this.nativeArenaReceipt?{nativeArenaReceipt:this.nativeArenaReceipt}:{})};}
 }

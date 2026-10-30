@@ -1,7 +1,8 @@
+import{arenaCampaignKey}from'./native-arena';
 import { type AdventureData } from './adventure';
 import { loadFile,storeFile } from './storage';
 import {validateNativeState} from './snapshot';
-const KEY='campaign-v2-original-dkc-eu-snes9x-2.0.2';
+export const YOSHI_CAMPAIGN_KEY='campaign-v2-original-dkc-eu-snes9x-2.0.2';const KEY=YOSHI_CAMPAIGN_KEY;
 export interface Campaign {state:Uint8Array;adventure:AdventureData}
 export function encodeCampaign(state:Uint8Array,adventure:AdventureData):Uint8Array{
  const json=new TextEncoder().encode(JSON.stringify(adventure));const bytes=new Uint8Array(4+json.length+state.length);
@@ -14,15 +15,15 @@ export function decodeCampaign(bytes:Uint8Array):Campaign{
  if(!adventure||adventure.version!==2||!Array.isArray(adventure.available)||!Array.isArray(adventure.animals)||!Array.isArray(adventure.pickups))throw new Error('This save version is not supported.');return {adventure,state:bytes.slice(4+length)};
 }
 export async function readCampaign():Promise<Campaign|undefined>{
- const bytes=await loadFile(KEY);if(!bytes)return;
+ const bytes=await loadFile(arenaCampaignKey(KEY));if(!bytes)return;
  const campaign=decodeCampaign(bytes);validateNativeState(campaign.state);return campaign;
 }
 export async function writeCampaign(state:Uint8Array,data:AdventureData):Promise<void>{
- validateNativeState(state);await storeFile(KEY,encodeCampaign(state,data));
+ validateNativeState(state);await storeFile(arenaCampaignKey(KEY),encodeCampaign(state,data));
 }
 
 /** Independent copy: normal autosaves never replace the pre-repair state. */
 export async function backupCampaign(campaign:Campaign,reason:'display-repair'|'goal-handoff'|'goal-departure'='display-repair'):Promise<void>{
  validateNativeState(campaign.state);
- await storeFile(KEY+'-before-'+reason,encodeCampaign(campaign.state,campaign.adventure));
+ await storeFile(arenaCampaignKey(KEY+'-before-'+reason),encodeCampaign(campaign.state,campaign.adventure));
 }

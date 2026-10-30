@@ -10,11 +10,11 @@ export function currentWorld(search:string,lastWorld?:string|null):GameWorld{
  return lastWorld==='dkc'?'dkc':'yoshi';
 }
 export function worldUrl(href:string,target:GameWorld):string{
- const url=new URL(href);url.searchParams.set('world',target);url.searchParams.set('pipe','1');url.searchParams.delete('fresh');return url.href;
+ const url=new URL(href);url.searchParams.set('world',target);url.searchParams.set('pipe','1');url.searchParams.delete('fresh');url.searchParams.delete('native-arena');url.searchParams.delete('arena-return');return url.href;
 }
 /** Transfer companions, never another game's room objects or exit guardian. */
 export function encodeWorldParty(data:AdventureData):Uint8Array{
- const clean=new Adventure(data).serialize();clean.pickups=[];delete clean.guardian;
+ const clean=new Adventure(data).serialize();clean.pickups=[];delete clean.guardian;delete clean.nativeArenaReceipt;
  return new TextEncoder().encode(JSON.stringify(clean));
 }
 export function decodeWorldParty(bytes:Uint8Array|undefined):AdventureData|undefined{
@@ -22,7 +22,7 @@ export function decodeWorldParty(bytes:Uint8Array|undefined):AdventureData|undef
  try{
   const data=JSON.parse(new TextDecoder().decode(bytes));
   if(!data||data.version!==2||data.characterSet!==1||!Array.isArray(data.available)||!Array.isArray(data.animals))return;
-  const clean=new Adventure(data).serialize();clean.pickups=[];delete clean.guardian;return clean;
+  const clean=new Adventure(data).serialize();clean.pickups=[];delete clean.guardian;delete clean.nativeArenaReceipt;return clean;
  }catch{return;}
 }
 

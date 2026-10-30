@@ -1,3 +1,4 @@
+import{type ArenaTrip,type ArenaBoss}from'./native-arena';
 import{bootLifeCheat,syncLifeCheat,trackLifeSnapshot,confirmLifeSnapshot,applyYoshiCheats}from'./cheats';
 import{GoalDepartureHooks}from'./goal-departure';
 import{GoalHandoffRecovery,requestGoalReturn,type StalledGoal}from'./goal-recovery';
@@ -36,16 +37,26 @@ export class LiveGame {
  protected teamTag=new TeamTag();
  protected bossAudio=new BossAudio();private nativeBossSongHeld=false;
  protected animalAudio=new AnimalAudio();private animalSounds=new AnimalSoundTracker();
- keepBabyOnScreen=true;
+ nativeArenaMode=false;keepBabyOnScreen=true;
  wramBase=0;gsuBase=0;ready=false;paused=false;kills=0;walls=0;adventure=new Adventure();autoSkip=false;
  private drawSite=0;private animationKey='';private animationStart=0;private previousX=0;private topPadding=0;private hidden?:boolean;private previousBabyLost=false;private previousLives=0;
  private livesBooted=false;private skipUntil=0;private lastSave=0;private saving?:Promise<void>;private queuedSave?:Campaign;private jumpSequence=0;private lastStage='';private wasFinishing=false;
  private originalCampaign?:Campaign;private loadedCampaign=false;private recovering=false;private capturing=false;private capture?:Promise<Campaign|undefined>;private lastCapture?:Campaign;private mapConfirm=new MapConfirmInput();private jumpBoost=new NativeJumpBoost();private flutterInput=new NativeFlutterInput();
- private videoHeight=239;
+ protected videoHeight=239;
  private particles:Array<{x:number;y:number;until:number}>=[];
  constructor(public emulator:Emulator,public controls:Controls,private overlay:HTMLCanvasElement,private atlas:SpriteAtlas,private onStatus:(message:string)=>void,private changed:()=>void=()=>{}){}
  configureTeam(first:Character,second:Character):boolean{this.stop();const ok=this.adventure.setTeam(first,second);if(ok){this.changed();if(this.ready)void this.save();}return ok;}
  requestTeamSwap():boolean{if(!this.ready||this.paused||this.teamTag.swapping)return false;if(this.isMap){this.adventure.swapTeam();this.changed();return true;}const g=this.gsu;if(this.messageOpen||babyIsLost(g)||!canModifyJump(g)||word(g,0xc0)!==0||inGoal(g))return false;this.controls.stop();this.setInputs(new Set());return this.teamTag.begin(this.adventure,{x:word(g,P.x),y:word(g,P.y),facing:this.controls.facing,grounded:true});}
+ get nativeArenaBoss():ArenaBoss|undefined{const s=this.bosses.state;return !this.nativeArenaMode&&this.wram[P.mode]===P.gameplay&&!babyIsLost(this.gsu)&&s&&(s.phase==='intro'||s.phase==='fight')?s.id:undefined;}
+ async finishNativeArena(trip:ArenaTrip):Promise<void>{
+  if(trip.phase==='consumed'||this.adventure.nativeArenaReceipt===trip.id)return;const s=this.bosses.state;
+  if(!s||s.stage!==trip.sourceLevel||s.id!==trip.boss||this.wram[P.stage]!==trip.sourceLevel)throw Error('Le combat Yoshi sauvegardé ne correspond pas à cette arène.');
+  if(!['won','lost','abandoned'].includes(trip.phase))throw Error('Le résultat du combat n’a pas encore été confirmé.');
+  this.stop();this.adventure.setTeam(trip.party.team?.[0]??trip.party.active,trip.party.team?.[1]??this.adventure.partner);this.adventure.select(trip.party.active);writeWord(this.wram,0x379,trip.lives);
+  if(trip.phase==='won'){s.hp=0;s.phase='exit';s.phaseTime=0;s.shots=[];s.ring=undefined;this.nativeBossSongHeld=s.music!==undefined;this.onStatus('Boss vaincu dans son arène · Rejoins la sortie');}
+  else{this.goToMap();this.emulator.gameManager.toggleMainLoop(1);const began=performance.now();while(!this.isMap){if(performance.now()-began>15000)throw Error('Le retour à la carte n’a pas abouti. Ta sauvegarde est conservée.');await waitForNativeFrames(this.emulator.gameManager);}}
+  this.adventure.nativeArenaReceipt=trip.id;await this.saveForWorldSwitch();this.changed();
+ }
  get teamSwapping():boolean{return this.teamTag.swapping;}
  get world():'yoshi'|'dkc'{return 'yoshi';}
  get isMap():boolean{return this.ready&&isWorldMap(this.wram);}
@@ -64,7 +75,7 @@ export class LiveGame {
  async unlockAudio():Promise<void>{
   primeAudio();
   void this.animalAudio.prepare(this.audio);
-  void this.bossAudio.prepare(this.audio,this.world==='yoshi'?'dkc':'yoshi',this.world==='dkc'?'burt':this.bosses.state?.id??'');
+  if(!this.nativeArenaMode)void this.bossAudio.prepare(this.audio,this.world==='yoshi'?'dkc':'yoshi',this.world==='dkc'?'burt':this.bosses.state?.id??'');
   await resumeNativeAudio(this.emulator.Module,()=>this.emulator.setVolume(this.paused?0:1));
  }
  async prepare():Promise<void>{
@@ -76,14 +87,14 @@ export class LiveGame {
   // These probes run only on the disposable title scene. The complete campaign
   // or bootstrap is loaded once afterwards; never queue intermediate title restores.
   try{this.wramBase=await resolveMemory(m,0x7e1fe0,0x1fe0,0x20000,false);this.gsuBase=await resolveMemory(m,0x7007e0,0x7e0,0x8000,false);this.drawSite=await resolveDrawing(m,false);}finally{m.toggleMainLoop(1);}
-  this.goalDeparture=new GoalDepartureHooks(this.emulator.Module.HEAPU8,this.drawSite);this.bossHooks=new BossRomHooks(this.emulator.Module.HEAPU8,this.drawSite);this.nativeBossEggs=new NativeBossEggs(this.emulator.Module.HEAPU8,this.drawSite);
+  this.goalDeparture=new GoalDepartureHooks(this.emulator.Module.HEAPU8,this.drawSite);this.bossHooks=new BossRomHooks(this.emulator.Module.HEAPU8,this.drawSite);this.nativeBossEggs=new NativeBossEggs(this.emulator.Module.HEAPU8,this.drawSite);if(this.nativeArenaMode)this.bossHooks.restore();
   const fresh=import.meta.env.DEV&&new URLSearchParams(location.search).has('fresh');
   const campaign=fresh?undefined:await readBeforeDeadline(readCampaign(),4000);
   if(campaign){
    // Keep the verified disk bytes independent of a native restore that may
    // leave RAM partially initialized. Recovery must not copy that damaged RAM.
    this.originalCampaign={state:campaign.state.slice(),adventure:structuredClone(campaign.adventure)};
-   this.bosses.restore(campaign.adventure.guardian);this.bossHooks.sync(this.bosses.state?.kind,this.bosses.state?.phase);
+   if(!this.nativeArenaMode){this.bosses.restore(campaign.adventure.guardian);this.bossHooks.sync(this.bosses.state?.kind,this.bosses.state?.phase);}
    this.onStatus('Resuming your saved game…');m.toggleMainLoop(0);
    try{
     m.loadState(campaign.state);
@@ -110,6 +121,7 @@ export class LiveGame {
  }
 
  private async applyWorldParty():Promise<void>{
+  if(this.nativeArenaMode)return;
   const party=decodeWorldParty(await readBeforeDeadline(loadFile(WORLD_PARTY_KEY),3000).catch(()=>undefined));
   if(!party)return;
   const current=this.adventure.serialize();this.adventure=new Adventure({...current,...party,pickups:current.pickups,guardian:current.guardian});
@@ -126,6 +138,7 @@ export class LiveGame {
  }
  private setInputs(next:Set<number>):void{for(let button=0;button<12;button++)this.emulator.gameManager.simulateInput(0,button,next.has(button)?1:0);}
  private updateVisibility():void{
+  if(this.nativeArenaMode){setNativeDrawing(this.emulator.Module.HEAPU8,this.drawSite,false);this.hidden=false;return;}
   // Modify the verified ROM copy directly. Persistent cheats can restore stale
   // bytes when toggled, leaving native Yoshi hidden after a mount change.
   const hide=hideNativePlayer(this.wram[P.mode],this.adventure.mount,word(this.gsu,0xae),inGoal(this.gsu),this.messageOpen);
@@ -240,15 +253,16 @@ export class LiveGame {
   const rollActive=now<this.controls.rollUntil&&this.wram[P.mode]===P.gameplay&&!this.messageOpen&&!this.teamTag.swapping;
   if(rollActive)protectRoll(g,this.controls.rollUntil-now);
   if(this.bossHooks){
-   const box=guardianHitbox(this.bosses.state);
+   const arenaPending=this.bosses.state&&(this.bosses.state.phase==='intro'||this.bosses.state.phase==='fight');if(arenaPending)this.bosses.pause();
+   const box=arenaPending?undefined:guardianHitbox(this.bosses.state);
    const eggHit=this.wram[P.mode]===P.gameplay&&box?this.eggFlights.collide(g,box)>0:false;
    if(!box)this.eggFlights.reset();
-   const result=this.bosses.update(this.wram,g,this.emulator.gameManager.functions.getFrameNum(),eggHit,this.videoHeight,{rolling:rollActive});
+   const result=arenaPending?{}:this.bosses.update(this.wram,g,this.emulator.gameManager.functions.getFrameNum(),eggHit,this.videoHeight,{rolling:rollActive});
    this.nativeBossEggs?.sync(this.wram[P.mode]===P.gameplay&&this.bosses.eggsUnlimited);
    this.adventure.guardian=this.bosses.state;
    if(this.wram[P.mode]===P.victory)this.bossHooks.restore();else this.bossHooks.sync(this.bosses.state?.kind,this.bosses.state?.phase);
    const guardian=this.bosses.state,nativeGameplay=this.wram[P.mode]===P.gameplay&&!inGoal(g);
-   const playing=this.bossAudio.sync(this.audio,nativeGameplay&&guardian?{world:'dkc',id:guardian.id,phase:guardian.phase}:undefined);
+   const playing=this.bossAudio.sync(this.audio,nativeGameplay&&guardian?.phase==='dying'?{world:'dkc',id:guardian.id,phase:guardian.phase}:undefined);
    if(playing&&!this.nativeBossSongHeld){
     if(guardian)guardian.music=captureYoshiBossSong(this.wram,guardian.music);
     stopYoshiBossSong(this.wram);this.nativeBossSongHeld=true;
@@ -360,7 +374,7 @@ export class LiveGame {
    // Keep the native tongue's reach visible when Yoshi's body is hidden.
    if(mount!=='yoshi'&&(Math.abs(signed16(word(g,0x152)))+Math.abs(signed16(word(g,0x154)))>12)){const tx=signed16(word(g,0x15a)-cx),ty=signed16(word(g,0x15c)-cy)+this.topPadding;c.strokeStyle='#e8788e';c.lineWidth=3;c.lineCap='round';c.beginPath();c.moveTo(sx+this.controls.facing*12,sy-23);c.lineTo(tx,ty);c.stroke();}
   }
-  drawStageBoss(c,this.atlas,this.bosses.state,word(this.wram,P.cameraX),word(this.wram,P.cameraY),this.topPadding);
+  if(this.bosses.state?.phase!=='intro'&&this.bosses.state?.phase!=='fight')drawStageBoss(c,this.atlas,this.bosses.state,word(this.wram,P.cameraX),word(this.wram,P.cameraY),this.topPadding);
   this.previousX=x;this.particles=this.particles.filter(p=>p.until>now);
   for(const p of this.particles){const age=1-(p.until-now)/500;c.fillStyle='#ffdd72';for(let i=0;i<6;i++){const a=i*Math.PI/3;c.fillRect(signed16(p.x-cx)+Math.cos(a)*age*28,signed16(p.y-cy)+this.topPadding+Math.sin(a)*age*22-15,3,3);}}
  }

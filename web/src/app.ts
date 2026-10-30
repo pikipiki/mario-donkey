@@ -1,7 +1,7 @@
 import{NativeDkcArenaGame}from'./native-dkc-arena-game';
 import{YOSHI_CAMPAIGN_KEY,decodeCampaign}from'./campaign';
 import{NativeArenaGame}from'./native-arena-game';
-import{canStartArena,arenaLives,ACTIVE_ARENA_KEY,arenaRoute,arenaUrl,tripKey,sourceKey,encodeTrip,decodeTrip,type ArenaTrip}from'./native-arena';
+import{retireArenaTrip,arenaLives,ACTIVE_ARENA_KEY,arenaRoute,arenaUrl,tripKey,sourceKey,encodeTrip,decodeTrip,type ArenaTrip}from'./native-arena';
 import{DKC_SAVE_KEY,decodeDkcSave}from'./dkc-save';
 import{cloneLifeCheatSandbox,cheatOptions,setCheatOptions,cheatReloadUrl}from'./cheats';
 import './style.css';
@@ -92,7 +92,7 @@ async function loadBundledRom():Promise<void>{
  await acceptRom(new Uint8Array(await r.arrayBuffer()));
 }
 if(arrival.arrival||cheatReload){$('welcome').hidden=true;$('loading').hidden=false;setStatus('Travelling through the pipe…');}
-void (async()=>{if(!arena&&!new URLSearchParams(location.search).has('world')){const bytes=await loadFile(ACTIVE_ARENA_KEY).catch(()=>undefined),id=bytes?new TextDecoder().decode(bytes):'',route=arenaRoute('?native-arena='+id);if(route){const pending=decodeTrip(await loadFile(tripKey(id)));if(pending&&pending.phase!=='consumed'){location.replace(arenaUrl(location.href,id,pending.phase!=='fight',pending.sourceWorld));return;}}}await loadBundledRom();if(arrival.arrival||cheatReload||arena)void startGame();})().catch(e=>{setStatus((e as Error).message);$('loading').hidden=true;$('welcome').hidden=false;});
+void (async()=>{if(!arena&&!new URLSearchParams(location.search).has('world')){const bytes=await loadFile(ACTIVE_ARENA_KEY).catch(()=>undefined),id=bytes?new TextDecoder().decode(bytes):'',route=arenaRoute('?native-arena='+id);if(route){const pending=decodeTrip(await loadFile(tripKey(id)));if(pending&&pending.phase!=='consumed'){location.replace(arenaUrl(location.href,id,pending.phase!=='fight',pending.sourceWorld));return;}}}if(arena&&!arena.returning){const pending=decodeTrip(await loadFile(tripKey(arena.id)));if(!pending)throw Error('Le transfert sauvegardé est introuvable. Ta partie d’origine est conservée.');const retired=retireArenaTrip(pending);if(retired!==pending)await storeFile(tripKey(retired.id),encodeTrip(retired));location.replace(arenaUrl(location.href,retired.id,true,retired.sourceWorld));return;}await loadBundledRom();if(arrival.arrival||cheatReload||arena)void startGame();})().catch(e=>{setStatus((e as Error).message);$('loading').hidden=true;$('welcome').hidden=false;});
 async function startGame():Promise<void>{
  if(starting)return;if(game&&!game.ready){location.reload();return;}if(!rom){setStatus('The game is still loading…');return;}
  primeAudio();
@@ -248,7 +248,7 @@ function frame():void{
   if(dkcWorld){const slot=(game.wram[0x56f]|game.wram[0x570]<<8)===2?4:2;game.wram[0x16d1+slot-2]=60;game.wram[0x16d2+slot-2]=0;}
   else if(game.wram[0x118]===0x13){game.gsu[0x1d6]=0x3f;game.gsu[0x1d7]=0;}
  }
- game?.tick(now);if(game&&canStartArena(game,worldSwitchPending||cheatSwitchPending,Boolean(arena?.returning))&&game.nativeArenaBoss)void beginNativeArena(game);refreshButtons();
+ game?.tick(now);refreshButtons();
  if(game?.ready){
   const map=game.isMap,returnToLevels=!dkcWorld&&needsLevelReturn(game.wram);
   const mapLabel=returnToLevels?'Levels ↓':'Enter';
@@ -439,14 +439,6 @@ $('cheat-stages').addEventListener('change',async()=>{
 
 $('test-cheat-audit').addEventListener('click',async()=>{if(!import.meta.env.DEV||!debug)return;$('test-cheat-audit-result').textContent=JSON.stringify(await cheatSaveAudit(),null,2);});
 
-async function beginNativeArena(active:LiveGame):Promise<void>{
- const boss=active.nativeArenaBoss;if(!boss||worldSwitchPending)return;worldSwitchPending=true;pause(true,false);$('loading').hidden=false;setStatus('Passage vers l’arène originale…');
- try{
-  await active.saveForWorldSwitch();const source=await loadFile(active.world==='dkc'?DKC_SAVE_KEY:YOSHI_CAMPAIGN_KEY);if(!source)throw Error('La sauvegarde DKC n’a pas pu être confirmée.');
-  const trip:ArenaTrip={version:1,id:crypto.randomUUID(),boss,sourceWorld:active.world,sourceLevel:active.world==='dkc'?Number(active.room.slice(4)):active.wram[0x21a],lives:arenaLives(active.wram,active.world),party:active.adventure.serialize(),phase:'fight'};
-  await storeFile(sourceKey(trip.id),source.slice());await storeFile(tripKey(trip.id),encodeTrip(trip));await storeFile(ACTIVE_ARENA_KEY,new TextEncoder().encode(trip.id));location.replace(arenaUrl(location.href,trip.id,false,trip.sourceWorld));
- }catch(e){worldSwitchPending=false;$('loading').hidden=true;setStatus((e as Error).message);pause(true);}
-}
 async function finishNativeArena(phase:'won'|'lost'|'abandoned'):Promise<void>{
  if(!(game instanceof NativeArenaGame)&&!(game instanceof NativeDkcArenaGame)||!arena)return;const active=game;worldSwitchPending=true;pause(true,false);$('loading').hidden=false;setStatus(phase==='won'?'Victoire · Retour au niveau d’origine…':'Retour au jeu d’origine…');
  try{if(active.ready)await active.saveForWorldSwitch();const trip={...active.trip,phase,lives:!active.ready?active.trip.lives:arenaLives(active.wram,active.world),party:active.ready?active.adventure.serialize():active.trip.party};await storeFile(tripKey(trip.id),encodeTrip(trip));location.replace(arenaUrl(location.href,trip.id,true,trip.sourceWorld));}catch(e){worldSwitchPending=false;$('loading').hidden=true;pause(true);throw e;}

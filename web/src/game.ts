@@ -51,10 +51,10 @@ export class LiveGame {
  async finishNativeArena(trip:ArenaTrip):Promise<void>{
   if(trip.phase==='consumed'||this.adventure.nativeArenaReceipt===trip.id)return;const s=this.bosses.state;
   if(!s||s.stage!==trip.sourceLevel||s.id!==trip.boss||this.wram[P.stage]!==trip.sourceLevel)throw Error('Le combat Yoshi sauvegardé ne correspond pas à cette arène.');
-  if(!['won','lost','abandoned'].includes(trip.phase))throw Error('Le résultat du combat n’a pas encore été confirmé.');
+  if(!['won','lost','abandoned','relocated'].includes(trip.phase))throw Error('Le résultat du combat n’a pas encore été confirmé.');
   this.stop();this.adventure.setTeam(trip.party.team?.[0]??trip.party.active,trip.party.team?.[1]??this.adventure.partner);this.adventure.select(trip.party.active);writeWord(this.wram,0x379,trip.lives);
   if(trip.phase==='won'){s.hp=0;s.phase='exit';s.phaseTime=0;s.shots=[];s.ring=undefined;this.nativeBossSongHeld=s.music!==undefined;this.onStatus('Boss vaincu dans son arène · Rejoins la sortie');}
-  else{this.goToMap();this.emulator.gameManager.toggleMainLoop(1);const began=performance.now();while(!this.isMap){if(performance.now()-began>15000)throw Error('Le retour à la carte n’a pas abouti. Ta sauvegarde est conservée.');await waitForNativeFrames(this.emulator.gameManager);}}
+  else if(trip.phase!=='relocated'){this.goToMap();this.emulator.gameManager.toggleMainLoop(1);const began=performance.now();while(!this.isMap){if(performance.now()-began>15000)throw Error('Le retour à la carte n’a pas abouti. Ta sauvegarde est conservée.');await waitForNativeFrames(this.emulator.gameManager);}}
   this.adventure.nativeArenaReceipt=trip.id;await this.saveForWorldSwitch();this.changed();
  }
  get teamSwapping():boolean{return this.teamTag.swapping;}
@@ -253,16 +253,15 @@ export class LiveGame {
   const rollActive=now<this.controls.rollUntil&&this.wram[P.mode]===P.gameplay&&!this.messageOpen&&!this.teamTag.swapping;
   if(rollActive)protectRoll(g,this.controls.rollUntil-now);
   if(this.bossHooks){
-   const arenaPending=this.bosses.state&&(this.bosses.state.phase==='intro'||this.bosses.state.phase==='fight');if(arenaPending)this.bosses.pause();
-   const box=arenaPending?undefined:guardianHitbox(this.bosses.state);
+   const box=guardianHitbox(this.bosses.state);
    const eggHit=this.wram[P.mode]===P.gameplay&&box?this.eggFlights.collide(g,box)>0:false;
    if(!box)this.eggFlights.reset();
-   const result=arenaPending?{}:this.bosses.update(this.wram,g,this.emulator.gameManager.functions.getFrameNum(),eggHit,this.videoHeight,{rolling:rollActive});
+   const result=this.bosses.update(this.wram,g,this.emulator.gameManager.functions.getFrameNum(),eggHit,this.videoHeight,{rolling:rollActive});
    this.nativeBossEggs?.sync(this.wram[P.mode]===P.gameplay&&this.bosses.eggsUnlimited);
    this.adventure.guardian=this.bosses.state;
    if(this.wram[P.mode]===P.victory)this.bossHooks.restore();else this.bossHooks.sync(this.bosses.state?.kind,this.bosses.state?.phase);
    const guardian=this.bosses.state,nativeGameplay=this.wram[P.mode]===P.gameplay&&!inGoal(g);
-   const playing=this.bossAudio.sync(this.audio,nativeGameplay&&guardian?.phase==='dying'?{world:'dkc',id:guardian.id,phase:guardian.phase}:undefined);
+   const playing=this.bossAudio.sync(this.audio,nativeGameplay&&guardian?{world:'dkc',id:guardian.id,phase:guardian.phase}:undefined);
    if(playing&&!this.nativeBossSongHeld){
     if(guardian)guardian.music=captureYoshiBossSong(this.wram,guardian.music);
     stopYoshiBossSong(this.wram);this.nativeBossSongHeld=true;
@@ -374,7 +373,7 @@ export class LiveGame {
    // Keep the native tongue's reach visible when Yoshi's body is hidden.
    if(mount!=='yoshi'&&(Math.abs(signed16(word(g,0x152)))+Math.abs(signed16(word(g,0x154)))>12)){const tx=signed16(word(g,0x15a)-cx),ty=signed16(word(g,0x15c)-cy)+this.topPadding;c.strokeStyle='#e8788e';c.lineWidth=3;c.lineCap='round';c.beginPath();c.moveTo(sx+this.controls.facing*12,sy-23);c.lineTo(tx,ty);c.stroke();}
   }
-  if(this.bosses.state?.phase!=='intro'&&this.bosses.state?.phase!=='fight')drawStageBoss(c,this.atlas,this.bosses.state,word(this.wram,P.cameraX),word(this.wram,P.cameraY),this.topPadding);
+  drawStageBoss(c,this.atlas,this.bosses.state,word(this.wram,P.cameraX),word(this.wram,P.cameraY),this.topPadding);
   this.previousX=x;this.particles=this.particles.filter(p=>p.until>now);
   for(const p of this.particles){const age=1-(p.until-now)/500;c.fillStyle='#ffdd72';for(let i=0;i<6;i++){const a=i*Math.PI/3;c.fillRect(signed16(p.x-cx)+Math.cos(a)*age*28,signed16(p.y-cy)+this.topPadding+Math.sin(a)*age*22-15,3,3);}}
  }

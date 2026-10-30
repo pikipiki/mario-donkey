@@ -1,3 +1,5 @@
+> **Remplacé après clarification utilisateur :** les boss doivent combattre dans le décor du jeu hôte. Le départ automatique vers le moteur/arène du donneur est retiré. Voir `CROSSOVER_BOSSES_IN_PLACE.md`. Le code des transactions reste uniquement pour rapatrier les anciennes sauvegardes en transfert. Le texte ci-dessous décrit l'expérience précédente, pas le comportement actuel.
+
 # Combats dans les arènes natives — 30 octobre 2026
 
 Les rencontres croisées utilisent maintenant le moteur et l'arène du boss d'origine. Un seul émulateur fonctionne à la fois : sauvegarde du niveau source, chargement du jeu du boss, combat natif, puis retour automatique dans le jeu source. Les forteresses/châteaux gardent leur boss original avant cette rencontre ajoutée. La rotation existante est conservée.

@@ -1,3 +1,4 @@
+import{soundOutput}from'./sound-preference';
 /** Shared by both maps. Uses the emulator's already unlocked iOS audio route. */
 export class PipeAudio {
  private context?:AudioContext;private buffer?:AudioBuffer;private pending?:Promise<void>;
@@ -27,7 +28,7 @@ export class PipeAudio {
    const finish=(played:boolean)=>{if(done)return;done=true;clearTimeout(timer);try{source?.stop();}catch{}source?.disconnect();gain?.disconnect();resolve(played);};
    try{
     source=context.createBufferSource();gain=context.createGain();source.buffer=buffer;gain.gain.value=.85;
-    source.connect(gain);gain.connect(context.destination);source.onended=()=>finish(true);
+    source.connect(gain);gain.connect(soundOutput(context));source.onended=()=>finish(true);
     timer=setTimeout(()=>finish(true),1200);source.start();this.played++;
    }catch{finish(false);}
   });

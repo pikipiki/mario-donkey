@@ -1,3 +1,4 @@
+import{soundEnabled,setSoundEnabled}from'./sound-preference';
 import{restoreGameSound}from'./audio';
 import{NativeDkcArenaGame}from'./native-dkc-arena-game';
 import{YOSHI_CAMPAIGN_KEY,decodeCampaign}from'./campaign';
@@ -101,7 +102,7 @@ async function startGame():Promise<void>{
  try{const atlas=await SpriteAtlas.load();const emulator=await launch(rom,setStatus,dkcWorld?'Donkey Goonk DKC Rev2':'Kong Island');setStatus('Opening your saved adventure…');emulator.gameManager.toggleMainLoop(1);let trip:ArenaTrip|undefined;if(arena){trip=decodeTrip(await loadFile(tripKey(arena.id)));if(!trip||trip.id!==arena.id)throw Error('The battle transfer was not found. Your DKC save is safe.');if(arena.returning&&trip.phase!=='consumed'){const source=await loadFile(sourceKey(trip.id)),current=await loadFile(trip.sourceWorld==='yoshi'?YOSHI_CAMPAIGN_KEY:DKC_SAVE_KEY);if(!source||!current||((trip.sourceWorld==='yoshi'?decodeCampaign(current).adventure.nativeArenaReceipt:decodeDkcSave(current).nativeArenaReceipt)!==trip.id&&(source.length!==current.length||source.some((v,i)=>v!==current[i]))))throw Error('Your original adventure changed in another tab. Close this tab and resume the original game to keep your progress.');}if(!arena.returning&&trip.phase!=='fight'){location.replace(arenaUrl(location.href,trip.id,true,trip.sourceWorld));return;}}
   game=arena&&!arena.returning&&trip?new (dkcWorld?NativeDkcArenaGame:NativeArenaGame)(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty,trip,finishNativeArena):new (dkcWorld?DkcGame:LiveGame)(emulator,controls,$<HTMLCanvasElement>('actor'),atlas,setStatus,syncParty);game.autoSkip=$<HTMLInputElement>('auto-skip').checked;game.keepBabyOnScreen=$<HTMLInputElement>('baby-visibility').checked;await game.prepare();if(import.meta.env.DEV&&debug&&game instanceof NativeArenaGame&&game.trip.boss==='raphael')$('test-arena-native-win').hidden=false;if(arena?.returning&&trip){worldSwitchPending=true;if(trip.phase!=='consumed'){await game.finishNativeArena(trip);await storeFile(tripKey(trip.id),encodeTrip({...trip,phase:'consumed'}));await storeFile(ACTIVE_ARENA_KEY,new Uint8Array());}const clean=new URL(location.href);clean.searchParams.delete('arena-return');history.replaceState(null,'',clean.href);syncHostRoute(window);arena=undefined;worldSwitchPending=false;}if(!arena&&cheatOptions().unlockStages&&(cheatMap||(!dkcWorld&&game.isMap))){if(dkcWorld){if(!game.isMap)await game.repairDisplay();}else{game.goToMap();const began=performance.now();while(!game.isMap){if(performance.now()-began>15000)throw Error('The map is not responding. Reload to resume cheat mode.');await waitForNativeFrames(game.emulator.gameManager);}}}if(arrival.arrival&&!game.isMap){game.goToMap();const began=performance.now();while(!game.isMap){if(performance.now()-began>15000)throw Error('The destination map could not be opened. Retry Play to resume your saved game.');await waitForNativeFrames(emulator.gameManager);}}$('loading').hidden=true;
   for(const id of ['pause','skip','save','sound-quick','level-map','repair-display'])$<HTMLButtonElement>(id).disabled=false;
-  await game.unlockAudio().catch(()=>{});void pipeAudio.prepare(game.audio);if(game.audio?.state!=='running')setStatus('Tap ♪ at the top to enable sound.');syncParty();
+  await game.unlockAudio().catch(()=>{});void pipeAudio.prepare(game.audio);if(soundEnabled()&&game.audio?.state!=='running')setStatus('Tap ♪ at the top to enable sound.');syncParty();
  }catch(e){console.error('KONG_START_ERROR',e);setStatus((e as Error).message);$('loading').hidden=true;$('welcome').hidden=false;if(game){game.setPaused(true);$('play').textContent='Reload the page';$<HTMLButtonElement>('repair-display').disabled=!game.canRepairDisplay;}starting=false;}
 }
 $('play').addEventListener('click',()=>{void startGame();});
@@ -191,17 +192,25 @@ $<HTMLInputElement>('auto-skip').addEventListener('change',e=>{if(game)game.auto
 const babyVisibility=$<HTMLInputElement>('baby-visibility');
 try{babyVisibility.checked=localStorage.getItem('kong-baby-visibility')!=='off';}catch{}
 babyVisibility.addEventListener('change',()=>{if(game)game.keepBabyOnScreen=babyVisibility.checked;try{localStorage.setItem('kong-baby-visibility',babyVisibility.checked?'on':'off');}catch{}});
-function enableSound():void{
- if(!game?.ready)return;
+function syncSoundButtons():void{
+ const enabled=soundEnabled();
+ $('sound').textContent=enabled?'♪ Turn sound off':'♪ Turn sound on & resume';
+ $('sound-quick').textContent=enabled?'♪':'🔇';
+ for(const id of['sound','sound-quick']){$(id).setAttribute('aria-label',enabled?'Turn sound off':'Turn sound on');$(id).setAttribute('aria-pressed',String(enabled));}
+}
+function soundStartFailed():void{setSoundEnabled(false);game?.applySoundPreference();syncSoundButtons();setStatus('Sound could not start · Turn sound on to retry.');}
+function toggleSound():void{
+ const enabled=!soundEnabled();setSoundEnabled(enabled);game?.applySoundPreference();syncSoundButtons();
+ if(!enabled){setStatus('Sound off');releaseUiFocus($('sound-quick'));return;}
+ primeAudio();if(!game?.ready){setStatus('Sound on');return;}
  if(settings.open){menuResume=false;settings.close();}
- primeAudio();void restoreGameSound(game,()=>pause(false)).then(()=>{
-  const on=game?.audio?.state==='running';
-  $('sound-quick').setAttribute('aria-label',on?'Restore game sound':'Enable game sound');
-  setStatus(on?'Audio enabled · If silent, check the iPhone media volume.':'Tap ♪ again to enable sound.');
- }).catch(()=>setStatus('Tap ♪ again to enable sound.'));
+ void restoreGameSound(game,()=>pause(false)).then(()=>{
+  if(!soundEnabled())return;
+  if(game?.audio?.state==='running')setStatus('Sound on');else soundStartFailed();
+ }).catch(()=>{if(soundEnabled())soundStartFailed();});
  releaseUiFocus($('sound-quick'));
 }
-$('sound').addEventListener('click',enableSound);$('sound-quick').addEventListener('click',enableSound);
+syncSoundButtons();$('sound').addEventListener('click',toggleSound);$('sound-quick').addEventListener('click',toggleSound);
 $('level-map').addEventListener('click',()=>{resumeFromSettings();game?.goToMap();});
 $('save').addEventListener('click',()=>{void game?.save();});
 $('repair-display').addEventListener('click',async()=>{

@@ -1,3 +1,4 @@
+import{setSoundEnabled}from'../src/sound-preference';
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {BossAudio,bossTrack} from '../src/boss-audio';
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
@@ -46,3 +47,5 @@ it('plays loaded hit FX even when the music loop has not loaded yet, while respe
 it.each([['salvo','salvo-hit'],['bigger-boo','boo-hit'],['milde','boss-hurt'],['raphael','boss-hurt'],['tap-tap','boss-hurt']])('plays the native %s hurt cue then the Yoshi boss explosion',async(id,cue)=>{
  const f=fixture(),audio=new BossAudio();await audio.prepare(f.context,'yoshi',id);audio.sync(f.context,{world:'yoshi',id,phase:'fight'});expect(audio.effect('hit',id)).toBe(true);expect(audio.lastEffect).toBe(cue);expect(audio.effect('defeat',id)).toBe(true);expect(audio.lastEffect).toBe('boss-explode');
 });
+
+it('silences an already-playing boss loop through the shared gate and restores it without restarting the track',async()=>{const f=fixture(),audio=new BossAudio();await audio.prepare(f.context);audio.sync(f.context,dkc);const gains=(f.context.createGain as ReturnType<typeof vi.fn>).mock.results.map(r=>r.value);const output=gains.find(g=>g.gain.value===1);expect(output).toBeDefined();try{setSoundEnabled(false);expect(output.gain.value).toBe(0);expect(f.sources[0].stop).not.toHaveBeenCalled();setSoundEnabled(true);expect(output.gain.value).toBe(1);expect(f.sources).toHaveLength(1);}finally{setSoundEnabled(true);}});

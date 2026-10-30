@@ -1,3 +1,4 @@
+import{soundOutput}from'./sound-preference';
 // Native EU SPC commands: bank0B E5CA/E648/E871/EA28 and bank20 sound names.
 export const YOSHI_COMBAT_EFFECTS=['aim','throw','tongue','swallow','make','impact','flutter'] as const;
 export type YoshiCombatEffect=typeof YOSHI_COMBAT_EFFECTS[number];
@@ -36,7 +37,7 @@ export class YoshiCombatAudio {
   let source:AudioBufferSourceNode|undefined,gain:GainNode|undefined;
   try{
    source=context.createBufferSource();gain=context.createGain();source.buffer=buffer;gain.gain.value=.75;
-   source.connect(gain);gain.connect(context.destination);this.voices.add(source);
+   source.connect(gain);gain.connect(soundOutput(context));this.voices.add(source);
    const voice=source,level=gain;
    voice.onended=()=>{this.voices.delete(voice);voice.disconnect();level.disconnect();};
    voice.start(0,cue.offset,cue.duration);this.last.set(name,now);this.lastEffect=name;this.played++;return true;

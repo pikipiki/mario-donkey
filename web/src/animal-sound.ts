@@ -1,3 +1,4 @@
+import{soundOutput}from'./sound-preference';
 import {ANIMALS,type Animal,type Mount} from './adventure';
 export const ANIMAL_EFFECTS=['rambi-land','rambi-pant','crate-open','rambi-step-1','rambi-step-2','animal-hit','rambi-attack','enguarde-attack','animal-mount','wing-flap','animal-jump'] as const;
 export type AnimalEffect=typeof ANIMAL_EFFECTS[number];
@@ -67,7 +68,7 @@ export class AnimalAudio {
   let source:AudioBufferSourceNode|undefined,gain:GainNode|undefined;
   try{
    source=context.createBufferSource();gain=context.createGain();source.buffer=buffer;gain.gain.value=.75;
-   source.connect(gain);gain.connect(context.destination);this.voices.add(source);
+   source.connect(gain);gain.connect(soundOutput(context));this.voices.add(source);
    const voice=source,level=gain;
    voice.onended=()=>{this.voices.delete(voice);voice.disconnect();level.disconnect();};
    voice.start(0,cue.offset,cue.duration);this.last.set(name,now);this.lastEffect=name;this.played++;return true;

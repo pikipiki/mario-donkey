@@ -1,3 +1,4 @@
+import{soundEnabled}from'./sound-preference';
 import{nativeArenaBoss,type NativeArenaBoss,type ArenaTrip}from'./native-arena';
 import{DkcDefeat}from'./dkc-defeat';
 import{bootLifeCheat,trackLifeSnapshot,confirmLifeSnapshot,applyDkcCheats}from'./cheats';
@@ -39,7 +40,7 @@ export class DkcGame extends LiveGame{
  private dkArenaReceipt?:string;private dkDefeat=new DkcDefeat();private dkNativeHits?:DkcNativeBossHitHooks;private dkDrum=new DkcDrumEncounter();private dkBossContact=new DkcBossContact();
  private dkBarrel=new DkcBarrelControl();private combat=new DkcCombat();private dkGuardian=new DkcGuardian();private dkBossHooks?:DkcBossRomHooks;private dkBossFinish?:DkcBossFinishHooks;private dkMusicHeld=false;private dkLastSave=0;private dkSaving?:Promise<void>;private dkCapturing=false;private dkMap=false;private dkHeight=224;private dkFrame=0;private dkAnimation='';private dkAnimationAt=0;private dkStage='';private dkRoom?:number;
  constructor(emulator:Emulator,controls:Controls,private dkCanvas:HTMLCanvasElement,private dkAtlas:SpriteAtlas,private dkStatus:(message:string)=>void,private dkChanged:()=>void=()=>{}){super(emulator,controls,dkCanvas,dkAtlas,dkStatus,dkChanged);}
- override async unlockAudio():Promise<void>{await super.unlockAudio();void this.yoshiCombatAudio.prepare(this.audio);}
+ override async unlockAudio():Promise<void>{await super.unlockAudio();if(soundEnabled())void this.yoshiCombatAudio.prepare(this.audio);}
  override get nativeArenaBoss():NativeArenaBoss|undefined{const s=this.dkGuardian.state;return !this.nativeArenaMode&&!this.dkDefeat.active&&dkcAvailableHeroes(this.wram)>0&&word(this.wram,DKC.state+readDkcScene(this.wram).playerSlot)<=8&&s&&(s.phase==='intro'||s.phase==='fight')&&nativeArenaBoss(s.id)?s.id:undefined;}
  override async finishNativeArena(trip:ArenaTrip):Promise<void>{
   const s=this.dkGuardian.state;if(trip.phase==='consumed'||this.dkArenaReceipt===trip.id)return;
@@ -98,7 +99,7 @@ export class DkcGame extends LiveGame{
   const keepBarrel=this.ready&&this.dkBarrel.update(this.wram,this.controls.rollSequence,false);
   for(let b=0;b<12;b++)this.emulator.gameManager.simulateInput(0,b,b===INPUT.y&&keepBarrel?1:0);
  }
- override setPaused(value:boolean):void{this.stop();this.paused=value;if(!this.dkCapturing)this.emulator.gameManager.toggleMainLoop(value?0:1);this.emulator.setVolume(value?0:1);if(value)void this.save().catch(e=>this.dkStatus((e as Error).message));else void this.unlockAudio();}
+ override setPaused(value:boolean):void{this.stop();this.paused=value;if(!this.dkCapturing)this.emulator.gameManager.toggleMainLoop(value?0:1);this.applySoundPreference();if(value)void this.save().catch(e=>this.dkStatus((e as Error).message));else void this.unlockAudio();}
  override requestTeamSwap():boolean{if(!this.ready||this.paused||this.teamTag.swapping)return false;const s=readDkcScene(this.wram);if(s.isMap){this.adventure.swapTeam();this.dkChanged();return true;}if(!s.playing||!this.teamDamage.canTag(this.wram)||!s.grounded||word(this.wram,0x1029+s.playerSlot)>0xb||word(this.wram,0x1595+s.playerSlot)!==0)return false;this.controls.stop();const keepBarrel=this.dkBarrel.update(this.wram,this.controls.rollSequence,false);for(let b=0;b<12;b++)this.emulator.gameManager.simulateInput(0,b,b===INPUT.y&&keepBarrel?1:0);return this.teamTag.begin(this.adventure,{...s,facing:this.controls.facing});}
  override skipDialogue():void{if(!readDkcScene(this.wram).playing)this.controls.pulse(INPUT.start,performance.now());}
  override goToMap():void{void this.returnToMap();}

@@ -1,3 +1,4 @@
+import{soundOutput}from'./sound-preference';
 import type {CoreModule} from './engine';
 import {bounded} from './startup';
 /** WebKit otherwise treats Web Audio as ambient and can mute a running context
@@ -30,4 +31,13 @@ export function unlockMediaPlayback(media:Pick<HTMLMediaElement,'play'>):void{
 export function restoreGameSound(game:{paused:boolean;unlockAudio():Promise<void>},resume:()=>void):Promise<void>{
  if(game.paused)resume();
  return game.unlockAudio();
+}
+
+const routedMixers=new WeakSet<GainNode>();
+/** Gate the OpenAL context mixer too, so new native voices cannot bypass mute. */
+export function routeNativeAudio(module:Pick<CoreModule,'AL'>):void{
+ for(const slot of new Set([...Object.values(module.AL?.contexts??{}),module.AL?.currentCtx])){
+  const gain=slot?.gain,context=slot?.audioCtx;if(!gain||!context||routedMixers.has(gain))continue;
+  try{const output=soundOutput(context);gain.disconnect();gain.connect(output);routedMixers.add(gain);}catch{try{gain.connect(context.destination);}catch{}}
+ }
 }

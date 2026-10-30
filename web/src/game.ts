@@ -1,3 +1,4 @@
+import{soundEnabled}from'./sound-preference';
 import{type ArenaTrip,type ArenaBoss}from'./native-arena';
 import{bootLifeCheat,syncLifeCheat,trackLifeSnapshot,confirmLifeSnapshot,applyYoshiCheats}from'./cheats';
 import{GoalDepartureHooks}from'./goal-departure';
@@ -12,7 +13,7 @@ import {drawStageBoss} from './boss-draw';
 import {BossAudio} from './boss-audio';
 import {captureYoshiBossSong,stopYoshiBossSong,restoreYoshiBossSong} from './native-boss-music';
 import {AnimalAudio,AnimalSoundTracker,isAnimalMount} from './animal-sound';
-import { nativeAudioContexts, resumeNativeAudio } from './audio';
+import { routeNativeAudio, nativeAudioContexts, resumeNativeAudio } from './audio';
 import { loadStartState } from './bootstrap';
 import {createRecoveryState} from './recovery';
 import { readBeforeDeadline } from './startup';
@@ -72,11 +73,13 @@ export class LiveGame {
  get audio():AudioContext|undefined{return this.emulator.Module.AL?.currentCtx?.audioCtx??nativeAudioContexts(this.emulator.Module)[0];}
  get stageLabel():string{return campaignStageLabel(this.wram); }
  get room():string{return `${this.wram[0x218]}:${this.wram[P.stage]}:${word(this.wram,0x32).toString(16)}:${this.wram[0x34]}`;}
+ applySoundPreference():void{routeNativeAudio(this.emulator.Module);this.emulator.setVolume(this.paused||!soundEnabled()?0:1);}
  async unlockAudio():Promise<void>{
+  if(!soundEnabled()){this.applySoundPreference();return;}
   primeAudio();
   void this.animalAudio.prepare(this.audio);
   if(!this.nativeArenaMode)void this.bossAudio.prepare(this.audio,this.world==='yoshi'?'dkc':'yoshi',this.world==='dkc'?'burt':this.bosses.state?.id??'');
-  await resumeNativeAudio(this.emulator.Module,()=>this.emulator.setVolume(this.paused?0:1));
+  await resumeNativeAudio(this.emulator.Module,()=>this.applySoundPreference());
  }
  async prepare():Promise<void>{
   const m=this.emulator.gameManager,start=performance.now();

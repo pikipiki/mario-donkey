@@ -1,3 +1,4 @@
+import{soundEnabled}from'./sound-preference';
 import {parentAudioHost} from './audio-host';
 import {requestPlaybackAudio,unlockMediaPlayback} from './audio';
 export interface NativeAudioSlot {audioCtx:AudioContext;gain?:GainNode}
@@ -28,6 +29,7 @@ function shareAudioContext():void{
 }
 /** Create and resume audio inside a completed tap. Mobile blocks this on pointerdown. */
 export function primeAudio():void{
+ if(!soundEnabled())return;
  const host=parentAudioHost(window);if(host){host.prime();sharedAudio=host.context;shareAudioContext();return;}
  // Retain a real media session across the asynchronous ROM/core load. A running
  // AudioContext alone does not prove that iOS routes it to an audible output.
@@ -132,7 +134,7 @@ export async function launch(rom: Uint8Array, onStatus: (text: string)=>void,gam
   Object.assign(window,{
    EJS_player:'#emulator',EJS_core:'snes9x',EJS_gameName:gameName,
    EJS_gameUrl:new Blob([rom.slice().buffer],{type:'application/octet-stream'}),
-   EJS_pathtodata:`${import.meta.env.BASE_URL}emulator/`,EJS_startOnLoaded:true,EJS_volume:1,
+   EJS_pathtodata:`${import.meta.env.BASE_URL}emulator/`,EJS_startOnLoaded:true,EJS_volume:soundEnabled()?1:0,
    EJS_language:'en-US',EJS_disableAutoLang:true,EJS_threads:false,EJS_noAutoFocus:true,
    EJS_forceLegacyCores:ios,EJS_disableDatabases:ios,
    EJS_disableLocalStorage:true,EJS_controlScheme:'none',EJS_virtualGamepad:false,

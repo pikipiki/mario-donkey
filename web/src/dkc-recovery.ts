@@ -19,3 +19,11 @@ export function createDkcRecoveryState(clean:Uint8Array,old:Uint8Array):Uint8Arr
  for(let i=0;i<routes.connections.length&&routes.connections[i];i+=3){const gate=routes.canonical[routes.connections[i]],a=routes.canonical[routes.connections[i+1]],b=routes.canonical[routes.connections[i+2]];if(w[0x583+gate]&1){edge(a,b);edge(b,a);}}
  return result;
 }
+
+/** A crashed/cleared transition may have lost every campaign field. Prefer the
+ * last validated checkpoint in that exact case; never rebuild from erased flags. */
+export function dkcRecoverySource(live:Uint8Array,checkpoint?:Uint8Array):Uint8Array{
+ const w=dkcStateBlock(live,'RAM');
+ const cleared=w[0x51a]===0&&word(w,0x3e)===0&&word(w,0x40)===0&&word(w,0x4a)===0&&w.subarray(0x571,0x683).every(v=>v===0);
+ if(cleared&&checkpoint){validateDkcNativeState(checkpoint);return checkpoint;}return live;
+}

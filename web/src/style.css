@@ -126,3 +126,10 @@ html,body,#app{touch-action:none;-webkit-text-size-adjust:100%;text-size-adjust:
 @media (orientation:landscape) and (max-height:360px){.action-pad small{display:none}}
 
 .cheat-settings{border:1px solid #52676a;border-radius:14px;padding:12px 16px;margin:16px 0}.cheat-settings legend{font-weight:800;padding:0 8px}.cheat-settings .setting{min-height:48px;cursor:pointer}.cheat-settings input{width:26px;height:26px;accent-color:#cce995;flex-shrink:0}
+
+/* Click/touch/keyboard resume target, with enough room on small landscape screens. */
+.pause-dialog{text-align:center;width:min(360px,calc(100vw - 32px));padding:clamp(16px,4vh,28px);overflow:auto}
+.pause-dialog h2{font-size:clamp(22px,4vw,30px);margin:0 0 18px}
+.resume-button{width:100%;min-height:64px;border:0;border-radius:14px;background:var(--lime);color:var(--ink);font-size:24px;font-weight:800;touch-action:manipulation;cursor:pointer}
+.resume-button:focus-visible{outline:3px solid white;outline-offset:4px}
+.pause-dialog p{font-size:14px;color:#c0d3c3;margin:14px 0 0}

@@ -8,7 +8,7 @@ export class NativeArenaGame extends LiveGame{
  private entered=false;private entering=true;private completing=false;private lastArenaSave=0;
  constructor(emulator:Emulator,controls:Controls,private canvas:HTMLCanvasElement,private art:SpriteAtlas,private status:(s:string)=>void,private partyChanged:()=>void,readonly trip:ArenaTrip,private complete:(phase:'won'|'lost'|'abandoned')=>Promise<void>){super(emulator,controls,canvas,art,status,partyChanged);this.nativeArenaMode=true;}
  override get canRepairDisplay():boolean{return true;}
- override get stageLabel():string{return`${NATIVE_ARENAS[this.trip.boss as NativeArenaBoss].name} · Arène originale`;}
+ override get stageLabel():string{return`${NATIVE_ARENAS[this.trip.boss as NativeArenaBoss].name} · Original arena`;}
  override get eggsUnlimited():boolean{return false;}
  override async prepare():Promise<void>{
   const saved=await readCampaign();await super.prepare();this.ready=false;
@@ -17,7 +17,7 @@ export class NativeArenaGame extends LiveGame{
    const w=this.wram,s=NATIVE_ARENAS[this.trip.boss as NativeArenaBoss];writeWord(w,0x379,this.trip.lives);
    writeWord(w,0x218,0);writeWord(w,0x21a,s.stage);w.set([s.room,s.x,s.y,0],0x17e00);writeWord(w,0x38e,0);writeWord(w,0x38c,1);w[0x118]=0xf;
    this.emulator.gameManager.toggleMainLoop(1);const start=performance.now();
-   while(w[0x118]!==0x13){if(performance.now()-start>20000)throw Error('L’arène ne démarre pas. Recharge pour réessayer ; ta partie DKC est conservée.');await waitForNativeFrames(this.emulator.gameManager);}
+   while(w[0x118]!==0x13){if(performance.now()-start>20000)throw Error('The arena did not start. Reload to try again; your DKC adventure is safe.');await waitForNativeFrames(this.emulator.gameManager);}
   }
   this.entered=true;this.entering=false;this.ready=true;this.lastArenaSave=performance.now();this.partyChanged();this.status(this.stageLabel);await this.save();
  }
@@ -28,7 +28,7 @@ export class NativeArenaGame extends LiveGame{
  override skipDialogue():void{this.controls.pulse(INPUT.a,performance.now());}
  override goToMap():void{void this.finish('abandoned');}
  override async repairDisplay():Promise<void>{await this.finish('abandoned');}
- override mount(_value:Mount):void{this.status('Ce combat utilise les pouvoirs natifs de Yoshi.');}
+ override mount(_value:Mount):void{this.status('This battle uses Yoshi’s original abilities.');}
  override requestTeamSwap():boolean{if(!this.ready||this.paused||this.completing)return false;this.adventure.swapTeam();this.animalAudio.play('animal-hit');this.partyChanged();return true;}
  override configureTeam(first:Character,second:Character):boolean{const ok=this.adventure.setTeam(first,second);if(ok)this.partyChanged();return ok;}
  private async finish(phase:'won'|'lost'|'abandoned'):Promise<void>{if(this.completing)return;this.completing=true;this.stop();try{await this.complete(phase);}catch(e){this.completing=false;this.status((e as Error).message);}}

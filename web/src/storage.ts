@@ -18,7 +18,7 @@ export async function cloneUnlockSandbox():Promise<void>{
  const db=await database();try{await new Promise<void>((resolve,reject)=>{
   const tx=db.transaction('files','readwrite'),files=tx.objectStore('files'),keys=files.getAllKeys(),values=files.getAll();let done=0;
   const copy=()=>{if(++done<2)return;const entries=keys.result.map((key,i)=>[String(key),values.result[i]]as const);for(const[key]of entries)if(key.startsWith(CHEAT_PREFIX))files.delete(key);for(const[key,value]of sandboxEntries(entries))files.put(value,key);};
-  keys.onsuccess=copy;values.onsuccess=copy;tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error??new Error('La copie de sauvegarde a été interrompue.'));
+  keys.onsuccess=copy;values.onsuccess=copy;tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error??new Error('The save copy was interrupted.'));
  });}finally{db.close();}
 }
 

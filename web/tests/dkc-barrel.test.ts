@@ -13,7 +13,7 @@ describe('two-tap native DKC barrel control',()=>{
 
 import{vi}from'vitest';import{DkcGame}from'../src/dkc-game';import{INPUT,type Emulator}from'../src/engine';import type{SpriteAtlas}from'../src/atlas';
 it('wires the toggle to native Y, suppresses forced rolling while carrying and preserves the hold across Stop',()=>{
- const f=fixture();const simulateInput=vi.fn(),atlas={draw:vi.fn(),drawMarioYoshi:vi.fn(),drawYoshi:vi.fn()};let frame=1;
+ const f=fixture();f.w[0x51a]=15;const simulateInput=vi.fn(),atlas={draw:vi.fn(),drawMarioYoshi:vi.fn(),drawYoshi:vi.fn()};let frame=1;
  const ctx=new Proxy({}as CanvasRenderingContext2D,{get:(t,k)=>k in t?Reflect.get(t,k):vi.fn()});
  const emulator={Module:{HEAPU8:f.w},gameManager:{simulateInput,functions:{getFrameNum:()=>frame}}}as unknown as Emulator;
  const game=new DkcGame(emulator,f.controls,{getContext:()=>ctx}as unknown as HTMLCanvasElement,atlas as unknown as SpriteAtlas,vi.fn());game.wramBase=0;game.ready=true;(game as unknown as{teamInitialized:boolean}).teamInitialized=true;

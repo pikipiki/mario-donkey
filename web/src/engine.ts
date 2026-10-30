@@ -133,7 +133,7 @@ export async function launch(rom: Uint8Array, onStatus: (text: string)=>void,gam
    EJS_player:'#emulator',EJS_core:'snes9x',EJS_gameName:gameName,
    EJS_gameUrl:new Blob([rom.slice().buffer],{type:'application/octet-stream'}),
    EJS_pathtodata:`${import.meta.env.BASE_URL}emulator/`,EJS_startOnLoaded:true,EJS_volume:1,
-   EJS_language:'en-US',EJS_disableAutoLang:false,EJS_threads:false,EJS_noAutoFocus:true,
+   EJS_language:'en-US',EJS_disableAutoLang:true,EJS_threads:false,EJS_noAutoFocus:true,
    EJS_forceLegacyCores:ios,EJS_disableDatabases:ios,
    EJS_disableLocalStorage:true,EJS_controlScheme:'none',EJS_virtualGamepad:false,
    EJS_defaultOptions:{'vsync':ios?'disabled':'enabled','fps':'disabled','webgl2Enabled':ios?'disabled':'enabled'},

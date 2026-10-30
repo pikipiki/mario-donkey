@@ -7,12 +7,12 @@ export class NativeDkcArenaGame extends DkcGame{
  constructor(emulator:Emulator,controls:Controls,canvas:HTMLCanvasElement,atlas:SpriteAtlas,private status:(s:string)=>void,private partyChanged:()=>void,readonly trip:ArenaTrip,private complete:(phase:'won'|'lost'|'abandoned')=>Promise<void>){super(emulator,controls,canvas,atlas,status,partyChanged);this.nativeArenaMode=true;}
  override get eggsUnlimited():boolean{return this.entered&&!this.completing;}
  override get canRepairDisplay():boolean{return true;}
- override get stageLabel():string{return`${DKC_ARENAS[this.trip.boss as NativeDkcBoss].name} · Arène originale`;}
+ override get stageLabel():string{return`${DKC_ARENAS[this.trip.boss as NativeDkcBoss].name} · Original arena`;}
  override async prepare():Promise<void>{
   const saved=await loadFile(DKC_SAVE_KEY);await super.prepare();this.ready=false;
   if(!saved){
    this.adventure=new Adventure(this.trip.party);const m=this.emulator.gameManager,start=performance.now();
-   m.simulateInput(0,INPUT.b,1);while(!readDkcScene(this.wram).playing){if(performance.now()-start>15000)throw Error('L’arène DKC ne démarre pas. Ta partie Yoshi est conservée.');await waitForNativeFrames(m);}m.simulateInput(0,INPUT.b,0);
+   m.simulateInput(0,INPUT.b,1);while(!readDkcScene(this.wram).playing){if(performance.now()-start>15000)throw Error('The DKC arena did not start. Your Yoshi adventure is safe.');await waitForNativeFrames(m);}m.simulateInput(0,INPUT.b,0);
    for(let i=0;i<10;i++)await waitForNativeFrames(m);
    const level=DKC_ARENAS[this.trip.boss as NativeDkcBoss].entrance,w=this.wram;
    for(const[p,v]of[[0x3e,level],[0x40,level],[0x527,0],[0x50a,0x81e3],[0x50c,0],[0x508,0x8279]])writeWord(w,p,v);

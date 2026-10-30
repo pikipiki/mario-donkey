@@ -50,11 +50,11 @@ export class LiveGame {
  get nativeArenaBoss():ArenaBoss|undefined{const s=this.bosses.state;return !this.nativeArenaMode&&this.wram[P.mode]===P.gameplay&&!babyIsLost(this.gsu)&&s&&(s.phase==='intro'||s.phase==='fight')?s.id:undefined;}
  async finishNativeArena(trip:ArenaTrip):Promise<void>{
   if(trip.phase==='consumed'||this.adventure.nativeArenaReceipt===trip.id)return;const s=this.bosses.state;
-  if(!s||s.stage!==trip.sourceLevel||s.id!==trip.boss||this.wram[P.stage]!==trip.sourceLevel)throw Error('Le combat Yoshi sauvegardé ne correspond pas à cette arène.');
-  if(!['won','lost','abandoned','relocated'].includes(trip.phase))throw Error('Le résultat du combat n’a pas encore été confirmé.');
+  if(!s||s.stage!==trip.sourceLevel||s.id!==trip.boss||this.wram[P.stage]!==trip.sourceLevel)throw Error('The saved Yoshi battle does not match this arena.');
+  if(!['won','lost','abandoned','relocated'].includes(trip.phase))throw Error('The battle result has not been confirmed yet.');
   this.stop();this.adventure.setTeam(trip.party.team?.[0]??trip.party.active,trip.party.team?.[1]??this.adventure.partner);this.adventure.select(trip.party.active);writeWord(this.wram,0x379,trip.lives);
-  if(trip.phase==='won'){s.hp=0;s.phase='exit';s.phaseTime=0;s.shots=[];s.ring=undefined;this.nativeBossSongHeld=s.music!==undefined;this.onStatus('Boss vaincu dans son arène · Rejoins la sortie');}
-  else if(trip.phase!=='relocated'){this.goToMap();this.emulator.gameManager.toggleMainLoop(1);const began=performance.now();while(!this.isMap){if(performance.now()-began>15000)throw Error('Le retour à la carte n’a pas abouti. Ta sauvegarde est conservée.');await waitForNativeFrames(this.emulator.gameManager);}}
+  if(trip.phase==='won'){s.hp=0;s.phase='exit';s.phaseTime=0;s.shots=[];s.ring=undefined;this.nativeBossSongHeld=s.music!==undefined;this.onStatus('Boss defeated · Reach the exit');}
+  else if(trip.phase!=='relocated'){this.goToMap();this.emulator.gameManager.toggleMainLoop(1);const began=performance.now();while(!this.isMap){if(performance.now()-began>15000)throw Error('Could not return to the map. Your save is safe.');await waitForNativeFrames(this.emulator.gameManager);}}
   this.adventure.nativeArenaReceipt=trip.id;await this.saveForWorldSwitch();this.changed();
  }
  get teamSwapping():boolean{return this.teamTag.swapping;}

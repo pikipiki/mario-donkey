@@ -24,3 +24,10 @@ export async function resumeNativeAudio(module:Pick<CoreModule,'AL'>,volume:()=>
 export function unlockMediaPlayback(media:Pick<HTMLMediaElement,'play'>):void{
  try{void media.play().catch(()=>{});}catch{}
 }
+
+/** The sound action is also a playback action: a running context remains silent
+ * while the pause/menu policy holds the native mixer at volume zero. */
+export function restoreGameSound(game:{paused:boolean;unlockAudio():Promise<void>},resume:()=>void):Promise<void>{
+ if(game.paused)resume();
+ return game.unlockAudio();
+}

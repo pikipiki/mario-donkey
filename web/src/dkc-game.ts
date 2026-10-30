@@ -43,11 +43,11 @@ export class DkcGame extends LiveGame{
  override get nativeArenaBoss():NativeArenaBoss|undefined{const s=this.dkGuardian.state;return !this.nativeArenaMode&&!this.dkDefeat.active&&dkcAvailableHeroes(this.wram)>0&&word(this.wram,DKC.state+readDkcScene(this.wram).playerSlot)<=8&&s&&(s.phase==='intro'||s.phase==='fight')&&nativeArenaBoss(s.id)?s.id:undefined;}
  override async finishNativeArena(trip:ArenaTrip):Promise<void>{
   const s=this.dkGuardian.state;if(trip.phase==='consumed'||this.dkArenaReceipt===trip.id)return;
-  if(!s||s.level!==trip.sourceLevel||s.id!==trip.boss||readDkcScene(this.wram).level!==trip.sourceLevel)throw Error('Le combat DKC sauvegardé ne correspond pas à cette arène. Ta partie est conservée.');
-  if(!['won','lost','abandoned','relocated'].includes(trip.phase))throw Error('Le résultat du combat n’a pas encore été confirmé.');
+  if(!s||s.level!==trip.sourceLevel||s.id!==trip.boss||readDkcScene(this.wram).level!==trip.sourceLevel)throw Error('The saved DKC battle does not match this arena. Your adventure is safe.');
+  if(!['won','lost','abandoned','relocated'].includes(trip.phase))throw Error('The battle result has not been confirmed yet.');
   this.controls.stop();this.adventure.setTeam(trip.party.team?.[0]??trip.party.active,trip.party.team?.[1]??this.adventure.partner);this.adventure.select(trip.party.active);writeWord(this.wram,0x575,trip.lives);
-  if(trip.phase==='won'){s.hp=0;s.phase='released';s.phaseTime=0;this.bossAudio.stop();this.dkBossHooks?.sync(false);this.dkBossFinish?.sync(false);this.dkMusicHeld=s.music!==undefined;this.dkStatus('Boss vaincu dans son arène · Prends la sortie du niveau');}
-  else if(trip.phase==='lost'||trip.phase==='abandoned')await this.returnToMap(false);else if(trip.phase!=='relocated')throw Error('Le résultat du combat n’a pas encore été confirmé.');
+  if(trip.phase==='won'){s.hp=0;s.phase='released';s.phaseTime=0;this.bossAudio.stop();this.dkBossHooks?.sync(false);this.dkBossFinish?.sync(false);this.dkMusicHeld=s.music!==undefined;this.dkStatus('Boss defeated · Take the stage exit');}
+  else if(trip.phase==='lost'||trip.phase==='abandoned')await this.returnToMap(false);else if(trip.phase!=='relocated')throw Error('The battle result has not been confirmed yet.');
   this.dkArenaReceipt=trip.id;await this.saveForWorldSwitch();this.dkChanged();
  }
  override get world():'yoshi'|'dkc'{return 'dkc';}
@@ -131,7 +131,7 @@ export class DkcGame extends LiveGame{
   if(this.teamDamage.update(w,this.adventure)){this.teamTag.reset();this.controls.stop();this.dkChanged();}
   if(this.teamDamage.transitioning){this.teamTag.reset();this.controls.stop();}
   if(s.playing&&word(w,0x1029+s.playerSlot)<=0xb&&word(w,0x1595+s.playerSlot)===0){if(this.teamTag.update(m.functions.getFrameNum(),String(s.level),{...s,facing:this.controls.facing},this.adventure)){this.animalAudio.play('animal-hit');this.dkChanged();}}else this.teamTag.reset();
-  const defeat=this.dkDefeat.update(w,this.dkGuardian.active);
+  const defeat=this.dkDefeat.update(w,this.dkGuardian.active,m.functions.getFrameNum());
   if(this.dkDefeat.active){this.controls.stop();this.teamTag.reset();this.dkGuardian.pause();}
   const barrelY=this.dkBarrel.update(w,this.controls.rollSequence,now<this.controls.rollUntil||now<(this.controls.extra.get(INPUT.y)??0));
   const water=dkcSwimming(w),rolling=now<this.controls.rollUntil&&!this.dkBarrel.handling&&!water;
@@ -154,6 +154,13 @@ export class DkcGame extends LiveGame{
   }else this.dkBossHooks?.music('none');
   if(bossResult.effect)this.bossAudio.effect(bossResult.effect,guardian?.id);
   if(bossResult.notice)this.dkStatus(bossResult.notice);
+  if(this.dkDefeat.active){
+   // Let the original death/fade/map script run without mod attacks, mount
+   // abilities or stale held inputs. Do not pause, reload or award a stage.
+   this.controls.stop();for(let b=0;b<12;b++)m.simulateInput(0,b,0);
+   this.combat.shots=[];this.combat.resetClock();this.dkFlight.reset();this.dkFlutter.reset();this.dkWater.reset();
+   this.dkFrame=m.functions.getFrameNum();this.dkStatus('Defeated · Returning to the map…');this.drawDkc(now,s);return;
+  }
   const map=s.isMap;if(map&&!this.dkMap){this.combat.shots=[];this.combat.resetClock();void this.save();this.dkStatus(this.stageLabel);}this.dkMap=map;
   const next=new Set<number>();const axis=this.controls.runAxis(),move=this.dkBarrel.handling||water?(axis<0?-1:axis>0?1:0):this.controls.movement(now),vertical=this.controls.verticalAxis(now);
   const aquatic=this.dkWater.update(w,now,this.adventure.mount,this.controls.jumpPressed(now),vertical,this.controls.facing,!this.teamTag.swapping&&!this.dkBarrel.handling&&now<this.controls.rollUntil);
@@ -176,14 +183,14 @@ export class DkcGame extends LiveGame{
    this.kills+=result.killed+Number(result.ate);if(result.ate){this.dkStatus('Enemy in mouth · Press Down to make an egg');this.dkChanged();}else if(result.madeEgg){this.dkStatus('Egg ready · Aim, then throw');this.dkChanged();}else if(result.threw)this.dkStatus('Egg thrown');
   }else{this.combat.shots=[];this.combat.resetClock();}
   if(this.dkStage!==this.stageLabel){this.dkStage=this.stageLabel;this.dkChanged();this.dkStatus(this.dkStage);}
-  if(this.dkDefeat.active)this.dkStatus('Défaite · Retour à la carte…');else if(defeat.returned)this.dkStatus('Défaite · Choisis le niveau pour réessayer');else if(interruptedGuardian)this.dkStatus('Combat interrupted · Boss still alive · Stage not completed');
+  if(this.dkDefeat.active)this.dkStatus('Defeated · Returning to the map…');else if(defeat.returned)this.dkStatus('Defeated · Choose a stage to try again');else if(interruptedGuardian)this.dkStatus('Combat interrupted · Boss still alive · Stage not completed');
   this.drawDkc(now,s);
   if(now-this.dkLastSave>20000&&!this.dkSaving)void this.save().catch(e=>this.dkStatus((e as Error).message));
  }
  private drawDkc(now:number,s:ReturnType<typeof readDkcScene>):void{
-  const c=this.dkCanvas.getContext('2d')!;c.clearRect(0,0,256,this.dkHeight);const brightness=this.wram[0x51a];if(!s.playing||(brightness&0x80))return;c.globalAlpha=(brightness&15)/15;
+  const c=this.dkCanvas.getContext('2d')!;c.clearRect(0,0,256,this.dkHeight);const brightness=this.wram[0x51a];if(!s.playing||(brightness&0x80))return;c.globalAlpha=(brightness&15)/15*this.dkDefeat.overlayOpacity(this.emulator.gameManager?.functions?.getFrameNum?.()??this.dkFrame);if(c.globalAlpha<=0)return;
   const x=s.x-s.cameraX,y=s.y-s.cameraY,pad=(this.dkHeight-224)>>1;
-  for(const p of this.combat.eggTrail)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,now);
+  if(!this.dkDefeat.active)for(const p of this.combat.eggTrail)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,now);
   const moving=Math.abs(this.controls.runAxis())>.1,rolling=now<this.controls.rollUntil&&!this.dkBarrel.handling&&!(dkcSwimming(this.wram)&&this.aquaticMount==='enguarde');
   const animation=this.dkDefeat.active?'jump':this.teamTag.swapping?'jump':rolling?'roll':this.dkFlight.active?'jump':this.dkFlutter.active?'flutter':dkcSwimming(this.wram)?(moving||Math.abs(s.vy)>128?'walk':'idle'):!s.grounded?'jump':moving?'walk':'idle';if(this.dkAnimation!==animation){this.dkAnimation=animation;this.dkAnimationAt=now;}
   const heroAlpha=c.globalAlpha,g=this.dkGuardian.state;if(g&&g.elapsed<(g.heroHitUntil??0)&&Math.floor(now/100)%2)c.globalAlpha*=.35;
@@ -203,7 +210,7 @@ export class DkcGame extends LiveGame{
    const seat=mounted?dkcSaddle(mount,this.adventure.active):{x:0,y:0};
    this.dkAtlas.draw(c,this.adventure.active,mounted?'ride':this.teamTag.swapping?'jump':animation,mx+recoil+seat.x*leaderFacing,my+seat.y,now-this.dkAnimationAt,leaderFacing);
   }
-  c.globalAlpha=heroAlpha;
+  c.globalAlpha=heroAlpha;if(this.dkDefeat.active){c.globalAlpha=1;return;}
   const t=this.combat.tongue;
   if(t)this.dkAtlas.drawTongue(c,t.x-s.cameraX,t.y-s.cameraY+pad,t.endX-s.cameraX,t.endY-s.cameraY+pad,1-(t.until-now)/150);
   for(const p of this.combat.shots)this.dkAtlas.drawEgg(c,p.x-s.cameraX,p.y-s.cameraY+pad,p.age*1000,true);

@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import {nativeAudioContexts,resumeNativeAudio,requestPlaybackAudio,unlockMediaPlayback} from '../src/audio';
+import {restoreGameSound,nativeAudioContexts,resumeNativeAudio,requestPlaybackAudio,unlockMediaPlayback} from '../src/audio';
 import type {CoreModule} from '../src/engine';
 const context=(state='suspended',resume=vi.fn().mockResolvedValue(undefined))=>({state,resume}) as unknown as AudioContext;
 describe('native OpenAL audio',()=>{
@@ -52,3 +52,6 @@ describe('iPhone media playback recovery',()=>{
  const setter=vi.fn();const session={get type(){return 'playback';},set type(value:string){setter(value);}};expect(requestPlaybackAudio({audioSession:session})).toBe(true);expect(setter).not.toHaveBeenCalled();
  });
 });
+
+it('the sound action resumes a paused menu before restoring mixer volume, even when the context already says running',async()=>{const ctx=context('running');let volume=0;const game={paused:true,unlockAudio:()=>resumeNativeAudio({AL:{currentCtx:{audioCtx:ctx}}}as Pick<CoreModule,'AL'>,()=>{volume=game.paused?0:1;})};const resume=vi.fn(()=>{game.paused=false;});const pending=restoreGameSound(game,resume);expect(resume).toHaveBeenCalledOnce();expect(volume).toBe(1);expect(ctx.resume).toHaveBeenCalled();await pending;});
+it('restores audio in an already playing game without toggling its pause state',async()=>{const resume=vi.fn(),unlockAudio=vi.fn().mockResolvedValue(undefined);await restoreGameSound({paused:false,unlockAudio},resume);expect(resume).not.toHaveBeenCalled();expect(unlockAudio).toHaveBeenCalledOnce();});

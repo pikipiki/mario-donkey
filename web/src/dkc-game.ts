@@ -100,14 +100,16 @@ export class DkcGame extends LiveGame{
   if(!this.ready)return Promise.resolve();
   if(this.dkSaving)return this.dkSaving;
   this.dkSaving=(async()=>{
-   const m=this.emulator.gameManager;this.dkCapturing=true;
+   const m=this.emulator.gameManager;this.dkCapturing=true;let bytes:Uint8Array,state:Uint8Array,map:boolean;
    try{
     await waitForNativePause(m);
-    const state=new Uint8Array(m.getState());trackLifeSnapshot(state,'dkc',this.wram);
-    const bytes=encodeDkcSave({state,adventure:this.adventure.serialize(),combat:this.combat.serialize(),teamInitialized:this.teamInitialized,guardian:this.dkGuardian.state,drum:this.dkDrum.serialize()??undefined});
-    await storeFile(DKC_SAVE_KEY,bytes);if(this.isMap)await storeFile(DKC_MAP_KEY,bytes);confirmLifeSnapshot(state);this.dkLastSave=performance.now();
+    state=new Uint8Array(m.getState());trackLifeSnapshot(state,'dkc',this.wram);map=this.isMap;
+    bytes=encodeDkcSave({state,adventure:this.adventure.serialize(),combat:this.combat.serialize(),teamInitialized:this.teamInitialized,guardian:this.dkGuardian.state,drum:this.dkDrum.serialize()??undefined});
    }finally{this.dkCapturing=false;if(!this.paused)m.toggleMainLoop(1);}
-  })().finally(()=>{this.dkSaving=undefined;});return this.dkSaving;
+   // IndexedDB can stall on mobile. Only the settled in-memory capture needs
+   // a paused core: disk latency must never hold the controls or native loop.
+   await storeFile(DKC_SAVE_KEY,bytes);if(map)await storeFile(DKC_MAP_KEY,bytes);confirmLifeSnapshot(state);
+  })().finally(()=>{this.dkLastSave=performance.now();this.dkSaving=undefined;});return this.dkSaving;
  }
  override tick(now:number):void{
   if(!this.ready||this.paused||this.dkCapturing)return;

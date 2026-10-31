@@ -139,3 +139,12 @@ describe('returning to Gnawty after native sprite streaming',()=>{
   const f=fixture();f.tick();const saved=structuredClone(f.boss.state!);delete saved.arena;saved.floor=216;saved.y=216;writeWord(f.w,P.cameraY,1000);f.boss.restore(saved);f.tick();expect(f.boss.state!.floor).toBe(saved.nativeGoal!.y);expect(f.boss.state!.y).toBeLessThanOrEqual(saved.nativeGoal!.y);
  });
 });
+
+// Exercise actual successive emissions for every imported DKC boss.
+it.each(STAGE_BOSSES.map((spec,stage)=>[spec.id,stage] as const))('spaces %s projectile volleys three times farther apart', (id,stage)=>{
+ const f=fixture(stage),attacks:number[]=[];
+ for(let i=0;i<900;i++){const result=f.tick();if(result.sound==='attack')attacks.push(f.boss.state!.elapsed);}
+ const interval=['gnawty','really-gnawty'].includes(id)?7.8:id==='necky-snr'?4.5:6.3;
+ expect(attacks.length).toBeGreaterThanOrEqual(2);
+ for(let i=1;i<attacks.length;i++){expect(attacks[i]-attacks[i-1]).toBeGreaterThanOrEqual(interval-.00001);expect(attacks[i]-attacks[i-1]).toBeLessThan(interval+.021);}
+});

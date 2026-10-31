@@ -194,7 +194,7 @@ export class StageBosses {
    const speed=s.id==='necky-snr'?125:95;
    s.shots.push({x,y,vx:dx/length*speed,vy:dy/length*speed,age:0,kind});
    if(s.id==='necky-snr')s.shots.push({x,y:y-18,vx:dx/length*speed,vy:dy/length*speed+12,age:0,kind});
-   sound='attack';s.nextAttack=t+(['gnawty','really-gnawty'].includes(s.id)?2.6:s.id==='necky-snr'?1.5:2.1);
+   sound='attack';s.nextAttack=t+3*(['gnawty','really-gnawty'].includes(s.id)?2.6:s.id==='necky-snr'?1.5:2.1);
   }
   if(!sound&&['gnawty','really-gnawty'].includes(s.id)&&Math.floor(groundTime*(s.id==='gnawty'?3:4.5)/Math.PI)!==Math.floor(Math.max(0,groundTime-dt)*(s.id==='gnawty'?3:4.5)/Math.PI))sound='land';
   const remaining:Shot[]=[];let playerHit=false;
